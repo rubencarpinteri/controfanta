@@ -1,5 +1,5 @@
 -- ============================================================
--- Fantacalcio Statistico — Initial Schema
+-- Controfanta — Initial Schema
 -- Migration: 20260318000001_initial_schema
 -- ============================================================
 -- DESIGN NOTES:

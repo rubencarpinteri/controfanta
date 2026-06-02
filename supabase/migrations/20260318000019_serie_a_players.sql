@@ -1,5 +1,5 @@
 -- ============================================================
--- Fantacalcio Statistico — Serie A Global Player Pool
+-- Controfanta — Serie A Global Player Pool
 -- Migration: 20260318000019_serie_a_players
 -- ============================================================
 -- PURPOSE:

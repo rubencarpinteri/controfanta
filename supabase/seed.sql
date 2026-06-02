@@ -1,5 +1,5 @@
 -- ============================================================
--- Fantacalcio Statistico — Seed Data
+-- Controfanta — Seed Data
 -- ============================================================
 -- Provides a realistic demo league with players, formations,
 -- and role classification rules.
@@ -67,7 +67,7 @@ on conflict (id) do nothing;
 insert into leagues (id, name, season_name, timezone, scoring_mode, display_rounding, lock_behavior, advanced_bonuses_enabled, bench_size)
 values (
   league_id,
-  'Fantacalcio Statistico 2025/26',
+  'Controfanta 2025/26',
   '2025/26',
   'Europe/Rome',
   'head_to_head',

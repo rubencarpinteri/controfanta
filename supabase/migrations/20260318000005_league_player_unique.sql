@@ -1,5 +1,5 @@
 -- ============================================================
--- Fantacalcio Statistico — Player Identity Constraint
+-- Controfanta — Player Identity Constraint
 -- Migration: 20260318000005_league_player_unique
 -- ============================================================
 -- Adds a DB-level unique constraint on (league_id, full_name, club)

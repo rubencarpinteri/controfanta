@@ -1,5 +1,5 @@
 -- ============================================================
--- Fantacalcio Statistico — Atomic Lineup Submission Function
+-- Controfanta — Atomic Lineup Submission Function
 -- Migration: 20260318000004_submit_lineup_fn
 -- ============================================================
 -- submit_lineup() executes the entire lineup submission in a

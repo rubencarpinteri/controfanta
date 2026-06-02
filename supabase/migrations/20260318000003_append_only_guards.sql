@@ -1,5 +1,5 @@
 -- ============================================================
--- Fantacalcio Statistico — Append-Only Table Guards
+-- Controfanta — Append-Only Table Guards
 -- Migration: 20260318000003_append_only_guards
 -- ============================================================
 -- Adds BEFORE UPDATE and BEFORE DELETE triggers to tables that

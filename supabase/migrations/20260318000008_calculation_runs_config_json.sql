@@ -1,5 +1,5 @@
 -- ============================================================
--- Fantacalcio Statistico — config_json on calculation_runs
+-- Controfanta — config_json on calculation_runs
 -- Migration: 20260318000008_calculation_runs_config_json
 -- ============================================================
 -- Adds a config_json column to calculation_runs so that the

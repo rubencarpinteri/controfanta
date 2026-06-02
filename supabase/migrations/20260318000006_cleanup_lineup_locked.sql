@@ -1,5 +1,5 @@
 -- ============================================================
--- Fantacalcio Statistico — Lineup Locked Fields Cleanup
+-- Controfanta — Lineup Locked Fields Cleanup
 -- Migration: 20260318000006_cleanup_lineup_locked
 -- ============================================================
 -- The lineup_submissions table was originally designed with

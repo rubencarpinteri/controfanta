@@ -1,5 +1,5 @@
 -- ============================================================
--- Fantacalcio Statistico — Row Level Security Policies
+-- Controfanta — Row Level Security Policies
 -- Migration: 20260318000002_rls_policies
 -- ============================================================
 -- STRATEGY:

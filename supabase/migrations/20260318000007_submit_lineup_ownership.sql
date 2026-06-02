@@ -1,5 +1,5 @@
 -- ============================================================
--- Fantacalcio Statistico — submit_lineup() with Trust Boundary
+-- Controfanta — submit_lineup() with Trust Boundary
 -- Migration: 20260318000007_submit_lineup_ownership
 -- ============================================================
 -- Replaces the Phase-3 version of submit_lineup() with one
