@@ -1,4 +1,5 @@
 import { cache } from 'react'
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getAuthUser } from '@/lib/auth'
@@ -10,8 +11,20 @@ export interface LeagueContext {
   userId: string
 }
 
-// Memoized per request so layouts and pages that both call this hit Supabase once.
-export const isSuperAdmin = cache(async (): Promise<boolean> => {
+// Name of the "view as manager" preview cookie. When set, a real super-admin
+// is treated as an ordinary manager throughout the app (admin tabs/buttons
+// hidden, admin routes/actions gated) so they can preview the non-admin UX.
+export const VIEW_AS_MANAGER_COOKIE = 'view_as_manager'
+
+// Is the current request running in "view as manager" preview mode?
+export const isViewingAsManager = cache(async (): Promise<boolean> => {
+  const jar = await cookies()
+  return jar.get(VIEW_AS_MANAGER_COOKIE)?.value === '1'
+})
+
+// The user's TRUE super-admin status from their profile, ignoring any preview
+// mode. Use this only to decide whether to offer the preview toggle itself.
+export const isRealSuperAdmin = cache(async (): Promise<boolean> => {
   const user = await getAuthUser()
   if (!user) return false
   const supabase = await createClient()
@@ -21,6 +34,13 @@ export const isSuperAdmin = cache(async (): Promise<boolean> => {
     .eq('id', user.id)
     .single()
   return profile?.is_super_admin ?? false
+})
+
+// Effective super-admin status: false while previewing as a manager.
+// Memoized per request so layouts and pages that both call this hit Supabase once.
+export const isSuperAdmin = cache(async (): Promise<boolean> => {
+  if (await isViewingAsManager()) return false
+  return isRealSuperAdmin()
 })
 
 /**
@@ -64,9 +84,12 @@ export const getLeagueContext = cache(async (): Promise<LeagueContext | null> =>
   // because our manually-written types carry `Relationships: never[]` (no FK
   // metadata). The runtime shape is correct; widen, then narrow.
   const d = data as { league_id: string; role: LeagueRole; leagues: unknown }
+  // In "view as manager" preview mode, downgrade the role so every
+  // `ctx.role === 'league_admin'` check across the app sees a plain manager.
+  const role: LeagueRole = (await isViewingAsManager()) ? 'manager' : d.role
   return {
     league: d.leagues as unknown as League,
-    role: d.role,
+    role,
     userId: user.id,
   }
 })

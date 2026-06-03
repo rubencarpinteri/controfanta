@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getAuthUser } from '@/lib/auth'
-import { getLeagueContext } from '@/lib/league'
+import { getLeagueContext, isRealSuperAdmin, isViewingAsManager } from '@/lib/league'
 import { AdminSidebar } from '@/components/nav/AdminSidebar'
+import { toggleViewAsManagerAction } from './preview-actions'
 
 export default async function AdminLayout({
   children,
@@ -18,9 +19,11 @@ export default async function AdminLayout({
 
   // Profile + league context in parallel. getLeagueContext is memoized via
   // React cache(), so child pages reading it again pay zero extra round-trips.
-  const [profileResult, ctx] = await Promise.all([
+  const [profileResult, ctx, realSuperAdmin, previewing] = await Promise.all([
     supabase.from('profiles').select('username, full_name, is_super_admin').eq('id', user.id).single(),
     getLeagueContext(),
+    isRealSuperAdmin(),
+    isViewingAsManager(),
   ])
 
   if (!ctx) {
@@ -46,17 +49,30 @@ export default async function AdminLayout({
   }
 
   const profile = profileResult.data
-  const isAdmin =
-    ctx.role === 'league_admin' || (profile?.is_super_admin ?? false)
+  // Effective admin: false while previewing as a manager. (ctx.role is already
+  // downgraded to 'manager' in preview, but guard explicitly for clarity.)
+  const isAdmin = !previewing && (ctx.role === 'league_admin' || realSuperAdmin)
 
   return (
     <div className="flex h-screen overflow-hidden">
       <AdminSidebar
         isAdmin={isAdmin}
+        canPreview={realSuperAdmin}
+        previewing={previewing}
         username={profile?.username ?? user.email ?? 'Utente'}
         leagueName={ctx.league.name ?? 'Fantacalcio'}
       />
       <main className="flex-1 overflow-y-auto">
+        {previewing && (
+          <div className="flex items-center justify-center gap-3 border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-[12px] text-amber-700 dark:text-amber-300">
+            <span className="font-medium">Anteprima “manager” — stai vedendo il sito come un utente non admin.</span>
+            <form action={toggleViewAsManagerAction}>
+              <button type="submit" className="rounded-md border border-amber-500/40 px-2 py-0.5 text-[11px] font-semibold hover:bg-amber-500/20 transition-colors">
+                Esci dall&apos;anteprima
+              </button>
+            </form>
+          </div>
+        )}
         {/* pb-24 on mobile reserves space above the fixed bottom nav bar */}
         <div className="mx-auto max-w-6xl px-4 py-5 pb-24 md:px-8 md:py-7 md:pb-8">
           {children}

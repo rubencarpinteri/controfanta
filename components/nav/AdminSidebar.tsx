@@ -4,6 +4,7 @@ import Link from 'next/link'
 import type { Route } from 'next'
 import { usePathname } from 'next/navigation'
 import { logoutAction } from '@/app/(auth)/login/actions'
+import { toggleViewAsManagerAction } from '@/app/(admin)/preview-actions'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 
 type IconName = 'calendar' | 'trophy' | 'user' | 'beaker' | 'gear' | 'logout' | 'ball' | 'globe' | 'book'
@@ -129,11 +130,15 @@ function NavIcon({ name, size = 16 }: { name: IconName; size?: number }) {
 
 interface AdminSidebarProps {
   isAdmin: boolean
+  /** True only for REAL super-admins — controls the "view as manager" toggle. */
+  canPreview?: boolean
+  /** Whether the "view as manager" preview is currently active. */
+  previewing?: boolean
   username: string
   leagueName: string
 }
 
-export function AdminSidebar({ isAdmin, username, leagueName }: AdminSidebarProps) {
+export function AdminSidebar({ isAdmin, canPreview, previewing, username, leagueName }: AdminSidebarProps) {
   const pathname = usePathname()
 
   const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin)
@@ -223,6 +228,22 @@ export function AdminSidebar({ isAdmin, username, leagueName }: AdminSidebarProp
               </p>
             </div>
           </div>
+          {canPreview && (
+            <form action={toggleViewAsManagerAction} className="mb-2">
+              <button
+                type="submit"
+                className={[
+                  'flex w-full items-center justify-center gap-2 rounded-md px-3 py-1.5 text-[11.5px] font-medium transition-colors',
+                  previewing
+                    ? 'bg-amber-500/15 text-amber-600 dark:text-amber-300 hover:bg-amber-500/25'
+                    : 'text-ink-4 hover:bg-glass-1 hover:text-ink-1',
+                ].join(' ')}
+              >
+                <NavIcon name={previewing ? 'gear' : 'user'} size={13} />
+                {previewing ? 'Esci da anteprima' : 'Vedi come manager'}
+              </button>
+            </form>
+          )}
           <div className="flex items-center gap-2">
             <form action={logoutAction} className="flex-1">
               <button

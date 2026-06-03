@@ -4,6 +4,7 @@
 import { redirect } from 'next/navigation'
 import type { Route } from 'next'
 import { createClient } from '@/lib/supabase/server'
+import { isSuperAdmin as getEffectiveSuperAdmin } from '@/lib/league'
 import { isUuid } from '@/lib/slug'
 import type {
   FMCompetition,
@@ -41,13 +42,9 @@ export async function requireFMContext(legaCompRef: string): Promise<FMContext> 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('is_super_admin')
-    .eq('id', user.id)
-    .single()
-
-  const isSuperAdmin = profile?.is_super_admin ?? false
+  // Effective super-admin: false while previewing as a manager, so a previewing
+  // admin without a team is gated exactly like a real non-admin manager.
+  const isSuperAdmin = await getEffectiveSuperAdmin()
 
   // The Lega instance — joins template (fm_competition) + Lega (leagues) ids.
   // Resolve by slug or UUID so both clean and legacy URLs work.
