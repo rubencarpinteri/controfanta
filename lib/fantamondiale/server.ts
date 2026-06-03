@@ -4,6 +4,7 @@
 import { redirect } from 'next/navigation'
 import type { Route } from 'next'
 import { createClient } from '@/lib/supabase/server'
+import { isUuid } from '@/lib/slug'
 import type {
   FMCompetition,
   FMLeagueCompetition,
@@ -30,11 +31,12 @@ export interface FMContext {
 /**
  * Resolves a Lega-scoped FantaMondiale context.
  *
- * `legaCompId` is `fm_league_competition.id` — the Lega's instance of a global
- * tournament. Access is gated to enrolled managers in this Lega's instance
- * (super admins get a free pass).
+ * `legaCompRef` is the URL segment for an `fm_league_competition` — either its
+ * human-readable `slug` (preferred) or its UUID `id` (legacy/fallback). Access
+ * is gated to enrolled managers in this Lega's instance (super admins get a
+ * free pass).
  */
-export async function requireFMContext(legaCompId: string): Promise<FMContext> {
+export async function requireFMContext(legaCompRef: string): Promise<FMContext> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -48,10 +50,11 @@ export async function requireFMContext(legaCompId: string): Promise<FMContext> {
   const isSuperAdmin = profile?.is_super_admin ?? false
 
   // The Lega instance — joins template (fm_competition) + Lega (leagues) ids.
+  // Resolve by slug or UUID so both clean and legacy URLs work.
   const { data: legaComp } = await supabase
     .from('fm_league_competition')
     .select('*')
-    .eq('id', legaCompId)
+    .eq(isUuid(legaCompRef) ? 'id' : 'slug', legaCompRef)
     .maybeSingle()
 
   if (!legaComp) redirect('/dashboard' as Route)
@@ -60,7 +63,7 @@ export async function requireFMContext(legaCompId: string): Promise<FMContext> {
   const { data: team } = await supabase
     .from('fm_fantasy_team')
     .select('id')
-    .eq('league_competition_id', legaCompId)
+    .eq('league_competition_id', legaComp.id)
     .eq('manager_id', user.id)
     .maybeSingle()
 

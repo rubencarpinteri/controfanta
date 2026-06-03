@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requireLeagueContext } from '@/lib/league'
+import { isUuid } from '@/lib/slug'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge, MatchdayStatusBadge } from '@/components/ui/badge'
 import type { Competition, CompetitionMatchup, FantasyTeam } from '@/types/database.types'
@@ -44,7 +45,11 @@ interface StandingRow {
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
-  const { data } = await supabase.from('competitions').select('name').eq('id', id).single()
+  const { data } = await supabase
+    .from('competitions')
+    .select('name')
+    .eq(isUuid(id) ? 'id' : 'slug', id)
+    .maybeSingle()
   return { title: data?.name ?? 'Competizione' }
 }
 
@@ -55,18 +60,20 @@ export default async function CompetitionDetailPage({
 }) {
   const ctx = await requireLeagueContext()
   const isAdmin = ctx.role === 'league_admin'
-  const { id } = await params
+  const { id: ref } = await params
   const supabase = await createClient()
 
   const { data: comp } = await supabase
     .from('competitions')
     .select('*')
-    .eq('id', id)
+    .eq(isUuid(ref) ? 'id' : 'slug', ref)
     .eq('league_id', ctx.league.id)
-    .single()
+    .maybeSingle()
 
   if (!comp) notFound()
   const competition = comp as Competition
+  // Downstream queries/links filter by the real UUID; the URL may carry a slug.
+  const id = competition.id
 
   // All fantasy teams
   const { data: teams } = await supabase

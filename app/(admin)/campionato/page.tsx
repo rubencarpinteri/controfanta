@@ -13,7 +13,7 @@ export default async function CampionatoPage() {
 
   const { data: comp } = await supabase
     .from('competitions')
-    .select('id')
+    .select('id, slug')
     .eq('league_id', ctx.league.id)
     .eq('type', 'campionato')
     .order('created_at', { ascending: true })
@@ -21,7 +21,7 @@ export default async function CampionatoPage() {
     .maybeSingle()
 
   if (comp) {
-    redirect(`/competitions/${comp.id}`)
+    redirect(`/competitions/${comp.slug ?? comp.id}`)
   }
 
   return (

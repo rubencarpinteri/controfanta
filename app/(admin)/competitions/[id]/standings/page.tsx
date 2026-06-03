@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requireLeagueContext } from '@/lib/league'
+import { isUuid } from '@/lib/slug'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 
 interface TeamStandingRow {
@@ -19,7 +20,11 @@ interface TeamStandingRow {
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
-  const { data } = await supabase.from('competitions').select('name').eq('id', id).single()
+  const { data } = await supabase
+    .from('competitions')
+    .select('name')
+    .eq(isUuid(id) ? 'id' : 'slug', id)
+    .maybeSingle()
   return { title: `Classifica — ${data?.name ?? 'Competizione'}` }
 }
 
@@ -29,17 +34,18 @@ export default async function CompetitionStandingsPage({
   params: Promise<{ id: string }>
 }) {
   const ctx = await requireLeagueContext()
-  const { id } = await params
+  const { id: ref } = await params
   const supabase = await createClient()
 
   const { data: comp } = await supabase
     .from('competitions')
     .select('id, name, type, status, scoring_config')
-    .eq('id', id)
+    .eq(isUuid(ref) ? 'id' : 'slug', ref)
     .eq('league_id', ctx.league.id)
-    .single()
+    .maybeSingle()
 
   if (!comp) notFound()
+  const id = comp.id
 
   // Step 1: find the highest computed round for this competition
   const { data: latestComputedRound } = await supabase

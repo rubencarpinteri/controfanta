@@ -65,19 +65,13 @@ export default async function NewInternationalCompetitionPage() {
       {eligible.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-hairline-strong bg-glass-1 px-5 py-10 text-center backdrop-blur-xl">
           <p className="text-[13px] text-ink-4">
-            Nessun torneo internazionale aperto al momento.
+            Nessun torneo internazionale disponibile al momento.
           </p>
           <p className="mt-1 text-[11px] text-ink-5">
-            I tornei internazionali vengono allestiti sulla piattaforma a ridosso dell&apos;evento
-            reale (es. Mondiali 2026 a giugno). Torna più avanti, oppure crea intanto una
-            competizione di Serie A.
+            I tornei internazionali (Mondiali, Europei, Nations League) vengono allestiti sulla
+            piattaforma a ridosso dell&apos;evento reale — es. Mondiali 2026 a giugno. Quando un
+            torneo apre le iscrizioni comparirà qui, pronto per iscrivere la tua Lega.
           </p>
-          <a
-            href="/competitions/new/nazionale"
-            className="mt-5 inline-flex items-center gap-1.5 rounded-xl border border-emerald-400/30 bg-gradient-to-b from-emerald-500 to-emerald-600 px-3.5 py-2 text-[12.5px] font-semibold tracking-tight text-white shadow-[0_1px_0_rgba(255,255,255,0.15)_inset,0_6px_18px_-4px_rgba(16,185,129,0.45),0_1px_2px_rgba(0,0,0,0.4)] transition-all hover:from-emerald-400 hover:to-emerald-500 active:translate-y-px"
-          >
-            Crea competizione di Serie A →
-          </a>
         </div>
       ) : (
         <div className="space-y-3">

@@ -24,17 +24,33 @@ export default async function LeagueSettingsPage() {
   // All competitions across both sides: Serie A (campionato/battle_royale/coppa)
   // and FantaMondiale. Used to render the per-competition setup links so
   // every active competition appears explicitly in Impostazioni.
-  const [{ data: serieAComps }, { data: fmComps }] = await Promise.all([
+  //
+  // FM is listed via this Lega's INSTANCES (fm_league_competition), not the
+  // global templates — the setup route resolves the URL [id] as the Lega
+  // instance id, so linking the template id would dead-end on /dashboard.
+  const [{ data: serieAComps }, { data: fmInstances }] = await Promise.all([
     supabase
       .from('competitions')
-      .select('id, name, type, status, season')
+      .select('id, slug, name, type, status, season')
       .eq('league_id', ctx.league.id)
       .order('created_at', { ascending: true }),
     supabase
-      .from('fm_competition')
-      .select('id, name, edition, status')
+      .from('fm_league_competition')
+      .select('id, slug, fm_competition(name, edition, status)')
+      .eq('league_id', ctx.league.id)
       .order('created_at', { ascending: true }),
   ])
+
+  // Normalize the embedded template join (PostgREST may type it as array).
+  const fmComps = (fmInstances ?? []).map((row) => {
+    const tpl = Array.isArray(row.fm_competition) ? row.fm_competition[0] : row.fm_competition
+    return {
+      legaCompId: row.slug ?? row.id,
+      name: tpl?.name ?? 'FantaMondiale',
+      edition: tpl?.edition ?? '',
+      status: tpl?.status ?? 'draft',
+    }
+  })
 
   return (
     <div className="space-y-6">
@@ -79,14 +95,14 @@ export default async function LeagueSettingsPage() {
         />
         <CardContent>
           <div className="space-y-2">
-            {(serieAComps ?? []).length === 0 && (fmComps ?? []).length === 0 && (
+            {(serieAComps ?? []).length === 0 && fmComps.length === 0 && (
               <p className="text-[12px] text-ink-4">Nessuna competizione configurata.</p>
             )}
 
             {(serieAComps ?? []).map((c) => (
               <a
                 key={c.id}
-                href={`/competitions/${c.id}`}
+                href={`/competitions/${c.slug ?? c.id}`}
                 className="flex items-center justify-between rounded-lg border border-hairline bg-glass-1 px-4 py-3 transition-colors hover:bg-glass-2"
               >
                 <div>
@@ -106,10 +122,10 @@ export default async function LeagueSettingsPage() {
               </a>
             ))}
 
-            {(fmComps ?? []).map((c) => (
+            {fmComps.map((c) => (
               <a
-                key={c.id}
-                href={`/fantamondiale/${c.id}/config`}
+                key={c.legaCompId}
+                href={`/fantamondiale/${c.legaCompId}/config`}
                 className="flex items-center justify-between rounded-lg border border-hairline bg-glass-1 px-4 py-3 transition-colors hover:bg-glass-2"
               >
                 <div>

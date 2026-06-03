@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import type { Route } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { requireLeagueContext, isSuperAdmin } from '@/lib/league'
+import { slugify } from '@/lib/slug'
 
 /**
  * Opt the current Lega into a global FM tournament (WC/Euros/Nations/CL).
@@ -22,7 +23,7 @@ export async function optLegaIntoFMCompetitionAction(
 
   const { data: comp } = await supabase
     .from('fm_competition')
-    .select('id, status')
+    .select('id, name, edition, status')
     .eq('id', fmCompetitionId)
     .maybeSingle()
   if (!comp) throw new Error('Competizione non trovata.')
@@ -33,24 +34,35 @@ export async function optLegaIntoFMCompetitionAction(
   // Idempotent: if the Lega is already opted in, navigate to the existing instance.
   const { data: existing } = await supabase
     .from('fm_league_competition')
-    .select('id')
+    .select('id, slug')
     .eq('league_id', ctx.league.id)
     .eq('fm_competition_id', fmCompetitionId)
     .maybeSingle()
 
   if (existing) {
     revalidatePath('/dashboard')
-    redirect(`/fantamondiale/${existing.id}` as Route)
+    redirect(`/fantamondiale/${existing.slug ?? existing.id}` as Route)
   }
+
+  // Human-readable URL slug, globally unique (append -2, -3 … on clash).
+  const baseSlug = slugify(`${comp.name}-${comp.edition}`)
+  const { data: slugRows } = await supabase
+    .from('fm_league_competition')
+    .select('slug')
+    .like('slug', `${baseSlug}%`)
+  const taken = new Set((slugRows ?? []).map((r) => r.slug))
+  let slug = baseSlug
+  for (let n = 2; taken.has(slug); n++) slug = `${baseSlug}-${n}`
 
   const { data: inserted, error } = await supabase
     .from('fm_league_competition')
     .insert({
       league_id: ctx.league.id,
       fm_competition_id: fmCompetitionId,
+      slug,
       created_by: ctx.userId,
     })
-    .select('id')
+    .select('id, slug')
     .single()
 
   if (error || !inserted) {
@@ -58,5 +70,5 @@ export async function optLegaIntoFMCompetitionAction(
   }
 
   revalidatePath('/dashboard')
-  redirect(`/fantamondiale/${inserted.id}` as Route)
+  redirect(`/fantamondiale/${inserted.slug ?? inserted.id}` as Route)
 }

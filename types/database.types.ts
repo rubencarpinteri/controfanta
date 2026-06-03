@@ -461,6 +461,7 @@ export type Database = {
           name: string
           scoring_config: Json
           season: string | null
+          slug: string | null
           status: Database["public"]["Enums"]["competition_status"]
           tiebreaker_config: Json
           type: Database["public"]["Enums"]["competition_type"]
@@ -474,6 +475,7 @@ export type Database = {
           name: string
           scoring_config?: Json
           season?: string | null
+          slug?: string | null
           status?: Database["public"]["Enums"]["competition_status"]
           tiebreaker_config?: Json
           type: Database["public"]["Enums"]["competition_type"]
@@ -487,6 +489,7 @@ export type Database = {
           name?: string
           scoring_config?: Json
           season?: string | null
+          slug?: string | null
           status?: Database["public"]["Enums"]["competition_status"]
           tiebreaker_config?: Json
           type?: Database["public"]["Enums"]["competition_type"]
@@ -1149,6 +1152,7 @@ export type Database = {
           fm_competition_id: string
           id: string
           league_id: string
+          slug: string | null
           status: Database["public"]["Enums"]["fm_league_competition_status"]
         }
         Insert: {
@@ -1157,6 +1161,7 @@ export type Database = {
           fm_competition_id: string
           id?: string
           league_id: string
+          slug?: string | null
           status?: Database["public"]["Enums"]["fm_league_competition_status"]
         }
         Update: {
@@ -1165,6 +1170,7 @@ export type Database = {
           fm_competition_id?: string
           id?: string
           league_id?: string
+          slug?: string | null
           status?: Database["public"]["Enums"]["fm_league_competition_status"]
         }
         Relationships: [

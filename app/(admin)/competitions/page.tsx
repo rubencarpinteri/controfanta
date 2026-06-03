@@ -89,7 +89,7 @@ export default async function CompetitionsPage() {
           {list.map((comp) => (
             <a
               key={comp.id}
-              href={`/competitions/${comp.id}`}
+              href={`/competitions/${comp.slug ?? comp.id}`}
               className="group rounded-xl border border-hairline bg-glass-1 p-5 transition-colors hover:border-indigo-500/40 hover:bg-glass-2"
             >
               <div className="mb-3 flex items-start justify-between">

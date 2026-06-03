@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requireLeagueAdmin } from '@/lib/league'
+import { isUuid } from '@/lib/slug'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { TeamEnrollmentForm } from './TeamEnrollmentForm'
 
@@ -10,17 +11,18 @@ export default async function CompetitionTeamsPage({
   params: Promise<{ id: string }>
 }) {
   const ctx = await requireLeagueAdmin()
-  const { id } = await params
+  const { id: ref } = await params
   const supabase = await createClient()
 
   const { data: comp } = await supabase
     .from('competitions')
     .select('id, name, type, status')
-    .eq('id', id)
+    .eq(isUuid(ref) ? 'id' : 'slug', ref)
     .eq('league_id', ctx.league.id)
-    .single()
+    .maybeSingle()
 
   if (!comp) notFound()
+  const id = comp.id
 
   // Already enrolled teams with names
   const { data: enrolled } = await supabase

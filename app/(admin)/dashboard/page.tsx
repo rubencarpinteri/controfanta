@@ -12,6 +12,7 @@ type SerieAStatus = 'setup' | 'active' | 'completed' | 'cancelled'
 
 interface SerieARow {
   id: string
+  slug: string | null
   name: string
   type: SerieAType
   season: string | null
@@ -81,7 +82,7 @@ export default async function DashboardPage() {
     supabase.from('profiles').select('full_name, username').eq('id', ctx.userId).maybeSingle(),
     supabase
       .from('competitions')
-      .select('id, name, type, season, status')
+      .select('id, slug, name, type, season, status')
       .eq('league_id', ctx.league.id)
       .neq('status', 'cancelled')
       .order('created_at', { ascending: true }),
@@ -104,7 +105,7 @@ export default async function DashboardPage() {
     // Which global tournaments has THIS Lega opted into?
     supabase
       .from('fm_league_competition')
-      .select('id, fm_competition_id')
+      .select('id, slug, fm_competition_id')
       .eq('league_id', ctx.league.id)
       .eq('status', 'active'),
   ])
@@ -144,11 +145,11 @@ export default async function DashboardPage() {
     })
   }
 
-  // fm_competition_id → this Lega's instance id (so cards link to the Lega's
-  // private game state, not the global tournament). Missing entry means the
-  // Lega hasn't opted in yet.
+  // fm_competition_id → this Lega's instance URL ref (slug, falling back to
+  // UUID) so cards link to the Lega's private game state, not the global
+  // tournament. Missing entry means the Lega hasn't opted in yet.
   const legaInstanceByCompId = new Map<string, string>(
-    (legaInstancesRes.data ?? []).map((r) => [r.fm_competition_id, r.id])
+    (legaInstancesRes.data ?? []).map((r) => [r.fm_competition_id, r.slug ?? r.id])
   )
 
   const firstName =
@@ -231,7 +232,7 @@ export default async function DashboardPage() {
               return (
                 <Link
                   key={c.id}
-                  href={`/competitions/${c.id}` as Route}
+                  href={`/competitions/${c.slug ?? c.id}` as Route}
                   className="group rounded-2xl border border-hairline bg-glass-1 p-5 backdrop-blur-xl transition-all hover:border-indigo-400/40 hover:bg-glass-2"
                 >
                   <div className="flex items-start justify-between gap-3">

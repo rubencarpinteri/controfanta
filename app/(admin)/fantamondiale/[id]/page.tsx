@@ -3,12 +3,20 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import type { Route } from 'next'
 import { RoundCountdown } from './RoundCountdown'
+import { isUuid } from '@/lib/slug'
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
-  const { data } = await supabase.from('fm_competition').select('name, edition').eq('id', id).single()
-  return { title: data ? `${data.name} ${data.edition}` : 'FantaMondiale' }
+  // [id] is the Lega instance ref (slug or UUID) — hop through it to the
+  // global template for the display name.
+  const { data } = await supabase
+    .from('fm_league_competition')
+    .select('fm_competition(name, edition)')
+    .eq(isUuid(id) ? 'id' : 'slug', id)
+    .maybeSingle()
+  const tpl = Array.isArray(data?.fm_competition) ? data?.fm_competition[0] : data?.fm_competition
+  return { title: tpl ? `${tpl.name} ${tpl.edition}` : 'FantaMondiale' }
 }
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {

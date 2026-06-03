@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requireLeagueContext } from '@/lib/league'
+import { isUuid } from '@/lib/slug'
 
 type BonusMalusItem = { label: string; total: number; quantity: number; points_each: number }
 
@@ -131,8 +132,18 @@ export default async function MatchDetailPage({
   params: Promise<{ id: string; matchupId: string }>
 }) {
   const ctx = await requireLeagueContext()
-  const { id: competitionId, matchupId } = await params
+  const { id: ref, matchupId } = await params
   const supabase = await createClient()
+
+  // Competition name for breadcrumb + resolve the URL ref (slug or UUID) to id.
+  const { data: comp } = await supabase
+    .from('competitions')
+    .select('id, name')
+    .eq(isUuid(ref) ? 'id' : 'slug', ref)
+    .maybeSingle()
+
+  if (!comp) notFound()
+  const competitionId = comp.id
 
   const { data: matchup } = await supabase
     .from('competition_matchups')
@@ -142,13 +153,6 @@ export default async function MatchDetailPage({
     .single()
 
   if (!matchup) notFound()
-
-  // Competition name for breadcrumb
-  const { data: comp } = await supabase
-    .from('competitions')
-    .select('name')
-    .eq('id', competitionId)
-    .single()
 
   // Get matchday_id from competition_rounds via round_number
   const { data: round } = await supabase

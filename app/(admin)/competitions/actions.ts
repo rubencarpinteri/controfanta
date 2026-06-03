@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requireLeagueAdmin } from '@/lib/league'
 import { writeAuditLog } from '@/lib/audit'
+import { slugify } from '@/lib/slug'
 import type { Json } from '@/types/database.types'
 import type { ActionResult } from '@/lib/actionResult'
 
@@ -45,6 +46,17 @@ export async function createCompetitionAction(
 
   const scoring_config: Json = { method: scoring_method }
 
+  // Human-readable URL slug, unique within the league (append -2, -3 … on clash).
+  const baseSlug = slugify(name)
+  const { data: existing } = await supabase
+    .from('competitions')
+    .select('slug')
+    .eq('league_id', ctx.league.id)
+    .like('slug', `${baseSlug}%`)
+  const taken = new Set((existing ?? []).map((r) => r.slug))
+  let slug = baseSlug
+  for (let n = 2; taken.has(slug); n++) slug = `${baseSlug}-${n}`
+
   const { data: competition, error } = await supabase
     .from('competitions')
     .insert({
@@ -52,10 +64,11 @@ export async function createCompetitionAction(
       name,
       type,
       season,
+      slug,
       scoring_config,
       created_by:     ctx.userId,
     })
-    .select('id')
+    .select('id, slug')
     .single()
 
   if (error || !competition) {
@@ -73,7 +86,7 @@ export async function createCompetitionAction(
   })
 
   revalidatePath('/competitions')
-  redirect(`/competitions/${competition.id}`)
+  redirect(`/competitions/${competition.slug ?? competition.id}`)
 }
 
 // ============================================================
