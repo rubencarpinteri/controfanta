@@ -3,12 +3,17 @@ import { setPhaseStatusAction } from './actions'
 import { FMPhaseEditor } from './FMPhaseEditor'
 import type { FMPhase } from '@/types/database.types'
 
-const STATUS_FLOW: Record<string, { next: string; label: string; cls: string } | null> = {
-  draft:     { next: 'open',      label: 'Apri',       cls: 'bg-emerald-600 hover:bg-emerald-500' },
-  open:      { next: 'locked',    label: 'Chiudi Rosa', cls: 'bg-amber-600 hover:bg-amber-500' },
-  locked:    { next: 'completed', label: 'Completa',   cls: 'bg-indigo-600 hover:bg-indigo-500' },
-  completed: null,
-}
+// Admin can move a phase freely between states (no one-way ladder): a phase
+// can be reopened after being closed or completed. "Apri" sets the phase to
+// `open`, which is the ONLY state in which managers can build their rosa —
+// keep a phase closed/locked to let users explore the site without forming
+// teams yet. The button matching the current status is hidden.
+type PhaseStatus = 'draft' | 'open' | 'locked' | 'completed'
+const PHASE_ACTIONS: { status: PhaseStatus; label: string; cls: string }[] = [
+  { status: 'open',      label: 'Apri',                cls: 'bg-emerald-600 hover:bg-emerald-500' },
+  { status: 'locked',    label: 'Chiudi',              cls: 'bg-amber-600 hover:bg-amber-500' },
+  { status: 'completed', label: 'Segna come Completa', cls: 'bg-indigo-600 hover:bg-indigo-500' },
+]
 
 const PHASE_STATUS_BADGE: Record<string, string> = {
   draft:     'text-ink-4 bg-ink-4/10',
@@ -56,7 +61,7 @@ export default async function PhasesPage({ params }: { params: Promise<{ id: str
 
       {phases.map((phase: FMPhase) => {
         const phaseRounds = rounds.filter((r) => r.phase_id === phase.id)
-        const statusAction = STATUS_FLOW[phase.status]
+        const actions = PHASE_ACTIONS.filter((a) => a.status !== phase.status)
 
         return (
           <div key={phase.id} className="rounded-xl border border-hairline bg-glass-1 overflow-hidden">
@@ -67,16 +72,18 @@ export default async function PhasesPage({ params }: { params: Promise<{ id: str
               <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${PHASE_STATUS_BADGE[phase.status] ?? ''}`}>
                 {phase.status}
               </span>
-              {statusAction && (
-                <form action={setPhaseStatusAction.bind(null, phase.id, id, statusAction.next as 'draft' | 'open' | 'locked' | 'completed')}>
-                  <button
-                    type="submit"
-                    className={`rounded-lg px-3 py-1.5 text-[11px] font-semibold text-white transition-colors ${statusAction.cls}`}
-                  >
-                    {statusAction.label}
-                  </button>
-                </form>
-              )}
+              <div className="flex items-center gap-1.5">
+                {actions.map((a) => (
+                  <form key={a.status} action={setPhaseStatusAction.bind(null, phase.id, id, a.status)}>
+                    <button
+                      type="submit"
+                      className={`rounded-lg px-3 py-1.5 text-[11px] font-semibold text-white transition-colors ${a.cls}`}
+                    >
+                      {a.label}
+                    </button>
+                  </form>
+                ))}
+              </div>
             </div>
 
             {/* ── Dates + settings grid ── */}
