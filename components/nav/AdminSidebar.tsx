@@ -32,7 +32,7 @@ const NAV_ITEMS: NavItem[] = [
     matchPaths: [
       '/campionato',
       '/competitions',
-      '/fantamondiale',
+      '/controfantamondiale',
       '/standings',
       '/roster',
       '/formations',

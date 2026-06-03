@@ -91,7 +91,7 @@ export async function upsertFixtureCache(db: DB, fixtures: SMFixture[]): Promise
 }
 
 // ============================================================
-// FantaMondiale auto-create: rounds + matches from fixtures
+// ControFanta Mondiale auto-create: rounds + matches from fixtures
 // ============================================================
 
 /**
@@ -233,7 +233,7 @@ export async function autoCreateFMRoundsAndMatches(
 }
 
 // ============================================================
-// FantaMondiale: daily squad refresh
+// ControFanta Mondiale: daily squad refresh
 // ============================================================
 
 /**
@@ -311,7 +311,7 @@ export async function refreshFMSquads(
 }
 
 // ============================================================
-// FantaMondiale: upsert parsed player stats for one fixture
+// ControFanta Mondiale: upsert parsed player stats for one fixture
 // ============================================================
 
 export async function upsertFMPlayerStats(

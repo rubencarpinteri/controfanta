@@ -1,5 +1,5 @@
 // ============================================================
-// lib/fantamondiale/loadUnifiedConfig.ts
+// lib/controfantamondiale/loadUnifiedConfig.ts
 // ============================================================
 // Composes the FMCompetitionConfig consumed by the FM scoring
 // pipeline from two sources:
@@ -12,7 +12,7 @@
 //       squad, formations, coach_tier_matrix, tie_breakers
 //
 // This realises the unification: the same Regole di gioco apply
-// to Serie A and Fantamondiale; only the competition-specific
+// to Serie A and ControFanta Mondiale; only the competition-specific
 // shape (roster size, coach matrix, formations) varies per FM
 // competition.
 // ============================================================

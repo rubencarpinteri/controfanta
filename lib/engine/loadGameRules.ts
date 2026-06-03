@@ -2,7 +2,7 @@
 // lib/engine/loadGameRules.ts
 // ============================================================
 // Single source of truth for game rules across every competition:
-// Campionato, Battle Royale, Coppa, Fantamondiale.
+// Campionato, Battle Royale, Coppa, ControFanta Mondiale.
 //
 // Reads from league_engine_config (columns: goal_thresholds,
 // smoothing, result_points) and returns a ResultRulesConfig.

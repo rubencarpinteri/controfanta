@@ -73,7 +73,7 @@ export async function renameSerieATeamAction(
   return { error: null, success: true }
 }
 
-/** Rename a FantaMondiale fantasy team owned by the current user. */
+/** Rename a ControFanta Mondiale fantasy team owned by the current user. */
 export async function renameFMTeamAction(
   _prev: RenameTeamState,
   formData: FormData

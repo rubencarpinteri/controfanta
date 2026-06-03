@@ -275,7 +275,7 @@ export default async function DashboardPage() {
         )}
       </section>
 
-      {/* Internazionali — FantaMondiale (WC / Euros / Nations) */}
+      {/* Internazionali — ControFanta Mondiale (WC / Euros / Nations) */}
       <section>
         <SectionHeader
           eyebrow="Livello internazionale"
@@ -324,7 +324,7 @@ export default async function DashboardPage() {
               if (legaInstanceId) {
                 const cta = myTeam ? 'Vai →' : enrollmentClosed ? 'Vedi →' : 'Iscriviti →'
                 return (
-                  <Link key={c.id} href={`/fantamondiale/${legaInstanceId}` as Route} className={cardCls}>
+                  <Link key={c.id} href={`/controfantamondiale/${legaInstanceId}` as Route} className={cardCls}>
                     {head}
                     <div className="mt-4 flex items-center justify-between text-[12px] text-ink-4">
                       <span className="min-w-0 truncate">

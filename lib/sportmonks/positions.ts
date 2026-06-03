@@ -19,7 +19,7 @@ export function positionIdToRatingClass(positionId: number | null | undefined): 
   }
 }
 
-/** FantaMondiale uses single-letter Italian-classic codes. */
+/** ControFanta Mondiale uses single-letter Italian-classic codes. */
 export type FMPlayerRoleCode = 'P' | 'D' | 'C' | 'A'
 
 export function positionIdToFMRole(positionId: number | null | undefined): FMPlayerRoleCode | null {

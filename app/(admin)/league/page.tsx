@@ -22,7 +22,7 @@ export default async function LeagueSettingsPage() {
   const supabase = await createClient()
 
   // All competitions across both sides: Serie A (campionato/battle_royale/coppa)
-  // and FantaMondiale. Used to render the per-competition setup links so
+  // and ControFanta Mondiale. Used to render the per-competition setup links so
   // every active competition appears explicitly in Impostazioni.
   //
   // FM is listed via this Lega's INSTANCES (fm_league_competition), not the
@@ -46,7 +46,7 @@ export default async function LeagueSettingsPage() {
     const tpl = Array.isArray(row.fm_competition) ? row.fm_competition[0] : row.fm_competition
     return {
       legaCompId: row.slug ?? row.id,
-      name: tpl?.name ?? 'FantaMondiale',
+      name: tpl?.name ?? 'ControFanta Mondiale',
       edition: tpl?.edition ?? '',
       status: tpl?.status ?? 'draft',
     }
@@ -69,7 +69,7 @@ export default async function LeagueSettingsPage() {
       <Card>
         <CardHeader
           title="Regole di gioco"
-          description="Motore di calcolo, bonus/malus, soglie gol, popolarità, MVP. Valide per OGNI competizione (Campionato, Battle Royale, Coppa, Fantamondiale)."
+          description="Motore di calcolo, bonus/malus, soglie gol, popolarità, MVP. Valide per OGNI competizione (Campionato, Battle Royale, Coppa, ControFanta Mondiale)."
         />
         <CardContent>
           <a
@@ -125,12 +125,12 @@ export default async function LeagueSettingsPage() {
             {fmComps.map((c) => (
               <a
                 key={c.legaCompId}
-                href={`/fantamondiale/${c.legaCompId}/config`}
+                href={`/controfantamondiale/${c.legaCompId}/config`}
                 className="flex items-center justify-between rounded-lg border border-hairline bg-glass-1 px-4 py-3 transition-colors hover:bg-glass-2"
               >
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] uppercase tracking-widest text-indigo-300 font-semibold">Fantamondiale</span>
+                    <span className="text-[11px] uppercase tracking-widest text-indigo-300 font-semibold">ControFanta Mondiale</span>
                     <p className="text-[13px] font-semibold text-ink-1">{c.name}</p>
                     <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${FM_STATUS_COLOR[c.status] ?? 'text-ink-4 bg-glass-2'}`}>
                       {FM_STATUS_LABEL[c.status] ?? c.status}

@@ -85,7 +85,7 @@ export function LeagueSettingsForm({ league }: { league: League }) {
       <Card>
         <CardHeader
           title="Draft settimanale Serie A"
-          description="Etichetta stagione e budget del draft Serie A, condiviso tra Campionato, Battle Royale e Coppa. Fantamondiale non usa questi valori."
+          description="Etichetta stagione e budget del draft Serie A, condiviso tra Campionato, Battle Royale e Coppa. ControFanta Mondiale non usa questi valori."
         />
         <CardContent className="space-y-4">
           <ScopeBanner>Ambito: tutte le competizioni Serie A (Campionato, Battle Royale, Coppa)</ScopeBanner>
@@ -96,7 +96,7 @@ export function LeagueSettingsForm({ league }: { league: League }) {
             defaultValue={league.season_name}
             required
             placeholder="es. 2025/26"
-            hint="Mostrata negli header del lato Serie A. Puramente decorativa — ogni competizione Battle Royale o Fantamondiale ha la sua stagione/edizione."
+            hint="Mostrata negli header del lato Serie A. Puramente decorativa — ogni competizione Battle Royale o ControFanta Mondiale ha la sua stagione/edizione."
           />
 
           <Input
@@ -107,7 +107,7 @@ export function LeagueSettingsForm({ league }: { league: League }) {
             max={10000}
             step={10}
             defaultValue={league.weekly_budget}
-            hint="Crediti che ogni manager spende per giornata Serie A (titolari + panchina, prezzo pieno). Fantamondiale usa i budget per fase definiti nel Setup della singola competizione."
+            hint="Crediti che ogni manager spende per giornata Serie A (titolari + panchina, prezzo pieno). ControFanta Mondiale usa i budget per fase definiti nel Setup della singola competizione."
           />
         </CardContent>
       </Card>

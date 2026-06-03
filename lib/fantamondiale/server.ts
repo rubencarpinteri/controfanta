@@ -1,5 +1,5 @@
 // ============================================================
-// FantaMondiale — Server-side data access helpers
+// ControFanta Mondiale — Server-side data access helpers
 // ============================================================
 import { redirect } from 'next/navigation'
 import type { Route } from 'next'
@@ -29,7 +29,7 @@ export interface FMContext {
 }
 
 /**
- * Resolves a Lega-scoped FantaMondiale context.
+ * Resolves a Lega-scoped ControFanta Mondiale context.
  *
  * `legaCompRef` is the URL segment for an `fm_league_competition` — either its
  * human-readable `slug` (preferred) or its UUID `id` (legacy/fallback). Access

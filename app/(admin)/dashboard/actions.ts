@@ -41,7 +41,7 @@ export async function optLegaIntoFMCompetitionAction(
 
   if (existing) {
     revalidatePath('/dashboard')
-    redirect(`/fantamondiale/${existing.slug ?? existing.id}` as Route)
+    redirect(`/controfantamondiale/${existing.slug ?? existing.id}` as Route)
   }
 
   // Human-readable URL slug, globally unique (append -2, -3 … on clash).
@@ -70,5 +70,5 @@ export async function optLegaIntoFMCompetitionAction(
   }
 
   revalidatePath('/dashboard')
-  redirect(`/fantamondiale/${inserted.slug ?? inserted.id}` as Route)
+  redirect(`/controfantamondiale/${inserted.slug ?? inserted.id}` as Route)
 }

@@ -44,7 +44,7 @@ export default async function GameRulesPage() {
           Queste regole valgono per ogni competizione
         </p>
         <p className="mt-0.5 text-[12px] text-ink-3 leading-relaxed">
-          Campionato, Battle Royale, Coppa e Fantamondiale (Trial Scottish League, Main FM,
+          Campionato, Battle Royale, Coppa e ControFanta Mondiale (Trial Scottish League, Main FM,
           futuro Mondiale) utilizzano tutti i parametri qui sotto. Ogni modifica si applica
           all&apos;intera lega a partire dal prossimo calcolo.
         </p>
