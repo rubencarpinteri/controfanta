@@ -20,7 +20,7 @@ export default async function RosaPage({ params }: { params: Promise<{ id: strin
     return (
       <div className="space-y-4">
         <div>
-          <h2 className="text-[16px] font-semibold text-ink-1">Mia Rosa</h2>
+          <h2 className="text-[16px] font-semibold text-ink-1">La Mia Rosa</h2>
           <p className="mt-0.5 text-[11px] text-ink-4">
             La rosa si costruisce a inizio di ogni Fase, con il budget di quella fase.
           </p>
@@ -103,7 +103,7 @@ export default async function RosaPage({ params }: { params: Promise<{ id: strin
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-[16px] font-semibold text-ink-1">Mia Rosa</h2>
+          <h2 className="text-[16px] font-semibold text-ink-1">La Mia Rosa</h2>
           <p className="mt-0.5 text-[11px] text-ink-4">
             Fase: <span className="text-ink-2">{activePhase.name}</span>
             {activePhase.status === 'open'

@@ -69,16 +69,23 @@ export function SquadBuilder({
   const [filterSearch, setFilterSearch] = useState('')
   const [tab, setTab] = useState<'pool' | 'rosa'>('pool')
 
+  const ROLE_ORDER: Record<string, number> = { P: 0, D: 1, C: 2, A: 3 }
+
   const filteredPlayers = useMemo(() => {
-    return players.filter((p) => {
-      if (filterTeam && p.national_team_id !== filterTeam) return false
-      if (filterRole && p.role !== filterRole) return false
-      if (filterSearch) {
-        const q = filterSearch.toLowerCase()
-        if (!p.name.toLowerCase().includes(q) && !p.fm_national_team.name.toLowerCase().includes(q)) return false
-      }
-      return true
-    })
+    return players
+      .filter((p) => {
+        if (filterTeam && p.national_team_id !== filterTeam) return false
+        if (filterRole && p.role !== filterRole) return false
+        if (filterSearch) {
+          const q = filterSearch.toLowerCase()
+          if (!p.name.toLowerCase().includes(q) && !p.fm_national_team.name.toLowerCase().includes(q)) return false
+        }
+        return true
+      })
+      .sort((a, b) => {
+        const rDiff = (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9)
+        return rDiff !== 0 ? rDiff : a.name.localeCompare(b.name, 'it')
+      })
   }, [players, filterTeam, filterRole, filterSearch])
 
   const myPlayers = useMemo(() => players.filter((p) => selected.has(p.id)), [players, selected])
@@ -244,7 +251,7 @@ export function SquadBuilder({
                 : 'text-ink-3 hover:text-ink-1'
             }`}
           >
-            {t === 'pool' ? `Pool giocatori (${filteredPlayers.length})` : `Mia rosa (${selected.size}/${poolSize})`}
+            {t === 'pool' ? `Database Giocatori (${filteredPlayers.length})` : `La Mia Rosa (${selected.size}/${poolSize})`}
           </button>
         ))}
       </div>
