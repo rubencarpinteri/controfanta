@@ -148,15 +148,27 @@ export async function getFMPlayers(
   opts?: { teamId?: string; role?: string }
 ): Promise<(FMPlayer & { fm_national_team: Pick<FMNationalTeam, 'name' | 'fifa_code' | 'flag_emoji' | 'logo_url' | 'flag_url'> })[]> {
   const supabase = await createClient()
-  let q = supabase
-    .from('fm_player')
-    .select('*, fm_national_team(name, fifa_code, flag_emoji, logo_url, flag_url)')
-    .eq('competition_id', competitionId)
-    .order('name', { ascending: true })
-  if (opts?.teamId) q = q.eq('national_team_id', opts.teamId)
-  if (opts?.role) q = q.eq('role', opts.role as 'P' | 'D' | 'C' | 'A')
-  const { data } = await q
-  return (data ?? []) as unknown as (FMPlayer & { fm_national_team: Pick<FMNationalTeam, 'name' | 'fifa_code' | 'flag_emoji' | 'logo_url' | 'flag_url'> })[]
+  // PostgREST caps each response at 1000 rows (db-max-rows). The full WC
+  // pool is ~1250 players, so we MUST page through or teams silently lose
+  // their alphabetically-late players. Fetch in 1000-row chunks until done.
+  const PAGE = 1000
+  const all: unknown[] = []
+  for (let from = 0; ; from += PAGE) {
+    let q = supabase
+      .from('fm_player')
+      .select('*, fm_national_team(name, fifa_code, flag_emoji, logo_url, flag_url)')
+      .eq('competition_id', competitionId)
+    if (opts?.teamId) q = q.eq('national_team_id', opts.teamId)
+    if (opts?.role) q = q.eq('role', opts.role as 'P' | 'D' | 'C' | 'A')
+    const { data, error } = await q
+      .order('name', { ascending: true })
+      .range(from, from + PAGE - 1)
+    if (error) throw new Error(`getFMPlayers: ${error.message}`)
+    const batch = data ?? []
+    all.push(...batch)
+    if (batch.length < PAGE) break
+  }
+  return all as (FMPlayer & { fm_national_team: Pick<FMNationalTeam, 'name' | 'fifa_code' | 'flag_emoji' | 'logo_url' | 'flag_url'> })[]
 }
 
 export async function getFMCoaches(
