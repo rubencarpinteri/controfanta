@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useMemo } from 'react'
 import { toggleSquadPlayerAction, setSquadCoachAction } from './actions'
+import { TeamCrest } from '@/components/fm/TeamCrest'
 import type { FMPhase, FMNationalTeam, FMPlayer, FMCoach } from '@/types/database.types'
 import type { FMRoleQuota, FMPlayerRole } from '@/domain/fantamondiale/config/schema'
 
@@ -20,10 +21,10 @@ const ROLE_BG: Record<string, string> = {
 }
 
 type PlayerWithTeam = FMPlayer & {
-  fm_national_team: Pick<FMNationalTeam, 'name' | 'fifa_code' | 'flag_emoji'>
+  fm_national_team: Pick<FMNationalTeam, 'name' | 'fifa_code' | 'flag_emoji' | 'logo_url' | 'flag_url'>
 }
 type CoachWithTeam = FMCoach & {
-  fm_national_team: Pick<FMNationalTeam, 'name' | 'fifa_code' | 'flag_emoji'>
+  fm_national_team: Pick<FMNationalTeam, 'name' | 'fifa_code' | 'flag_emoji' | 'logo_url' | 'flag_url'>
 }
 
 interface Props {
@@ -200,7 +201,7 @@ export function SquadBuilder({
         {isReadOnly ? (
           myCoach ? (
             <div className="flex items-center gap-2.5">
-              <span className="text-base">{myCoach.fm_national_team.flag_emoji}</span>
+              <TeamCrest name={myCoach.fm_national_team.name} logoUrl={myCoach.fm_national_team.logo_url} flagUrl={myCoach.fm_national_team.flag_url} fifaCode={myCoach.fm_national_team.fifa_code} size={18} />
               <span className="text-[13px] font-medium text-ink-1">{myCoach.name}</span>
               <span className="text-[11px] text-ink-4">{myCoach.fm_national_team.name}</span>
             </div>
@@ -217,7 +218,7 @@ export function SquadBuilder({
             <option value="">— Nessun allenatore —</option>
             {coaches.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.fm_national_team.flag_emoji} {c.name} ({c.fm_national_team.name})
+                {c.name} ({c.fm_national_team.name})
               </option>
             ))}
           </select>
@@ -267,7 +268,7 @@ export function SquadBuilder({
               >
                 <option value="">Tutte le nazioni</option>
                 {teams.map((t) => (
-                  <option key={t.id} value={t.id}>{t.flag_emoji} {t.name}</option>
+                  <option key={t.id} value={t.id}>{t.name}</option>
                 ))}
               </select>
               <select
@@ -306,9 +307,7 @@ export function SquadBuilder({
                     <span className={`w-5 shrink-0 text-center text-[10px] font-bold ${ROLE_COLORS[player.role] ?? ''}`}>
                       {player.role}
                     </span>
-                    <span className="text-base w-6 shrink-0 text-center">
-                      {player.fm_national_team.flag_emoji ?? '🏴'}
-                    </span>
+                    <TeamCrest name={player.fm_national_team.name} logoUrl={player.fm_national_team.logo_url} flagUrl={player.fm_national_team.flag_url} fifaCode={player.fm_national_team.fifa_code} size={18} className="w-6" />
                     <span className="flex-1 text-[13px] font-medium text-ink-1 truncate">{player.name}</span>
                     <span className="text-[11px] tabular-nums text-ink-4 shrink-0">
                       {price > 0 ? `${price} cr` : '—'}
@@ -339,7 +338,7 @@ export function SquadBuilder({
           {myCoach && (
             <div className="flex items-center gap-3 px-4 py-2.5 bg-glass-2 border-b border-hairline">
               <span className="w-5 shrink-0 text-center text-[10px] font-bold text-ink-4">CT</span>
-              <span className="text-base">{myCoach.fm_national_team.flag_emoji}</span>
+              <TeamCrest name={myCoach.fm_national_team.name} logoUrl={myCoach.fm_national_team.logo_url} flagUrl={myCoach.fm_national_team.flag_url} fifaCode={myCoach.fm_national_team.fifa_code} size={18} />
               <span className="flex-1 text-[13px] font-medium text-ink-1">{myCoach.name}</span>
               <span className="text-[11px] text-ink-4">{myCoach.fm_national_team.name}</span>
             </div>
@@ -359,9 +358,7 @@ export function SquadBuilder({
                     const price = priceMap.get(player.id) ?? 0
                     return (
                       <div key={player.id} className="flex items-center gap-3 px-4 py-2">
-                        <span className="text-base w-6 shrink-0 text-center">
-                          {player.fm_national_team.flag_emoji ?? '🏴'}
-                        </span>
+                        <TeamCrest name={player.fm_national_team.name} logoUrl={player.fm_national_team.logo_url} flagUrl={player.fm_national_team.flag_url} fifaCode={player.fm_national_team.fifa_code} size={18} className="w-6" />
                         <span className="flex-1 text-[13px] font-medium text-ink-1 truncate">{player.name}</span>
                         <span className="text-[11px] tabular-nums text-ink-4 shrink-0">
                           {price > 0 ? `${price} cr` : '—'}

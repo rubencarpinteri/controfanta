@@ -6,6 +6,13 @@ const nextConfig: NextConfig = {
 
   typedRoutes: true,
 
+  // SportMonks CDN hosts team crests, country flags and player photos.
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: 'cdn.sportmonks.com' },
+    ],
+  },
+
   // Bundle _data folder so CSV files are accessible in Vercel serverless functions
   outputFileTracingIncludes: {
     '**': ['_data/**'],

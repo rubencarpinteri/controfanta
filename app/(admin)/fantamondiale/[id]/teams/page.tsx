@@ -1,4 +1,5 @@
 import { requireFMContext, assertSuperAdmin, getFMTeams } from '@/lib/fantamondiale/server'
+import { TeamCrest } from '@/components/fm/TeamCrest'
 import { addTeamAction, eliminateTeamAction, reactivateTeamAction } from './actions'
 import { DeleteTeamButton } from './DeleteTeamButton'
 
@@ -57,7 +58,7 @@ export default async function TeamsPage({ params }: { params: Promise<{ id: stri
           <div className="divide-y divide-hairline">
             {active.map((team) => (
               <div key={team.id} className="flex items-center gap-3 px-4 py-2.5">
-                <span className="text-lg w-7 shrink-0 text-center">{team.flag_emoji ?? '🏴'}</span>
+                <TeamCrest name={team.name} logoUrl={team.logo_url} flagUrl={team.flag_url} fifaCode={team.fifa_code} size={24} className="w-7" />
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-medium text-ink-1 truncate">{team.name}</p>
                   <p className="text-[10px] text-ink-5 font-mono">{team.fifa_code}{team.sportmonks_team_id ? ` · FM:${team.sportmonks_team_id}` : ''}</p>
@@ -85,7 +86,7 @@ export default async function TeamsPage({ params }: { params: Promise<{ id: stri
           <div className="divide-y divide-hairline">
             {eliminated.map((team) => (
               <div key={team.id} className="flex items-center gap-3 px-4 py-2.5 opacity-60">
-                <span className="text-lg w-7 shrink-0 text-center grayscale">{team.flag_emoji ?? '🏴'}</span>
+                <TeamCrest name={team.name} logoUrl={team.logo_url} flagUrl={team.flag_url} fifaCode={team.fifa_code} size={24} className="w-7 grayscale opacity-60" />
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-medium text-ink-4 truncate line-through">{team.name}</p>
                   <p className="text-[10px] text-ink-5 font-mono">{team.fifa_code}</p>

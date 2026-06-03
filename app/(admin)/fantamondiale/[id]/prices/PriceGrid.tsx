@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { setPriceAction } from './actions'
+import { TeamCrest } from '@/components/fm/TeamCrest'
 import type { FMPhase, FMNationalTeam, FMPlayer } from '@/types/database.types'
 
 const ROLE_COLORS: Record<string, string> = {
@@ -12,7 +13,7 @@ const ROLE_COLORS: Record<string, string> = {
 }
 
 interface Player extends FMPlayer {
-  fm_national_team: Pick<FMNationalTeam, 'name' | 'fifa_code' | 'flag_emoji'>
+  fm_national_team: Pick<FMNationalTeam, 'name' | 'fifa_code' | 'flag_emoji' | 'logo_url' | 'flag_url'>
 }
 
 interface Props {
@@ -108,7 +109,7 @@ export function PriceGrid({ competitionId, phase, teams, players, priceMap }: Pr
             >
               <option value="">Tutte le nazioni</option>
               {teams.map((t) => (
-                <option key={t.id} value={t.id}>{t.flag_emoji} {t.name}</option>
+                <option key={t.id} value={t.id}>{t.name}</option>
               ))}
             </select>
             <select
@@ -129,9 +130,14 @@ export function PriceGrid({ competitionId, phase, teams, players, priceMap }: Pr
                 <span className={`w-5 text-center text-[10px] font-bold shrink-0 ${ROLE_COLORS[player.role] ?? ''}`}>
                   {player.role}
                 </span>
-                <span className="text-base w-6 shrink-0 text-center">
-                  {player.fm_national_team.flag_emoji ?? '🏴'}
-                </span>
+                <TeamCrest
+                  name={player.fm_national_team.name}
+                  logoUrl={player.fm_national_team.logo_url}
+                  flagUrl={player.fm_national_team.flag_url}
+                  fifaCode={player.fm_national_team.fifa_code}
+                  size={18}
+                  className="w-6"
+                />
                 <span className="flex-1 text-[12px] font-medium text-ink-1 truncate">{player.name}</span>
                 <PriceCell
                   competitionId={competitionId}

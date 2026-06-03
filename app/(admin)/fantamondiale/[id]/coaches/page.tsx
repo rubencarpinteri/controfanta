@@ -1,5 +1,6 @@
 import { requireFMContext, assertSuperAdmin, getFMCoaches, getFMTeams, getFMPhases } from '@/lib/fantamondiale/server'
 import { createClient } from '@/lib/supabase/server'
+import { TeamCrest } from '@/components/fm/TeamCrest'
 import { addCoachAction, deleteCoachAction, setCoachTierAction } from './actions'
 
 const TIER_LABELS: Record<string, { label: string; cls: string }> = {
@@ -52,7 +53,7 @@ export default async function CoachesPage({ params }: { params: Promise<{ id: st
             >
               <option value="">— Seleziona nazione —</option>
               {teamsWithoutCoach.map((t) => (
-                <option key={t.id} value={t.id}>{t.flag_emoji} {t.name}</option>
+                <option key={t.id} value={t.id}>{t.name}</option>
               ))}
             </select>
             <input
@@ -85,8 +86,15 @@ export default async function CoachesPage({ params }: { params: Promise<{ id: st
           {coaches.map((coach) => (
             <div key={coach.id} className="grid grid-cols-[1fr_repeat(6,auto)] gap-3 items-center px-4 py-2.5">
               <div className="min-w-0">
-                <p className="text-[13px] font-medium text-ink-1 truncate">
-                  {coach.fm_national_team.flag_emoji ?? '🏴'} {coach.name}
+                <p className="flex items-center gap-1.5 text-[13px] font-medium text-ink-1 truncate">
+                  <TeamCrest
+                    name={coach.fm_national_team.name}
+                    logoUrl={coach.fm_national_team.logo_url}
+                    flagUrl={coach.fm_national_team.flag_url}
+                    fifaCode={coach.fm_national_team.fifa_code}
+                    size={16}
+                  />
+                  {coach.name}
                 </p>
                 <p className="text-[10px] text-ink-5">{coach.fm_national_team.name}</p>
               </div>

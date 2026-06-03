@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { finalizePlayerForLega } from '@/domain/fantamondiale/engine/playerScore'
 import { fmCompetitionConfigSchema } from '@/domain/fantamondiale/config/schema'
 import { loadFMUnifiedConfig } from '@/lib/fantamondiale/loadUnifiedConfig'
+import { TeamCrest } from '@/components/fm/TeamCrest'
 
 const ROLE_LABEL: Record<string, string> = { P: 'POR', D: 'DIF', C: 'CEN', A: 'ATT' }
 const ROLE_COLOR: Record<string, string> = {
@@ -97,7 +98,9 @@ export default async function RisultatiPage({
     player_id: string
     name: string
     role: string
-    flag: string
+    logoUrl: string | null
+    flagUrl: string | null
+    fifaCode: string
     country: string
     voto_base: number | null
     football_bonus: number
@@ -111,7 +114,9 @@ export default async function RisultatiPage({
   let myCoachRow: {
     name: string
     country: string
-    flag: string
+    logoUrl: string | null
+    flagUrl: string | null
+    fifaCode: string
     tier: string
     match_result: string
     bonus_or_malus: number
@@ -147,7 +152,7 @@ export default async function RisultatiPage({
         const [playersRes, scoresRes, ownershipRes] = await Promise.all([
           supabase
             .from('fm_player')
-            .select('id, name, role, national_team_id, fm_national_team(name, flag_emoji)')
+            .select('id, name, role, national_team_id, fm_national_team(name, fifa_code, flag_emoji, logo_url, flag_url)')
             .in('id', starterIds),
           supabase
             .from('fm_player_match_score')
@@ -215,12 +220,14 @@ export default async function RisultatiPage({
           .map((pid) => {
             const meta = playerMeta.get(pid)
             const score = scoreAgg.get(pid)
-            const team = meta?.fm_national_team as { name: string; flag_emoji: string | null } | null
+            const team = meta?.fm_national_team as { name: string; fifa_code: string; flag_emoji: string | null; logo_url: string | null; flag_url: string | null } | null
             return {
               player_id: pid,
               name: meta?.name ?? '—',
               role: meta?.role ?? '?',
-              flag: team?.flag_emoji ?? '🏳',
+              logoUrl: team?.logo_url ?? null,
+              flagUrl: team?.flag_url ?? null,
+              fifaCode: team?.fifa_code ?? '—',
               country: team?.name ?? '—',
               voto_base: score?.voto_base ?? null,
               football_bonus: score?.football_bonus ?? 0,
@@ -251,7 +258,7 @@ export default async function RisultatiPage({
       const [coachRes, coachScoreRes] = await Promise.all([
         supabase
           .from('fm_coach')
-          .select('name, fm_national_team(name, flag_emoji)')
+          .select('name, fm_national_team(name, fifa_code, flag_emoji, logo_url, flag_url)')
           .eq('id', coachId)
           .single(),
         supabase
@@ -263,7 +270,7 @@ export default async function RisultatiPage({
 
       const coach = coachRes.data
       const coachScores = coachScoreRes.data ?? []
-      const coachTeam = coach?.fm_national_team as { name: string; flag_emoji: string | null } | null
+      const coachTeam = coach?.fm_national_team as { name: string; fifa_code: string; flag_emoji: string | null; logo_url: string | null; flag_url: string | null } | null
 
       if (coach && coachScores.length > 0) {
         const totalScore = coachScores.reduce((s, r) => s + Number(r.final_score), 0)
@@ -271,7 +278,9 @@ export default async function RisultatiPage({
         myCoachRow = {
           name: coach.name,
           country: coachTeam?.name ?? '—',
-          flag: coachTeam?.flag_emoji ?? '🏳',
+          logoUrl: coachTeam?.logo_url ?? null,
+          flagUrl: coachTeam?.flag_url ?? null,
+          fifaCode: coachTeam?.fifa_code ?? '—',
           tier: lastResult.team_tier,
           match_result: lastResult.match_result,
           bonus_or_malus: Number(lastResult.bonus_or_malus),
@@ -371,7 +380,10 @@ export default async function RisultatiPage({
                       </td>
                       <td className="py-2.5 px-3">
                         <p className="text-[13px] font-medium text-ink-1">{p.name}</p>
-                        <p className="text-[10px] text-ink-5">{p.flag} {p.country} · {p.ownership_pct.toFixed(0)}%</p>
+                        <p className="flex items-center gap-1 text-[10px] text-ink-5">
+                          <TeamCrest name={p.country} logoUrl={p.logoUrl} flagUrl={p.flagUrl} fifaCode={p.fifaCode} size={12} />
+                          {p.country} · {p.ownership_pct.toFixed(0)}%
+                        </p>
                       </td>
                       <td className="py-2.5 px-3 text-right tabular-nums text-[12px] text-ink-2">
                         {p.voto_base != null ? n(p.voto_base) : <span className="text-ink-5">—</span>}
@@ -425,7 +437,7 @@ export default async function RisultatiPage({
           <div className="rounded-xl border border-hairline bg-glass-1 px-4 py-3">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <span className="text-[20px]">{myCoachRow.flag}</span>
+                <TeamCrest name={myCoachRow.country} logoUrl={myCoachRow.logoUrl} flagUrl={myCoachRow.flagUrl} fifaCode={myCoachRow.fifaCode} size={28} />
                 <div>
                   <p className="text-[13px] font-semibold text-ink-1">{myCoachRow.name}</p>
                   <p className="text-[10px] text-ink-5">{myCoachRow.country} · {myCoachRow.tier.replace('_', ' ')}</p>

@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useMemo } from 'react'
 import { saveLineupAction } from './actions'
+import { TeamCrest } from '@/components/fm/TeamCrest'
 
 const ROLE_COLORS: Record<string, string> = {
   P: 'text-amber-400',
@@ -25,7 +26,7 @@ interface Player {
   id: string
   name: string
   role: string
-  fm_national_team: { name: string; fifa_code: string; flag_emoji: string | null }
+  fm_national_team: { name: string; fifa_code: string; flag_emoji: string | null; logo_url: string | null; flag_url: string | null }
 }
 
 interface Props {
@@ -200,9 +201,14 @@ export function LineupPicker({
                         : 'opacity-40'
                     } ${isReadOnly ? 'cursor-default' : ''}`}
                   >
-                    <span className="text-base w-6 shrink-0 text-center">
-                      {player.fm_national_team.flag_emoji ?? '🏴'}
-                    </span>
+                    <TeamCrest
+                      name={player.fm_national_team.name}
+                      logoUrl={player.fm_national_team.logo_url}
+                      flagUrl={player.fm_national_team.flag_url}
+                      fifaCode={player.fm_national_team.fifa_code}
+                      size={18}
+                      className="w-6"
+                    />
                     <span className="flex-1 text-[13px] font-medium text-ink-1 truncate">{player.name}</span>
                     <span className="text-[11px] text-ink-4 shrink-0">{player.fm_national_team.fifa_code}</span>
                     <span className={`h-4 w-4 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors ${

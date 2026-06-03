@@ -146,29 +146,29 @@ export async function getFMTeams(competitionId: string): Promise<FMNationalTeam[
 export async function getFMPlayers(
   competitionId: string,
   opts?: { teamId?: string; role?: string }
-): Promise<(FMPlayer & { fm_national_team: Pick<FMNationalTeam, 'name' | 'fifa_code' | 'flag_emoji'> })[]> {
+): Promise<(FMPlayer & { fm_national_team: Pick<FMNationalTeam, 'name' | 'fifa_code' | 'flag_emoji' | 'logo_url' | 'flag_url'> })[]> {
   const supabase = await createClient()
   let q = supabase
     .from('fm_player')
-    .select('*, fm_national_team(name, fifa_code, flag_emoji)')
+    .select('*, fm_national_team(name, fifa_code, flag_emoji, logo_url, flag_url)')
     .eq('competition_id', competitionId)
     .order('name', { ascending: true })
   if (opts?.teamId) q = q.eq('national_team_id', opts.teamId)
   if (opts?.role) q = q.eq('role', opts.role as 'P' | 'D' | 'C' | 'A')
   const { data } = await q
-  return (data ?? []) as unknown as (FMPlayer & { fm_national_team: Pick<FMNationalTeam, 'name' | 'fifa_code' | 'flag_emoji'> })[]
+  return (data ?? []) as unknown as (FMPlayer & { fm_national_team: Pick<FMNationalTeam, 'name' | 'fifa_code' | 'flag_emoji' | 'logo_url' | 'flag_url'> })[]
 }
 
 export async function getFMCoaches(
   competitionId: string
-): Promise<(FMCoach & { fm_national_team: Pick<FMNationalTeam, 'name' | 'fifa_code' | 'flag_emoji'> })[]> {
+): Promise<(FMCoach & { fm_national_team: Pick<FMNationalTeam, 'name' | 'fifa_code' | 'flag_emoji' | 'logo_url' | 'flag_url'> })[]> {
   const supabase = await createClient()
   const { data } = await supabase
     .from('fm_coach')
-    .select('*, fm_national_team(name, fifa_code, flag_emoji)')
+    .select('*, fm_national_team(name, fifa_code, flag_emoji, logo_url, flag_url)')
     .eq('competition_id', competitionId)
     .order('fm_national_team(name)', { ascending: true })
-  return (data ?? []) as unknown as (FMCoach & { fm_national_team: Pick<FMNationalTeam, 'name' | 'fifa_code' | 'flag_emoji'> })[]
+  return (data ?? []) as unknown as (FMCoach & { fm_national_team: Pick<FMNationalTeam, 'name' | 'fifa_code' | 'flag_emoji' | 'logo_url' | 'flag_url'> })[]
 }
 
 // Lega-scoped — pass the Lega instance id (ctx.legaCompetition.id), NOT the

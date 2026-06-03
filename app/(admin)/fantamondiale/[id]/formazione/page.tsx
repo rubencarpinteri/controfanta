@@ -78,7 +78,7 @@ export default async function FormazionePage({ params }: { params: Promise<{ id:
   // Load player data for squad members
   const { data: squadPlayers } = await supabase
     .from('fm_player')
-    .select('*, fm_national_team(name, fifa_code, flag_emoji)')
+    .select('*, fm_national_team(name, fifa_code, flag_emoji, logo_url, flag_url)')
     .in('id', squadPlayerIds.length > 0 ? squadPlayerIds : ['00000000-0000-0000-0000-000000000000'])
     .order('name', { ascending: true })
 

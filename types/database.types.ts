@@ -1304,7 +1304,9 @@ export type Database = {
           eliminated_at: string | null
           fifa_code: string
           flag_emoji: string | null
+          flag_url: string | null
           id: string
+          logo_url: string | null
           name: string
           sportmonks_team_id: number | null
           status: Database["public"]["Enums"]["fm_team_status"]
@@ -1316,7 +1318,9 @@ export type Database = {
           eliminated_at?: string | null
           fifa_code: string
           flag_emoji?: string | null
+          flag_url?: string | null
           id?: string
+          logo_url?: string | null
           name: string
           sportmonks_team_id?: number | null
           status?: Database["public"]["Enums"]["fm_team_status"]
@@ -1328,7 +1332,9 @@ export type Database = {
           eliminated_at?: string | null
           fifa_code?: string
           flag_emoji?: string | null
+          flag_url?: string | null
           id?: string
+          logo_url?: string | null
           name?: string
           sportmonks_team_id?: number | null
           status?: Database["public"]["Enums"]["fm_team_status"]
@@ -1608,6 +1614,7 @@ export type Database = {
           is_active: boolean
           name: string
           national_team_id: string
+          photo_url: string | null
           role: Database["public"]["Enums"]["fm_player_role"]
           shirt_number: number | null
           sportmonks_player_id: number | null
@@ -1621,6 +1628,7 @@ export type Database = {
           is_active?: boolean
           name: string
           national_team_id: string
+          photo_url?: string | null
           role: Database["public"]["Enums"]["fm_player_role"]
           shirt_number?: number | null
           sportmonks_player_id?: number | null
@@ -1634,6 +1642,7 @@ export type Database = {
           is_active?: boolean
           name?: string
           national_team_id?: string
+          photo_url?: string | null
           role?: Database["public"]["Enums"]["fm_player_role"]
           shirt_number?: number | null
           sportmonks_player_id?: number | null

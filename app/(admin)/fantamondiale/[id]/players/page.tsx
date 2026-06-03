@@ -1,4 +1,5 @@
 import { requireFMContext, assertSuperAdmin, getFMTeams, getFMPlayers } from '@/lib/fantamondiale/server'
+import { TeamCrest } from '@/components/fm/TeamCrest'
 import { addPlayersAction, deletePlayerAction } from './actions'
 
 const ROLE_COLORS: Record<string, string> = {
@@ -59,7 +60,7 @@ export default async function PlayersPage({ params }: { params: Promise<{ id: st
             <option value="">— Seleziona nazione —</option>
             {activeTeams.map((t) => (
               <option key={t.id} value={t.id}>
-                {t.flag_emoji} {t.name} ({t.fifa_code})
+                {t.name} ({t.fifa_code})
               </option>
             ))}
           </select>
@@ -85,7 +86,7 @@ export default async function PlayersPage({ params }: { params: Promise<{ id: st
         return (
           <div key={team.id} className="rounded-xl border border-hairline bg-glass-1 overflow-hidden">
             <div className="flex items-center gap-2 px-4 py-2.5 border-b border-hairline">
-              <span className="text-base">{team.flag_emoji ?? '🏴'}</span>
+              <TeamCrest name={team.name} logoUrl={team.logo_url} flagUrl={team.flag_url} fifaCode={team.fifa_code} size={18} />
               <p className="text-[12px] font-semibold text-ink-1">{team.name}</p>
               <span className="ml-auto text-[10px] text-ink-5">{teamPlayers.length} giocatori</span>
             </div>

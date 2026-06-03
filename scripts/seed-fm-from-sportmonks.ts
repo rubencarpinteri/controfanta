@@ -21,7 +21,7 @@
  */
 
 import { createServiceClient } from '../lib/supabase/service'
-import { listTeamsInSeason, fetchTeamSquad, fetchTeamCoach } from '../lib/sportmonks/squad'
+import { listTeamsInSeason, fetchCountryFlags, fetchTeamSquad, fetchTeamCoach } from '../lib/sportmonks/squad'
 import { positionIdToFMRole } from '../lib/sportmonks/positions'
 
 const COMPETITION_ID = process.env.FM_COMPETITION_ID
@@ -115,7 +115,12 @@ async function main() {
 
   // ---------- 2. Fetch teams from SportMonks ----------
   const smTeams = await listTeamsInSeason(SEASON_ID)
-  console.log(`  ${smTeams.length} teams in SportMonks season ${SEASON_ID}\n`)
+  console.log(`  ${smTeams.length} real national teams in SportMonks season ${SEASON_ID}`)
+
+  const flagByCountry = await fetchCountryFlags(
+    smTeams.map((t) => t.country_id).filter((id): id is number => id != null),
+  )
+  console.log(`  ${flagByCountry.size} country flags fetched\n`)
 
   // ---------- 3. Load existing fm_national_team rows ----------
   const { data: existingTeams } = await db
@@ -133,34 +138,46 @@ async function main() {
   const orphans: Array<{ id: string; name: string; fifa_code: string }> = []
 
   for (const sm of smTeams) {
-    // Skip if already wired (sportmonks_team_id set)
+    // Official assets from SportMonks — the single source of truth.
+    const logoUrl = sm.image_path ?? null
+    const flagUrl = sm.country_id != null ? (flagByCountry.get(sm.country_id) ?? null) : null
+    // Prefer the official SportMonks short_code; fall back to a derived
+    // code only in the impossible case it's missing.
+    const fifaCode = sm.short_code ?? buildFifaCode(sm.name, usedFifaCodes)
+
+    // Already wired (sportmonks_team_id set): refresh assets + official code.
     const byId = (existingTeams ?? []).find((t) => t.sportmonks_team_id === sm.id)
     if (byId) {
+      await db.from('fm_national_team')
+        .update({ fifa_code: fifaCode, logo_url: logoUrl, flag_url: flagUrl })
+        .eq('id', byId.id)
       matchedSmIds.add(sm.id)
       teamUuidBySmId.set(sm.id, byId.id)
       teams_matched += 1
       continue
     }
 
-    // Match by name (with aliases)
+    // Match by name (with aliases): wire id + assets + official code.
+    // Existing curated display name is preserved.
     const byName = (existingTeams ?? []).find((t) => namesOverlap(t.name, sm.name))
     if (byName) {
       await db.from('fm_national_team')
-        .update({ sportmonks_team_id: sm.id })
+        .update({ sportmonks_team_id: sm.id, fifa_code: fifaCode, logo_url: logoUrl, flag_url: flagUrl })
         .eq('id', byName.id)
       matchedSmIds.add(sm.id)
       teamUuidBySmId.set(sm.id, byName.id)
       teams_matched += 1
-      console.log(`  ✓ matched "${byName.name}" → sportmonks_team_id=${sm.id}`)
+      console.log(`  ✓ matched "${byName.name}" → sm=${sm.id} (${fifaCode})`)
       continue
     }
 
-    // Insert new
-    const fifaCode = buildFifaCode(sm.name, usedFifaCodes)
+    // Insert new team with official name, code, logo and flag.
     const { data: created, error } = await db.from('fm_national_team').insert({
       competition_id: COMPETITION_ID!,
       name: sm.name,
       fifa_code: fifaCode,
+      logo_url: logoUrl,
+      flag_url: flagUrl,
       sportmonks_team_id: sm.id,
       status: 'active',
     }).select('id').single()
@@ -203,6 +220,7 @@ async function main() {
         const role = positionIdToFMRole(entry.position_id ?? entry.player?.position_id ?? null)
         if (!role) continue
         const playerName = entry.player.display_name ?? entry.player.name ?? `Player ${entry.player_id}`
+        const photoUrl = entry.player.image_path ?? null
 
         const { data: existing } = await db
           .from('fm_player')
@@ -217,6 +235,7 @@ async function main() {
             name: playerName,
             role,
             shirt_number: entry.jersey_number,
+            photo_url: photoUrl,
           }).eq('id', existing.id)
           players_updated += 1
         } else {
@@ -226,6 +245,7 @@ async function main() {
             name: playerName,
             role,
             shirt_number: entry.jersey_number,
+            photo_url: photoUrl,
             sportmonks_player_id: entry.player_id,
           })
           if (error) squadErrors.push(`${sm.name} / ${playerName}: ${error.message}`)
