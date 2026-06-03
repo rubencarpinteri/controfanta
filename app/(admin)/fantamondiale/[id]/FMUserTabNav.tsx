@@ -8,6 +8,7 @@ const TABS = [
   { label: 'Overview',    suffix: '' },
   { label: 'Mia Rosa',    suffix: '/rosa' },
   { label: 'Formazione',  suffix: '/formazione' },
+  { label: 'Rose Nazionali', suffix: '/nazionali' },
   { label: 'Risultati',   suffix: '/risultati' },
   { label: 'Classifica',  suffix: '/classifica' },
   { label: 'Regole',      suffix: '/regole' },

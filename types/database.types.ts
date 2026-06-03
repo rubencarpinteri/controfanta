@@ -1305,6 +1305,7 @@ export type Database = {
           fifa_code: string
           flag_emoji: string | null
           flag_url: string | null
+          group_label: string | null
           id: string
           logo_url: string | null
           name: string
@@ -1319,6 +1320,7 @@ export type Database = {
           fifa_code: string
           flag_emoji?: string | null
           flag_url?: string | null
+          group_label?: string | null
           id?: string
           logo_url?: string | null
           name: string
@@ -1333,6 +1335,7 @@ export type Database = {
           fifa_code?: string
           flag_emoji?: string | null
           flag_url?: string | null
+          group_label?: string | null
           id?: string
           logo_url?: string | null
           name?: string

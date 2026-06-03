@@ -116,6 +116,32 @@ export async function fetchCountryFlags(countryIds: number[]): Promise<Map<numbe
   return flags
 }
 
+type SMStandingRow = {
+  participant_id?: number
+  participant?: { id: number } | null
+  group?: { name: string | null } | null
+}
+
+/**
+ * Map sportmonks_team_id -> official group label (e.g. "Group A") for a
+ * season's group stage, via the standings endpoint. Empty for knockout-only
+ * competitions.
+ */
+export async function fetchSeasonGroups(seasonId: number): Promise<Map<number, string>> {
+  const groups = new Map<number, string>()
+  const env = await fetchSportMonks<SMStandingRow[]>(
+    `/standings/seasons/${seasonId}`,
+    { include: 'group;participant' },
+    'Standing',
+  )
+  for (const row of env.data ?? []) {
+    const teamId = row.participant?.id ?? row.participant_id
+    const label = row.group?.name
+    if (teamId && label) groups.set(teamId, label)
+  }
+  return groups
+}
+
 /** GET /coaches/teams/{team_id} — current coach for a team. */
 export async function fetchTeamCoach(teamId: number): Promise<{ id: number; name: string } | null> {
   const env = await fetchSportMonks<Array<{ id: number; name: string }>>(

@@ -21,7 +21,7 @@
  */
 
 import { createServiceClient } from '../lib/supabase/service'
-import { listTeamsInSeason, fetchCountryFlags, fetchTeamSquad, fetchTeamCoach } from '../lib/sportmonks/squad'
+import { listTeamsInSeason, fetchCountryFlags, fetchSeasonGroups, fetchTeamSquad, fetchTeamCoach } from '../lib/sportmonks/squad'
 import { positionIdToFMRole } from '../lib/sportmonks/positions'
 
 const COMPETITION_ID = process.env.FM_COMPETITION_ID
@@ -120,7 +120,10 @@ async function main() {
   const flagByCountry = await fetchCountryFlags(
     smTeams.map((t) => t.country_id).filter((id): id is number => id != null),
   )
-  console.log(`  ${flagByCountry.size} country flags fetched\n`)
+  console.log(`  ${flagByCountry.size} country flags fetched`)
+
+  const groupByTeam = await fetchSeasonGroups(SEASON_ID)
+  console.log(`  ${groupByTeam.size} teams assigned to groups\n`)
 
   // ---------- 3. Load existing fm_national_team rows ----------
   const { data: existingTeams } = await db
@@ -144,12 +147,13 @@ async function main() {
     // Prefer the official SportMonks short_code; fall back to a derived
     // code only in the impossible case it's missing.
     const fifaCode = sm.short_code ?? buildFifaCode(sm.name, usedFifaCodes)
+    const groupLabel = groupByTeam.get(sm.id) ?? null
 
     // Already wired (sportmonks_team_id set): refresh assets + official code.
     const byId = (existingTeams ?? []).find((t) => t.sportmonks_team_id === sm.id)
     if (byId) {
       await db.from('fm_national_team')
-        .update({ fifa_code: fifaCode, logo_url: logoUrl, flag_url: flagUrl })
+        .update({ fifa_code: fifaCode, logo_url: logoUrl, flag_url: flagUrl, group_label: groupLabel })
         .eq('id', byId.id)
       matchedSmIds.add(sm.id)
       teamUuidBySmId.set(sm.id, byId.id)
@@ -162,7 +166,7 @@ async function main() {
     const byName = (existingTeams ?? []).find((t) => namesOverlap(t.name, sm.name))
     if (byName) {
       await db.from('fm_national_team')
-        .update({ sportmonks_team_id: sm.id, fifa_code: fifaCode, logo_url: logoUrl, flag_url: flagUrl })
+        .update({ sportmonks_team_id: sm.id, fifa_code: fifaCode, logo_url: logoUrl, flag_url: flagUrl, group_label: groupLabel })
         .eq('id', byName.id)
       matchedSmIds.add(sm.id)
       teamUuidBySmId.set(sm.id, byName.id)
@@ -178,6 +182,7 @@ async function main() {
       fifa_code: fifaCode,
       logo_url: logoUrl,
       flag_url: flagUrl,
+      group_label: groupLabel,
       sportmonks_team_id: sm.id,
       status: 'active',
     }).select('id').single()
