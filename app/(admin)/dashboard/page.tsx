@@ -64,6 +64,12 @@ function fmStatusBadge(status: FMRow['status']): { label: string; cls: string } 
   }
 }
 
+// Temporary: the Serie A trial was scrapped (Jun 2026) and Serie A will be
+// rebuilt FM-style later. For now the Lega only plays ControFanta Mondiale,
+// so we hide the Serie A surface from the dashboard. Flip back to `true`
+// (and re-enable the sidebar/admin entry points) when Serie A returns.
+const SHOW_SERIE_A = false
+
 function formatDate(iso: string | null): string | null {
   if (!iso) return null
   return new Date(iso).toLocaleDateString('it-IT', {
@@ -205,7 +211,8 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      {/* Nazionali — Serie A */}
+      {/* Nazionali — Serie A (hidden for now: Mondiale-only) */}
+      {SHOW_SERIE_A && (
       <section>
         <SectionHeader
           eyebrow="Livello nazionale"
@@ -274,6 +281,7 @@ export default async function DashboardPage() {
           </div>
         )}
       </section>
+      )}
 
       {/* Internazionali — ControFanta Mondiale (WC / Euros / Nations) */}
       <section>
