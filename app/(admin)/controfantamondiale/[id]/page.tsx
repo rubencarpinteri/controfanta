@@ -1,6 +1,7 @@
 import { requireFMContext, getFMPhases, getFMRounds, getFMTeams, getFMPlayers, getFMFantasyTeams } from '@/lib/fantamondiale/server'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import type { Route } from 'next'
 import { RoundCountdown } from './RoundCountdown'
 import { isUuid } from '@/lib/slug'
@@ -56,6 +57,11 @@ export default async function FMOverviewPage({ params }: { params: Promise<{ id:
   // helpers (getFMPhases/Rounds/Teams/Players) take the global template id.
   // getFMFantasyTeams stays Lega-scoped, so it takes the URL id verbatim.
   const ctx = await requireFMContext(id)
+
+  // The Overview is an admin dashboard. Managers (and admins previewing as a
+  // manager) land straight on the merged "Risultati e Classifica" instead.
+  if (!ctx.isSuperAdmin) redirect(`/controfantamondiale/${id}/risultati` as Route)
+
   const [phases, rounds, teams, fantasyTeams, players] = await Promise.all([
     getFMPhases(ctx.competition.id),
     getFMRounds(ctx.competition.id),

@@ -5,13 +5,11 @@ import type { Route } from 'next'
 import { usePathname } from 'next/navigation'
 
 const TABS = [
-  { label: 'Overview',    suffix: '' },
-  { label: 'Mia Rosa',    suffix: '/rosa' },
-  { label: 'Formazione',  suffix: '/formazione' },
+  { label: 'Risultati e Classifica', suffix: '/risultati' },
+  { label: 'La Mia Rosa',    suffix: '/rosa' },
+  { label: 'Formazione',     suffix: '/formazione' },
   { label: 'Rose Nazionali', suffix: '/nazionali' },
-  { label: 'Risultati',   suffix: '/risultati' },
-  { label: 'Classifica',  suffix: '/classifica' },
-  { label: 'Regole',      suffix: '/regole' },
+  { label: 'Regole',         suffix: '/regole' },
 ]
 
 export function FMUserTabNav({ id }: { id: string }) {

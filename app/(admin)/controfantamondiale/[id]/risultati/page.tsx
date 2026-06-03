@@ -48,6 +48,65 @@ export default async function RisultatiPage({
   const rounds = await getFMRounds(ctx.competition.id)
   const publishedRounds = rounds.filter((r) => r.status === 'published' || r.status === 'scoring')
 
+  // ── Overall standings (merged "Classifica" section) ──────────────────
+  const { data: standingsRows } = await supabase
+    .from('fm_competition_standing')
+    .select('fantasy_team_id, br_points_total, round_wins, raw_score_total, rank')
+    .eq('league_competition_id', ctx.legaCompetition.id)
+    .order('rank', { ascending: true })
+
+  const standings = standingsRows ?? []
+  const standingTeamIds = standings.map((s) => s.fantasy_team_id)
+  const { data: standingTeams } = await supabase
+    .from('fm_fantasy_team')
+    .select('id, name')
+    .in('id', standingTeamIds.length > 0 ? standingTeamIds : ['00000000-0000-0000-0000-000000000000'])
+  const standingTeamMap = new Map((standingTeams ?? []).map((t) => [t.id, t.name]))
+
+  const ClassificaSection = (
+    <div className="space-y-2">
+      <h2 className="text-[16px] font-semibold text-ink-1">Classifica generale</h2>
+      {standings.length === 0 ? (
+        <div className="rounded-xl border border-hairline bg-glass-1 p-6 text-center">
+          <p className="text-[13px] text-ink-3">
+            La classifica sarà disponibile dopo la prima giornata pubblicata.
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-hairline overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-hairline bg-glass-2">
+                <th className="py-2 pl-4 text-left text-[10px] font-semibold uppercase tracking-widest text-ink-4 w-8">#</th>
+                <th className="py-2 px-3 text-left text-[10px] font-semibold uppercase tracking-widest text-ink-4">Squadra</th>
+                <th className="py-2 px-3 text-center text-[10px] font-semibold uppercase tracking-widest text-ink-4 hidden sm:table-cell">V</th>
+                <th className="py-2 px-3 text-center text-[10px] font-semibold uppercase tracking-widest text-ink-4 hidden sm:table-cell">Tot</th>
+                <th className="py-2 pr-4 text-right text-[10px] font-semibold uppercase tracking-widest text-ink-4">BR Pts</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-hairline">
+              {standings.map((row, i) => {
+                const isMe = row.fantasy_team_id === ctx.fantasyTeamId
+                return (
+                  <tr key={row.fantasy_team_id} className={`transition-colors ${isMe ? 'bg-indigo-500/5' : 'hover:bg-glass-1'}`}>
+                    <td className="py-2.5 pl-4 text-[11px] tabular-nums text-ink-4 w-8">{row.rank ?? i + 1}</td>
+                    <td className="py-2.5 px-3 text-[13px] font-medium">
+                      <span className={isMe ? 'text-indigo-400' : 'text-ink-1'}>{standingTeamMap.get(row.fantasy_team_id) ?? '—'}</span>
+                      {isMe && <span className="ml-1.5 text-[9px] font-bold text-indigo-500 uppercase tracking-wider">tu</span>}
+                    </td>
+                    <td className="py-2.5 px-3 text-center text-[12px] tabular-nums text-emerald-400 hidden sm:table-cell">{row.round_wins}</td>
+                    <td className="py-2.5 px-3 text-center text-[12px] tabular-nums text-ink-3 hidden sm:table-cell">{row.raw_score_total.toFixed(1)}</td>
+                    <td className="py-2.5 pr-4 text-right text-[14px] font-semibold tabular-nums text-ink-1">{row.br_points_total}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+
   const selectedRound =
     publishedRounds.find((r) => r.id === roundParam) ??
     publishedRounds[publishedRounds.length - 1] ??
@@ -56,11 +115,14 @@ export default async function RisultatiPage({
   // ---- no rounds yet --------------------------------------------------
   if (!selectedRound) {
     return (
-      <div className="space-y-4">
-        <h2 className="text-[16px] font-semibold text-ink-1">Risultati</h2>
-        <div className="rounded-xl border border-hairline bg-glass-1 p-10 text-center">
-          <p className="text-[14px] text-ink-3">Nessuna giornata pubblicata ancora.</p>
-          <p className="mt-1 text-[11px] text-ink-5">I risultati appariranno qui dopo la prima giornata.</p>
+      <div className="space-y-6">
+        {ClassificaSection}
+        <div className="space-y-2">
+          <h2 className="text-[16px] font-semibold text-ink-1">Risultati di giornata</h2>
+          <div className="rounded-xl border border-hairline bg-glass-1 p-10 text-center">
+            <p className="text-[14px] text-ink-3">Nessuna giornata pubblicata ancora.</p>
+            <p className="mt-1 text-[11px] text-ink-5">I risultati appariranno qui dopo la prima giornata.</p>
+          </div>
         </div>
       </div>
     )
@@ -297,9 +359,11 @@ export default async function RisultatiPage({
     : null
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h2 className="text-[16px] font-semibold text-ink-1">Risultati</h2>
+    <div className="space-y-6">
+      {ClassificaSection}
+
+      <div className="flex items-center justify-between border-t border-hairline pt-5">
+        <h2 className="text-[16px] font-semibold text-ink-1">Risultati di giornata</h2>
         {publishedRounds.length > 1 && (
           <p className="text-[11px] text-ink-5">{publishedRounds.length} giornate</p>
         )}

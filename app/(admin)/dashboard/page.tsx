@@ -251,7 +251,7 @@ export default async function DashboardPage() {
                         <p className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-ink-4">
                           {SERIE_A_TYPE_LABEL[c.type]}
                         </p>
-                        <p className="mt-0.5 truncate text-[14.5px] font-semibold tracking-tight text-ink-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-300">
+                        <p className="mt-0.5 text-[14.5px] font-semibold leading-snug tracking-tight text-ink-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-300">
                           {c.name}
                         </p>
                       </div>
@@ -313,7 +313,7 @@ export default async function DashboardPage() {
                         <p className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-ink-4">
                           {c.edition}
                         </p>
-                        <p className="mt-0.5 truncate text-[14.5px] font-semibold tracking-tight text-ink-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-300">
+                        <p className="mt-0.5 text-[14.5px] font-semibold leading-snug tracking-tight text-ink-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-300">
                           {c.name}
                         </p>
                       </div>
