@@ -178,7 +178,7 @@ export default async function RegolePage({ params }: { params: Promise<{ id: str
               <div className="flex-1 h-1 rounded-full bg-glass-3 overflow-hidden">
                 <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${b.pct}%` }} />
               </div>
-              <span className="font-semibold text-indigo-400 tabular-nums w-10 text-right">+{b.pct}</span>
+              <span className="font-semibold text-indigo-400 tabular-nums w-10 text-right">+{b.pct}%</span>
             </div>
           ))}
         </div>

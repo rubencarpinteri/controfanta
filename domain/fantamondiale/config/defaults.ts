@@ -39,13 +39,14 @@ const DEFAULT_POPULARITY_BRACKETS: FMBracket[] = [
   { min_pct: 81, max_pct: 100, pct: 65 },
 ]
 
-// Inverse: rarer MVP picks get bigger bonuses. Top cap 50%, same edges.
+// Inverse: rarer MVP picks get bigger bonuses. Mirrors the 6-band PP curve.
 const DEFAULT_MVP_BRACKETS: FMBracket[] = [
-  { min_pct:  0, max_pct:  10, pct: 50 },
-  { min_pct: 11, max_pct:  25, pct: 40 },
-  { min_pct: 26, max_pct:  50, pct: 25 },
-  { min_pct: 51, max_pct:  75, pct: 15 },
-  { min_pct: 76, max_pct: 100, pct:  5 },
+  { min_pct:  0, max_pct:  10, pct: 65 },
+  { min_pct: 11, max_pct:  25, pct: 55 },
+  { min_pct: 26, max_pct:  45, pct: 40 },
+  { min_pct: 46, max_pct:  65, pct: 25 },
+  { min_pct: 66, max_pct:  80, pct: 10 },
+  { min_pct: 81, max_pct: 100, pct:  0 },
 ]
 
 export const DEFAULT_FM_CONFIG: FMCompetitionConfig = {
