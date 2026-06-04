@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { loadFMUnifiedConfig } from '@/lib/fantamondiale/loadUnifiedConfig'
+import { resolvePhaseBudget } from '@/lib/fantamondiale/budget'
 import type { FMPlayerRole } from '@/domain/fantamondiale/config/schema'
 
 const ROLE_LABEL: Record<FMPlayerRole, string> = {
@@ -68,18 +69,27 @@ export async function toggleSquadPlayerAction(fd: FormData) {
   const competitionId = fd.get('competition_id') as string
   const phaseId = fd.get('phase_id') as string
   const playerId = fd.get('player_id') as string
-  const playerPrice = Number(fd.get('player_price') ?? 0)
-  const budgetTotal = Number(fd.get('budget_total') ?? 500)
 
   const fantasyTeamId = await getTeamId(competitionId, user.id)
   if (!fantasyTeamId) throw new Error('Non sei iscritto a questa competizione')
 
   const { data: phase } = await supabase
     .from('fm_phase')
-    .select('status')
+    .select('status, budget_config')
     .eq('id', phaseId)
     .single()
   if (!phase || phase.status !== 'open') throw new Error('La fase non è aperta per la selezione della rosa')
+
+  // Price and budget are authoritative server-side — never trust the client.
+  const config = await loadFMUnifiedConfig(supabase, competitionId)
+  const budgetTotal = resolvePhaseBudget(phase.budget_config, config.squad.budget_default)
+  const { data: priceRow } = await supabase
+    .from('fm_phase_player_price')
+    .select('price')
+    .eq('phase_id', phaseId)
+    .eq('player_id', playerId)
+    .maybeSingle()
+  const playerPrice = priceRow?.price ?? 0
 
   const squadId = await ensureSquad(phaseId, fantasyTeamId, budgetTotal)
 
@@ -94,7 +104,6 @@ export async function toggleSquadPlayerAction(fd: FormData) {
     await supabase.from('fm_phase_squad_player').delete().eq('id', existing.id)
     await recalcBudgetSpent(supabase, squadId)
   } else {
-    const config = await loadFMUnifiedConfig(supabase, competitionId)
     const { pool_size, role_quotas } = config.squad
 
     const { data: roster } = await supabase

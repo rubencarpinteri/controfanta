@@ -10,6 +10,15 @@ function toDatetimeLocal(iso: string | null) {
   return iso.slice(0, 16)
 }
 
+function currentBudget(cfg: unknown): number {
+  const c = (cfg ?? null) as { budget?: number; budget_by_rank?: number[] } | null
+  if (c) {
+    if (typeof c.budget === 'number') return c.budget
+    if (Array.isArray(c.budget_by_rank) && typeof c.budget_by_rank[0] === 'number') return c.budget_by_rank[0]
+  }
+  return 100
+}
+
 export function FMPhaseEditor({ phase, competitionId }: { phase: FMPhase; competitionId: string }) {
   const [open, setOpen] = useState(false)
   const [pending, setPending] = useState(false)
@@ -89,6 +98,17 @@ export function FMPhaseEditor({ phase, competitionId }: { phase: FMPhase; compet
             <option value="comeback">Comeback</option>
             <option value="reward_leaders">Premia i primi</option>
           </select>
+        </div>
+        <div>
+          <label className="block text-[9px] uppercase tracking-wider text-ink-5 mb-1 font-semibold">Budget (cr)</label>
+          <input
+            type="number"
+            name="budget"
+            min={50}
+            max={10000}
+            defaultValue={currentBudget(phase.budget_config)}
+            className="w-full rounded-lg border border-hairline bg-glass-2 px-2.5 py-1.5 text-[12px] text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          />
         </div>
         <div>
           <label className="block text-[9px] uppercase tracking-wider text-ink-5 mb-1 font-semibold">Nuova rosa richiesta?</label>

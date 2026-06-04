@@ -17,9 +17,19 @@ export async function updatePhaseAction(fd: FormData) {
   const requires_new_squad = fd.get('requires_new_squad') === 'true'
   const budget_mode = fd.get('budget_mode') as 'fixed' | 'comeback' | 'reward_leaders'
 
+  // Per-phase budget value. For 'fixed' it is a single number; for the
+  // rank-based modes we seed a uniform budget_by_rank (admins can refine the
+  // per-rank curve later). Budget rises across stages — see budget.ts.
+  const budgetRaw = Number(fd.get('budget'))
+  const budget = Number.isFinite(budgetRaw) ? Math.max(50, Math.min(10_000, Math.round(budgetRaw))) : 100
+  const budget_config =
+    budget_mode === 'fixed'
+      ? { mode: 'fixed' as const, budget }
+      : { mode: budget_mode, budget_by_rank: [budget] }
+
   await supabase
     .from('fm_phase')
-    .update({ name, squad_open_at, squad_lock_at, reveal_at, requires_new_squad, budget_mode })
+    .update({ name, squad_open_at, squad_lock_at, reveal_at, requires_new_squad, budget_mode, budget_config })
     .eq('id', id)
 
   revalidatePath(`/controfantamondiale/${competitionId}/phases`)

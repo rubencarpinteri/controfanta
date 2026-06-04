@@ -1,0 +1,1249 @@
+role,role_label,player,nation,original_price,refined_price,change
+P,Portiere,Alisson,Brasile,12,18,6
+P,Portiere,Emiliano Martínez,Argentina,12,18,6
+P,Portiere,M. Maignan,Francia,12,18,6
+P,Portiere,Unai Simón,Spagna,12,18,6
+P,Portiere,Diogo Costa,Portogallo,11,15,4
+P,Portiere,J. Pickford,Inghilterra,11,15,4
+P,Portiere,Manuel Neuer,Germania,11,15,4
+P,Portiere,Dominik Livakovic,Croazia,10,12,2
+P,Portiere,T. Courtois,Belgio,10,12,2
+P,Portiere,B. Verbruggen,Paesi Bassi,9,10,1
+P,Portiere,Álvaro Montero,Colombia,9,10,1
+P,Portiere,E. Mendy,Senegal,8,9,1
+P,Portiere,G. Kobel,Svizzera,8,9,1
+P,Portiere,Sergio Rochet,Uruguay,8,9,1
+P,Portiere,Y. Bounou,Marocco,8,9,1
+P,Portiere,U. Çakır,Turchia,7,7,0
+P,Portiere,Lukas Hornicek,Repubblica Ceca,6,6,0
+P,Portiere,M. Crépeau,Canada,6,6,0
+P,Portiere,Matt Freese,Stati Uniti,6,6,0
+P,Portiere,Raúl Rangel,Messico,6,6,0
+P,Portiere,V. Johansson,Svezia,6,6,0
+P,Portiere,Y. Fofana,Costa d'Avorio,6,6,0
+P,Portiere,Ørjan Nyland,Norvegia,6,6,0
+P,Portiere,A. Schlager,Austria,5,5,0
+P,Portiere,Bum-keun Song,Corea del Sud,5,5,0
+P,Portiere,Craig Gordon,Scozia,5,5,0
+P,Portiere,Lawrence Ati Zigi,Ghana,5,5,0
+P,Portiere,M. Ryan,Australia,5,5,0
+P,Portiere,Moisés Ramírez,Ecuador,5,5,0
+P,Portiere,O. Gill,Paraguay,5,5,0
+P,Portiere,Z. Suzuki,Giappone,5,5,0
+P,Portiere,A. Dahmen,Tunisia,4,4,0
+P,Portiere,Alireza Beiranvand,Iran,4,4,0
+P,Portiere,L. Mpasi-Nzau,Repubblica Democratica del Congo,4,4,0
+P,Portiere,Luca Zidane,Algeria,4,4,0
+P,Portiere,Max Crocombe,Nuova Zelanda,4,4,0
+P,Portiere,N. Vasilj,Bosnia ed Erzegovina,4,4,0
+P,Portiere,Nawaf Al-Aqidi,Arabia Saudita,4,4,0
+P,Portiere,Oufa Shobeir,Egitto,4,4,0
+P,Portiere,R. Williams,Sudafrica,4,4,0
+P,Portiere,Abduvokhid Nematov,Uzbekistan,3,3,0
+P,Portiere,E. Room,Curaçao,3,3,0
+P,Portiere,J. Placide,Haiti,3,3,0
+P,Portiere,Jalal Hassan,Iraq,3,3,0
+P,Portiere,Meshaal Barsham,Qatar,3,3,0
+P,Portiere,Márcio Rosa,Capo Verde,3,3,0
+P,Portiere,O. Mosquera,Panama,3,3,0
+P,Portiere,Yazeed Abulaila,Giordania,3,3,0
+P,Portiere,David Raya,Spagna,2,2,0
+P,Portiere,S. Tangvik,Norvegia,2,2,0
+P,Portiere,A. Bayındır,Turchia,1,1,0
+P,Portiere,A. Chamakh,Tunisia,1,1,0
+P,Portiere,A. Lafont,Costa d'Avorio,1,1,0
+P,Portiere,A. Nübel,Germania,1,1,0
+P,Portiere,A. Pierre,Haiti,1,1,0
+P,Portiere,A. Tagnaouti,Marocco,1,1,0
+P,Portiere,Abdallah Al-Fakhouri,Giordania,1,1,0
+P,Portiere,Ahmed Al-Kassar,Arabia Saudita,1,1,0
+P,Portiere,Ahmed Basil Fadhil,Iraq,1,1,0
+P,Portiere,Alex Paulsen,Nuova Zelanda,1,1,0
+P,Portiere,Angus Gunn,Scozia,1,1,0
+P,Portiere,B. Asare,Ghana,1,1,0
+P,Portiere,B. Ergashev,Uzbekistan,1,1,0
+P,Portiere,B. Samba,Francia,1,1,0
+P,Portiere,CJ dos Santos,Capo Verde,1,1,0
+P,Portiere,Camilo Vargas,Colombia,1,1,0
+P,Portiere,Carlos Acevedo,Messico,1,1,0
+P,Portiere,Chris Brady,Stati Uniti,1,1,0
+P,Portiere,César Samudio,Panama,1,1,0
+P,Portiere,D. Henderson,Inghilterra,1,1,0
+P,Portiere,D. Kotarski,Croazia,1,1,0
+P,Portiere,David Ospina,Colombia,1,1,0
+P,Portiere,Dayne St. Clair,Canada,1,1,0
+P,Portiere,E. Selvik,Norvegia,1,1,0
+P,Portiere,Ederson,Brasile,1,1,0
+P,Portiere,El Mahdi Soliman,Egitto,1,1,0
+P,Portiere,F. Wiegele,Austria,1,1,0
+P,Portiere,Fahad Talib,Iraq,1,1,0
+P,Portiere,Fernando Muslera,Uruguay,1,1,0
+P,Portiere,G. Rulli,Argentina,1,1,0
+P,Portiere,Gastón Olveira,Paraguay,1,1,0
+P,Portiere,Gonzalo Valle,Ecuador,1,1,0
+P,Portiere,Guillermo Ochoa,Messico,1,1,0
+P,Portiere,Hernán Galíndez,Ecuador,1,1,0
+P,Portiere,Hyeon-woo Jo,Corea del Sud,1,1,0
+P,Portiere,I. Pandur,Croazia,1,1,0
+P,Portiere,J. Anang,Ghana,1,1,0
+P,Portiere,J. Duverger,Haiti,1,1,0
+P,Portiere,J. Trafford,Inghilterra,1,1,0
+P,Portiere,J. Widell Zetterström,Svezia,1,1,0
+P,Portiere,Jindrich Stanek,Repubblica Ceca,1,1,0
+P,Portiere,Joan García,Spagna,1,1,0
+P,Portiere,José Sá,Portogallo,1,1,0
+P,Portiere,Juan Musso,Argentina,1,1,0
+P,Portiere,K. Nordfeldt,Svezia,1,1,0
+P,Portiere,K. Osako,Giappone,1,1,0
+P,Portiere,L. Kelly,Scozia,1,1,0
+P,Portiere,Luis Mejía,Panama,1,1,0
+P,Portiere,M. Alaa,Egitto,1,1,0
+P,Portiere,M. Diaw,Senegal,1,1,0
+P,Portiere,M. El Shenawy,Egitto,1,1,0
+P,Portiere,M. Flekken,Paesi Bassi,1,1,0
+P,Portiere,M. Jurkas,Bosnia ed Erzegovina,1,1,0
+P,Portiere,M. Keller,Svizzera,1,1,0
+P,Portiere,M. Mastil,Algeria,1,1,0
+P,Portiere,M. Penders,Belgio,1,1,0
+P,Portiere,M. Turner,Stati Uniti,1,1,0
+P,Portiere,Mahmoud Abunada,Qatar,1,1,0
+P,Portiere,Martin Zlomislic,Bosnia ed Erzegovina,1,1,0
+P,Portiere,Matej Kovar,Repubblica Ceca,1,1,0
+P,Portiere,Matthieu Epolo,Repubblica Democratica del Congo,1,1,0
+P,Portiere,Mert Günok,Turchia,1,1,0
+P,Portiere,Michael Woud,Nuova Zelanda,1,1,0
+P,Portiere,Mohamed Koné,Costa d'Avorio,1,1,0
+P,Portiere,Mohammed Al-Owais,Arabia Saudita,1,1,0
+P,Portiere,Munir El Kajoui,Marocco,1,1,0
+P,Portiere,Noureddin Bani Attiah,Giordania,1,1,0
+P,Portiere,O. Baumann,Germania,1,1,0
+P,Portiere,Oussama Benbout,Algeria,1,1,0
+P,Portiere,Owen Goodman,Canada,1,1,0
+P,Portiere,P. Beach,Australia,1,1,0
+P,Portiere,P. Izzo,Australia,1,1,0
+P,Portiere,P. Niazmand,Iran,1,1,0
+P,Portiere,P. Pentz,Austria,1,1,0
+P,Portiere,R. Goss,Sudafrica,1,1,0
+P,Portiere,R. Risser,Francia,1,1,0
+P,Portiere,R. Roefs,Paesi Bassi,1,1,0
+P,Portiere,Roberto Fernández,Paraguay,1,1,0
+P,Portiere,Rui Silva,Portogallo,1,1,0
+P,Portiere,S. Chaine,Sudafrica,1,1,0
+P,Portiere,S. Hosseini,Iran,1,1,0
+P,Portiere,S. Lammens,Belgio,1,1,0
+P,Portiere,Sabri Ben Hessen,Tunisia,1,1,0
+P,Portiere,Salah Zakaria,Qatar,1,1,0
+P,Portiere,Santiago Mele,Uruguay,1,1,0
+P,Portiere,Seung-gyu Kim,Corea del Sud,1,1,0
+P,Portiere,T. Bodak,Curaçao,1,1,0
+P,Portiere,T. Doornbusch,Curaçao,1,1,0
+P,Portiere,T. Fayulu,Repubblica Democratica del Congo,1,1,0
+P,Portiere,T. Hayakawa,Giappone,1,1,0
+P,Portiere,U. Yusupov,Uzbekistan,1,1,0
+P,Portiere,Vozinha,Capo Verde,1,1,0
+P,Portiere,Weverton,Brasile,1,1,0
+P,Portiere,Y. Diouf,Senegal,1,1,0
+P,Portiere,Yvon Mvogo,Svizzera,1,1,0
+D,Difensore,Achraf Hakimi,Marocco,15,28,13
+D,Difensore,D. Dumfries,Paesi Bassi,14,24,10
+D,Difensore,Joshua Kimmich,Germania,14,24,10
+D,Difensore,Nuno Mendes,Portogallo,14,24,10
+D,Difensore,J. Koundé,Francia,13,21,8
+D,Difensore,Josko Gvardiol,Croazia,13,21,8
+D,Difensore,Marquinos,Brasile,13,21,8
+D,Difensore,Theo Hernández,Francia,13,21,8
+D,Difensore,A. Rüdiger,Germania,12,18,6
+D,Difensore,N. O'Reilly,Inghilterra,12,18,6
+D,Difensore,Pau Cubarsí,Spagna,12,18,6
+D,Difensore,Ruben Dias,Portogallo,12,18,6
+D,Difensore,Virgil van Dijk,Paesi Bassi,12,18,6
+D,Difensore,W. Saliba,Francia,12,18,6
+D,Difensore,Cancelo,Portogallo,11,15,4
+D,Difensore,Cristian Romero,Argentina,11,15,4
+D,Difensore,Gabriel Magalhães,Brasile,11,15,4
+D,Difensore,J. Tah,Germania,11,15,4
+D,Difensore,K. Koulibaly,Senegal,11,15,4
+D,Difensore,Manuel Akanji,Svizzera,11,15,4
+D,Difensore,Dayot Upamecano,Francia,10,12,2
+D,Difensore,J. Stanisic,Croazia,10,12,2
+D,Difensore,Marc Cucurella,Spagna,10,12,2
+D,Difensore,Reece James,Inghilterra,10,12,2
+D,Difensore,Willian Pacho,Ecuador,10,12,2
+D,Difensore,A. Laporte,Spagna,9,10,1
+D,Difensore,Gonçalo Inácio,Portogallo,9,10,1
+D,Difensore,José María Giménez,Uruguay,9,10,1
+D,Difensore,N. Aké,Paesi Bassi,9,10,1
+D,Difensore,Nicolás Otamendi,Argentina,9,10,1
+D,Difensore,Piero Hincapié,Ecuador,9,10,1
+D,Difensore,A. Davies,Canada,8,9,1
+D,Difensore,A. Robertson,Scozia,8,9,1
+D,Difensore,D. Raum,Germania,8,9,1
+D,Difensore,I. Hien,Svezia,8,9,1
+D,Difensore,J. Ryerson,Norvegia,8,9,1
+D,Difensore,J. Stones,Inghilterra,8,9,1
+D,Difensore,Joel Ordóñez,Ecuador,8,9,1
+D,Difensore,Marcos Llorente,Spagna,8,9,1
+D,Difensore,Nahuel Molina,Argentina,8,9,1
+D,Difensore,Ronald Araujo,Uruguay,8,9,1
+D,Difensore,Z. Debast,Belgio,8,9,1
+D,Difensore,D. Svensson,Svezia,7,7,0
+D,Difensore,Danilo,Brasile,7,7,0
+D,Difensore,David Alaba,Austria,7,7,0
+D,Difensore,Davinson Sánchez,Colombia,7,7,0
+D,Difensore,Ezri Konsa,Inghilterra,7,7,0
+D,Difensore,H. Ito,Giappone,7,7,0
+D,Difensore,Kim Min-Jae,Corea del Sud,7,7,0
+D,Difensore,Ladislav Krejci,Repubblica Ceca,7,7,0
+D,Difensore,M. De Cuyper,Belgio,7,7,0
+D,Difensore,M. Demiral,Turchia,7,7,0
+D,Difensore,M. Niakhaté,Senegal,7,7,0
+D,Difensore,M. Pongracic,Croazia,7,7,0
+D,Difensore,Nayef Aguerd,Marocco,7,7,0
+D,Difensore,Wesley,Brasile,7,7,0
+D,Difensore,Wilfried Singo,Costa d'Avorio,7,7,0
+D,Difensore,A. Hickey,Scozia,6,6,0
+D,Difensore,A. Salah-Eddine,Marocco,6,6,0
+D,Difensore,Alejandro Grimaldo,Spagna,6,6,0
+D,Difensore,Bremer,Brasile,6,6,0
+D,Difensore,C. Richards,Stati Uniti,6,6,0
+D,Difensore,D. Cornelius,Canada,6,6,0
+D,Difensore,Douglas Santos,Brasile,6,6,0
+D,Difensore,Evan Ndicka,Costa d'Avorio,6,6,0
+D,Difensore,Ferdi Kadıoğlu,Turchia,6,6,0
+D,Difensore,Gonzalo Montiel,Argentina,6,6,0
+D,Difensore,I. Jakobs,Senegal,6,6,0
+D,Difensore,J. Timber,Paesi Bassi,6,6,0
+D,Difensore,J. Zelený,Repubblica Ceca,6,6,0
+D,Difensore,Jhon Lucumí,Colombia,6,6,0
+D,Difensore,Leo Østigård,Norvegia,6,6,0
+D,Difensore,Lucas Hernández,Francia,6,6,0
+D,Difensore,Luka Vuskovic,Croazia,6,6,0
+D,Difensore,M. Thiaw,Germania,6,6,0
+D,Difensore,Mathías Olivera,Uruguay,6,6,0
+D,Difensore,Maxi Araújo,Uruguay,6,6,0
+D,Difensore,N. Elvedi,Svizzera,6,6,0
+D,Difensore,Omar Alderete,Paraguay,6,6,0
+D,Difensore,R. Bensebaini,Algeria,6,6,0
+D,Difensore,Victor Lindelöf,Svezia,6,6,0
+D,Difensore,Zeki Çelik,Turchia,6,6,0
+D,Difensore,A. Dedić,Bosnia ed Erzegovina,5,5,0
+D,Difensore,A. Khusanov,Uzbekistan,5,5,0
+D,Difensore,A. Trusty,Stati Uniti,5,5,0
+D,Difensore,Chancel Mbemba,Repubblica Democratica del Congo,5,5,0
+D,Difensore,D. Wolfe,Norvegia,5,5,0
+D,Difensore,Daniel Muñoz,Colombia,5,5,0
+D,Difensore,G. Gudmundsson,Svezia,5,5,0
+D,Difensore,G. Hanley,Scozia,5,5,0
+D,Difensore,G. Lagerbielke,Svezia,5,5,0
+D,Difensore,J. Opoku,Ghana,5,5,0
+D,Difensore,Johan Vásquez,Messico,5,5,0
+D,Difensore,K. Danso,Austria,5,5,0
+D,Difensore,K. Laimer,Austria,5,5,0
+D,Difensore,Kristoffer Ajer,Norvegia,5,5,0
+D,Difensore,Krépin Diatta,Senegal,5,5,0
+D,Difensore,Leonardo Balerdi,Argentina,5,5,0
+D,Difensore,M. Sarr,Senegal,5,5,0
+D,Difensore,Marc Guéhi,Inghilterra,5,5,0
+D,Difensore,Odilon Kossounou,Costa d'Avorio,5,5,0
+D,Difensore,Pervis Estupiñán,Ecuador,5,5,0
+D,Difensore,R. Laryea,Canada,5,5,0
+D,Difensore,Ricardo Rodríguez,Svizzera,5,5,0
+D,Difensore,Robin Hranac,Repubblica Ceca,5,5,0
+D,Difensore,S. McKenna,Scozia,5,5,0
+D,Difensore,Stepan Chaloupek,Repubblica Ceca,5,5,0
+D,Difensore,T. Meunier,Belgio,5,5,0
+D,Difensore,Tomás Araújo,Portogallo,5,5,0
+D,Difensore,V. Coufal,Repubblica Ceca,5,5,0
+D,Difensore,Young-woo Seol,Corea del Sud,5,5,0
+D,Difensore,Çağlar Söyüncü,Turchia,5,5,0
+D,Difensore,A. Bardakcı,Turchia,4,4,0
+D,Difensore,A. Circati,Australia,4,4,0
+D,Difensore,A. Theate,Belgio,4,4,0
+D,Difensore,A. Wan-Bissaka,Repubblica Democratica del Congo,4,4,0
+D,Difensore,Alex Sandro,Brasile,4,4,0
+D,Difensore,Amir Murillo,Panama,4,4,0
+D,Difensore,Diogo Dalot,Portogallo,4,4,0
+D,Difensore,E. Hajsafi,Iran,4,4,0
+D,Difensore,G. Konan,Costa d'Avorio,4,4,0
+D,Difensore,G. Mensah,Ghana,4,4,0
+D,Difensore,Gustavo Gómez,Paraguay,4,4,0
+D,Difensore,Han-beom Lee,Corea del Sud,4,4,0
+D,Difensore,I. Diop,Marocco,4,4,0
+D,Difensore,Israel Reyes,Messico,4,4,0
+D,Difensore,J. van Hecke,Paesi Bassi,4,4,0
+D,Difensore,K. Itakura,Giappone,4,4,0
+D,Difensore,L. Costa,Capo Verde,4,4,0
+D,Difensore,L. Martínez,Argentina,4,4,0
+D,Difensore,Liberato Cacace,Nuova Zelanda,4,4,0
+D,Difensore,M. Talbi,Tunisia,4,4,0
+D,Difensore,Mohamed Abdelmonem,Egitto,4,4,0
+D,Difensore,Moïse Bombito,Canada,4,4,0
+D,Difensore,N. Mazraoui,Marocco,4,4,0
+D,Difensore,N. Schlotterbeck,Germania,4,4,0
+D,Difensore,Rayan Aït-Nouri,Algeria,4,4,0
+D,Difensore,S. Taniguchi,Giappone,4,4,0
+D,Difensore,S. Widmer,Svizzera,4,4,0
+D,Difensore,Saud Abdulhamid,Arabia Saudita,4,4,0
+D,Difensore,Sergiño Dest,Stati Uniti,4,4,0
+D,Difensore,Tarik Muharemović,Bosnia ed Erzegovina,4,4,0
+D,Difensore,A. Masuaku,Repubblica Democratica del Congo,3,3,0
+D,Difensore,A. Obispo,Curaçao,3,3,0
+D,Difensore,A. Ralston,Scozia,3,3,0
+D,Difensore,A. Tuanzebe,Repubblica Democratica del Congo,3,3,0
+D,Difensore,Abdallah Nasib,Giordania,3,3,0
+D,Difensore,Abdulelah Al-Amri,Arabia Saudita,3,3,0
+D,Difensore,Ahmed Fatouh,Egitto,3,3,0
+D,Difensore,Akam Hashem,Iraq,3,3,0
+D,Difensore,Alex Freeman,Stati Uniti,3,3,0
+D,Difensore,Andrés Andrade,Panama,3,3,0
+D,Difensore,Angelo Preciado,Ecuador,3,3,0
+D,Difensore,Aubrey Modiba,Sudafrica,3,3,0
+D,Difensore,B. Mechele,Belgio,3,3,0
+D,Difensore,C. Arcus,Haiti,3,3,0
+D,Difensore,C. Burgess,Australia,3,3,0
+D,Difensore,César Montes,Messico,3,3,0
+D,Difensore,D. Bronn,Tunisia,3,3,0
+D,Difensore,Danial Eiri,Iran,3,3,0
+D,Difensore,E. Diouf,Senegal,3,3,0
+D,Difensore,Eric García,Spagna,3,3,0
+D,Difensore,Fabián Balbuena,Paraguay,3,3,0
+D,Difensore,Guillermo Varela,Uruguay,3,3,0
+D,Difensore,Hassan Tambakti,Arabia Saudita,3,3,0
+D,Difensore,J. Cáceres,Paraguay,3,3,0
+D,Difensore,J. Hato,Paesi Bassi,3,3,0
+D,Difensore,Jakhongir Urozov,Uzbekistan,3,3,0
+D,Difensore,Jarell Quansah,Inghilterra,3,3,0
+D,Difensore,Johan Mojica,Colombia,3,3,0
+D,Difensore,José Córdoba,Panama,3,3,0
+D,Difensore,K. Tierney,Scozia,3,3,0
+D,Difensore,Khuliso Mudau,Sudafrica,3,3,0
+D,Difensore,Lucas Mendes,Qatar,3,3,0
+D,Difensore,M. Doski,Iraq,3,3,0
+D,Difensore,M. Erlić,Croazia,3,3,0
+D,Difensore,M. Gusto,Francia,3,3,0
+D,Difensore,M. Mohammadi,Iran,3,3,0
+D,Difensore,M. Müldür,Turchia,3,3,0
+D,Difensore,Matheus Nunes,Portogallo,3,3,0
+D,Difensore,Matías Viña,Uruguay,3,3,0
+D,Difensore,Milos Degenek,Australia,3,3,0
+D,Difensore,Mohamed Hany,Egitto,3,3,0
+D,Difensore,N. Ngoy,Belgio,3,3,0
+D,Difensore,N. Sibisi,Sudafrica,3,3,0
+D,Difensore,Nicolás Tagliafico,Argentina,3,3,0
+D,Difensore,O. Diomande,Costa d'Avorio,3,3,0
+D,Difensore,R. Belghali,Algeria,3,3,0
+D,Difensore,Rustam Ashurmatov,Uzbekistan,3,3,0
+D,Difensore,S. Hardani,Iran,3,3,0
+D,Difensore,S. Posch,Austria,3,3,0
+D,Difensore,S. Sambo,Curaçao,3,3,0
+D,Difensore,Santiago Bueno,Uruguay,3,3,0
+D,Difensore,Sead Kolasinac,Bosnia ed Erzegovina,3,3,0
+D,Difensore,T. Bindon,Nuova Zelanda,3,3,0
+D,Difensore,T. Payne,Nuova Zelanda,3,3,0
+D,Difensore,T. Tomiyasu,Giappone,3,3,0
+D,Difensore,Tae-seok Lee,Corea del Sud,3,3,0
+D,Difensore,Wagner Pina,Capo Verde,3,3,0
+D,Difensore,Y. Cho,Corea del Sud,3,3,0
+D,Difensore,Y. Nagatomo,Giappone,3,3,0
+D,Difensore,Y. Valery,Tunisia,3,3,0
+D,Difensore,Yerry Mina,Colombia,3,3,0
+D,Difensore,A. Abdi,Tunisia,2,2,0
+D,Difensore,A. Baba,Ghana,2,2,0
+D,Difensore,A. Majrashi,Arabia Saudita,2,2,0
+D,Difensore,A. Mandi,Algeria,2,2,0
+D,Difensore,A. Yahya,Arabia Saudita,2,2,0
+D,Difensore,Al-Hashmi Al-Hussain,Qatar,2,2,0
+D,Difensore,Alexandro Maidana,Paraguay,2,2,0
+D,Difensore,Aziz Behich,Australia,2,2,0
+D,Difensore,Ben Old,Nuova Zelanda,2,2,0
+D,Difensore,César Blackman,Panama,2,2,0
+D,Difensore,D. Affengruber,Austria,2,2,0
+D,Difensore,D. Luckassen,Ghana,2,2,0
+D,Difensore,D. Zima,Repubblica Ceca,2,2,0
+D,Difensore,Diney Borges,Capo Verde,2,2,0
+D,Difensore,Duje Caleta-Car,Croazia,2,2,0
+D,Difensore,Duke Lacroix,Haiti,2,2,0
+D,Difensore,E. Fariña,Panama,2,2,0
+D,Difensore,Eray Cömert,Svizzera,2,2,0
+D,Difensore,Facundo Medina,Argentina,2,2,0
+D,Difensore,G. Doué,Costa d'Avorio,2,2,0
+D,Difensore,Gédéon Kalulu,Repubblica Democratica del Congo,2,2,0
+D,Difensore,H. Abdelmaguid,Egitto,2,2,0
+D,Difensore,H. Ali,Iraq,2,2,0
+D,Difensore,H. Delcroix,Haiti,2,2,0
+D,Difensore,H. Ekdal,Svezia,2,2,0
+D,Difensore,I. Konaté,Francia,2,2,0
+D,Difensore,I. Okon,Sudafrica,2,2,0
+D,Difensore,J. Bos,Australia,2,2,0
+D,Difensore,J. Brenet,Curaçao,2,2,0
+D,Difensore,J. Castrop,Corea del Sud,2,2,0
+D,Difensore,J. Hendry,Scozia,2,2,0
+D,Difensore,J. Seys,Belgio,2,2,0
+D,Difensore,J. Souttar,Scozia,2,2,0
+D,Difensore,J. Waterman,Canada,2,2,0
+D,Difensore,Jehad Thakri,Arabia Saudita,2,2,0
+D,Difensore,Jesús Gallardo,Messico,2,2,0
+D,Difensore,Joe Scally,Stati Uniti,2,2,0
+D,Difensore,Jonas Adjetey,Ghana,2,2,0
+D,Difensore,Jorge Gutiérrez,Panama,2,2,0
+D,Difensore,K. Peprah Oppong,Ghana,2,2,0
+D,Difensore,Khulumani Ndamane,Sudafrica,2,2,0
+D,Difensore,L. De Fougerolles,Canada,2,2,0
+D,Difensore,L. Digne,Francia,2,2,0
+D,Difensore,Luca Jaquez,Svizzera,2,2,0
+D,Difensore,M. Abualnadi,Giordania,2,2,0
+D,Difensore,M. Friedl,Austria,2,2,0
+D,Difensore,M. Mbokazi,Sudafrica,2,2,0
+D,Difensore,M. McKenzie,Stati Uniti,2,2,0
+D,Difensore,M. Wieffer,Paesi Bassi,2,2,0
+D,Difensore,Marcus Pedersen,Norvegia,2,2,0
+D,Difensore,Michael Boxall,Nuova Zelanda,2,2,0
+D,Difensore,Micky van de Ven,Paesi Bassi,2,2,0
+D,Difensore,Mohammed Abu Al-Shamat,Arabia Saudita,2,2,0
+D,Difensore,Nikola Katic,Bosnia ed Erzegovina,2,2,0
+D,Difensore,O. Rekik,Tunisia,2,2,0
+D,Difensore,Pedro Miguel,Qatar,2,2,0
+D,Difensore,Pedro Porro,Spagna,2,2,0
+D,Difensore,Philipp Mwene,Austria,2,2,0
+D,Difensore,R. Lopes,Capo Verde,2,2,0
+D,Difensore,R. Rezaeian,Iran,2,2,0
+D,Difensore,R. van Eijma,Curaçao,2,2,0
+D,Difensore,Ramy Rabia,Egitto,2,2,0
+D,Difensore,Renato Veiga,Portogallo,2,2,0
+D,Difensore,Ricardo Adé,Haiti,2,2,0
+D,Difensore,Roger Ibañez,Brasile,2,2,0
+D,Difensore,S. Akaydin,Turchia,2,2,0
+D,Difensore,S. Floranus,Curaçao,2,2,0
+D,Difensore,S. Kapuadi,Repubblica Democratica del Congo,2,2,0
+D,Difensore,S. Khalilzadeh,Iran,2,2,0
+D,Difensore,Santiago Arias,Colombia,2,2,0
+D,Difensore,Sebastián Cáceres,Uruguay,2,2,0
+D,Difensore,Sidny Cabral,Capo Verde,2,2,0
+D,Difensore,Sultan Al-Brake,Qatar,2,2,0
+D,Difensore,T. Heggem,Norvegia,2,2,0
+D,Difensore,Tino Livramento,Inghilterra,2,2,0
+D,Difensore,Tomas Holes,Repubblica Ceca,2,2,0
+D,Difensore,W. Anton,Germania,2,2,0
+D,Difensore,Y. Sugawara,Giappone,2,2,0
+D,Difensore,Zaid Tahseen,Iraq,2,2,0
+D,Difensore,Éric Davis,Panama,2,2,0
+D,Difensore,A. Abada,Algeria,1,1,0
+D,Difensore,A. Johnston,Canada,1,1,0
+D,Difensore,A. Jones,Canada,1,1,0
+D,Difensore,A. Lajami,Arabia Saudita,1,1,0
+D,Difensore,A. Mendy,Senegal,1,1,0
+D,Difensore,A. Mumin,Ghana,1,1,0
+D,Difensore,A. Nemati,Iran,1,1,0
+D,Difensore,A. Robinson,Stati Uniti,1,1,0
+D,Difensore,A. Seck,Senegal,1,1,0
+D,Difensore,A. Seidu,Ghana,1,1,0
+D,Difensore,A. Ulmasaliev,Uzbekistan,1,1,0
+D,Difensore,Adem Arous,Tunisia,1,1,0
+D,Difensore,Ahmed Yahya,Iraq,1,1,0
+D,Difensore,Anas Badawi,Giordania,1,1,0
+D,Difensore,Arya Yousefi,Iran,1,1,0
+D,Difensore,Aurèle Amenda,Svizzera,1,1,0
+D,Difensore,Ayoub Al-Oui,Qatar,1,1,0
+D,Difensore,B. Cross,Sudafrica,1,1,0
+D,Difensore,B. Khoukhi,Qatar,1,1,0
+D,Difensore,Bekhruz Karimov,Uzbekistan,1,1,0
+D,Difensore,C. Elliot,Nuova Zelanda,1,1,0
+D,Difensore,C. Operi,Costa d'Avorio,1,1,0
+D,Difensore,C. Riad,Marocco,1,1,0
+D,Difensore,C. Starfelt,Svezia,1,1,0
+D,Difensore,D. Batubinsika,Repubblica Democratica del Congo,1,1,0
+D,Difensore,D. Burn,Inghilterra,1,1,0
+D,Difensore,D. Fonville,Curaçao,1,1,0
+D,Difensore,D. Hadzikadunic,Bosnia ed Erzegovina,1,1,0
+D,Difensore,D. Hyam,Scozia,1,1,0
+D,Difensore,D. Jurásek,Repubblica Ceca,1,1,0
+D,Difensore,D. Spence,Inghilterra,1,1,0
+D,Difensore,Deiver Machado,Colombia,1,1,0
+D,Difensore,E. Agbadou,Costa d'Avorio,1,1,0
+D,Difensore,Ehsan Haddad,Giordania,1,1,0
+D,Difensore,Eren Elmalı,Turchia,1,1,0
+D,Difensore,Eric Smith,Svezia,1,1,0
+D,Difensore,F. Surman,Nuova Zelanda,1,1,0
+D,Difensore,Farrukh Sayfiev,Uzbekistan,1,1,0
+D,Difensore,Fidel Escobar,Panama,1,1,0
+D,Difensore,Francis de Vries,Nuova Zelanda,1,1,0
+D,Difensore,Frans Putros,Iraq,1,1,0
+D,Difensore,Fredrik Bjørkan,Norvegia,1,1,0
+D,Difensore,Félix Torres,Ecuador,1,1,0
+D,Difensore,Gi-hyuk Lee,Corea del Sud,1,1,0
+D,Difensore,Gustavo Velázquez,Paraguay,1,1,0
+D,Difensore,H. Souttar,Australia,1,1,0
+D,Difensore,Hassan Kadesh,Arabia Saudita,1,1,0
+D,Difensore,Henrik Falchener,Norvegia,1,1,0
+D,Difensore,Homam Al-Amin,Qatar,1,1,0
+D,Difensore,Hossein Kanaani,Iran,1,1,0
+D,Difensore,Husam Abu Dahab,Giordania,1,1,0
+D,Difensore,Issa Laye,Qatar,1,1,0
+D,Difensore,J. Gaari,Curaçao,1,1,0
+D,Difensore,J. Suzuki,Giappone,1,1,0
+D,Difensore,Jackson Porozo,Ecuador,1,1,0
+D,Difensore,Jacob Italiano,Australia,1,1,0
+D,Difensore,Jason Geria,Australia,1,1,0
+D,Difensore,Jean-Kévin Duverne,Haiti,1,1,0
+D,Difensore,Jiovany Ramos,Panama,1,1,0
+D,Difensore,Joaquín Piquerez,Uruguay,1,1,0
+D,Difensore,Jorge Sánchez,Messico,1,1,0
+D,Difensore,Joris Kayembe,Repubblica Democratica del Congo,1,1,0
+D,Difensore,Josip Sutalo,Croazia,1,1,0
+D,Difensore,José Canale,Paraguay,1,1,0
+D,Difensore,Juan Manuel Sanabria,Uruguay,1,1,0
+D,Difensore,Júnior Alonso,Paraguay,1,1,0
+D,Difensore,K. De Winter,Belgio,1,1,0
+D,Difensore,K. Pires,Capo Verde,1,1,0
+D,Difensore,K. Ramadan Seif El Din,Egitto,1,1,0
+D,Difensore,K. Sebelebele,Sudafrica,1,1,0
+D,Difensore,K. Thermoncy,Haiti,1,1,0
+D,Difensore,Khozhiakbar Alizhonov,Uzbekistan,1,1,0
+D,Difensore,Kim Tae-Hyeon,Corea del Sud,1,1,0
+D,Difensore,L. Comenencia,Curaçao,1,1,0
+D,Difensore,L. Herrington,Australia,1,1,0
+D,Difensore,L. Joseph,Haiti,1,1,0
+D,Difensore,Léo Pereira,Brasile,1,1,0
+D,Difensore,M. Expérience,Haiti,1,1,0
+D,Difensore,M. Lacroix,Francia,1,1,0
+D,Difensore,M. Muheim,Svizzera,1,1,0
+D,Difensore,M. Neffati,Tunisia,1,1,0
+D,Difensore,M. Robinson,Stati Uniti,1,1,0
+D,Difensore,M. Senaya,Ghana,1,1,0
+D,Difensore,M. Svoboda,Austria,1,1,0
+D,Difensore,M. Tougai,Algeria,1,1,0
+D,Difensore,Manaf Younis,Iraq,1,1,0
+D,Difensore,Marc Pubill,Spagna,1,1,0
+D,Difensore,Mateo Chávez,Messico,1,1,0
+D,Difensore,Mohamed Amine Ben Hamida,Tunisia,1,1,0
+D,Difensore,Mohammad Abu Hasheesh,Giordania,1,1,0
+D,Difensore,Mohannad Abu Taha,Giordania,1,1,0
+D,Difensore,Moon-hwan Kim,Corea del Sud,1,1,0
+D,Difensore,Moteb Al-Harbi,Arabia Saudita,1,1,0
+D,Difensore,Mustafa Saadoon,Iraq,1,1,0
+D,Difensore,N. Boushal,Arabia Saudita,1,1,0
+D,Difensore,N. Brown,Germania,1,1,0
+D,Difensore,N. Patterson,Scozia,1,1,0
+D,Difensore,N. Pijnaker,Nuova Zelanda,1,1,0
+D,Difensore,Nidal Celik,Bosnia ed Erzegovina,1,1,0
+D,Difensore,Nihad Mujakic,Bosnia ed Erzegovina,1,1,0
+D,Difensore,Nélson Semedo,Portogallo,1,1,0
+D,Difensore,O. Makhanya,Sudafrica,1,1,0
+D,Difensore,Ozan Kabak,Turchia,1,1,0
+D,Difensore,P. Lienhart,Austria,1,1,0
+D,Difensore,R. Bazoer,Curaçao,1,1,0
+D,Difensore,R. Chikhaoui,Tunisia,1,1,0
+D,Difensore,R. Halhal,Marocco,1,1,0
+D,Difensore,R. Sulaka,Iraq,1,1,0
+D,Difensore,Roderick Miller,Panama,1,1,0
+D,Difensore,S. Chergui,Algeria,1,1,0
+D,Difensore,S. Kabini,Sudafrica,1,1,0
+D,Difensore,S. Moreira,Capo Verde,1,1,0
+D,Difensore,S. Obaid,Giordania,1,1,0
+D,Difensore,Saed Al-Rosan,Giordania,1,1,0
+D,Difensore,Sherzod Nasrullaev,Uzbekistan,1,1,0
+D,Difensore,Sondre Langås,Norvegia,1,1,0
+D,Difensore,Stjepan Radeljic,Bosnia ed Erzegovina,1,1,0
+D,Difensore,Stopira,Capo Verde,1,1,0
+D,Difensore,T. Alaa,Egitto,1,1,0
+D,Difensore,T. Castagne,Belgio,1,1,0
+D,Difensore,T. Ream,Stati Uniti,1,1,0
+D,Difensore,T. Smith,Nuova Zelanda,1,1,0
+D,Difensore,Thabang Matuludi,Sudafrica,1,1,0
+D,Difensore,Tsuyoshi Watanabe,Giappone,1,1,0
+D,Difensore,Umar Eshmurodov,Uzbekistan,1,1,0
+D,Difensore,W. Paugain,Haiti,1,1,0
+D,Difensore,Willer Ditta,Colombia,1,1,0
+D,Difensore,Y. Belammari,Marocco,1,1,0
+D,Difensore,Yaimar Medina,Ecuador,1,1,0
+D,Difensore,Yasser Ibrahim,Egitto,1,1,0
+D,Difensore,Yazan Alarab,Giordania,1,1,0
+D,Difensore,Z. El Ouahdi,Marocco,1,1,0
+D,Difensore,Zineddine Belaid,Algeria,1,1,0
+C,Centrocampista,Bruno Fernandes,Portogallo,18,37,19
+C,Centrocampista,J. Musiala,Germania,18,37,19
+C,Centrocampista,F. Wirtz,Germania,17,34,17
+C,Centrocampista,Vitinha,Portogallo,16,31,15
+C,Centrocampista,A. Mac Allister,Argentina,15,28,13
+C,Centrocampista,Bernardo Silva,Portogallo,15,28,13
+C,Centrocampista,J. Bellingham,Inghilterra,15,28,13
+C,Centrocampista,Matheus Cunha,Brasile,15,28,13
+C,Centrocampista,Pedri,Spagna,15,28,13
+C,Centrocampista,Rodri,Spagna,15,28,13
+C,Centrocampista,Casemiro,Brasile,14,24,10
+C,Centrocampista,D. Rice,Inghilterra,14,24,10
+C,Centrocampista,E. Eze,Inghilterra,14,24,10
+C,Centrocampista,Federico Valverde,Uruguay,14,24,10
+C,Centrocampista,Kevin De Bruyne,Belgio,14,24,10
+C,Centrocampista,S. McTominay,Scozia,14,24,10
+C,Centrocampista,A. Rabiot,Francia,13,21,8
+C,Centrocampista,Arda Güler,Turchia,13,21,8
+C,Centrocampista,Dani Olmo,Spagna,13,21,8
+C,Centrocampista,Enzo Fernández,Argentina,13,21,8
+C,Centrocampista,Hakan Çalhanoğlu,Turchia,13,21,8
+C,Centrocampista,M. Ødegaard,Norvegia,13,21,8
+C,Centrocampista,Neymar,Brasile,13,21,8
+C,Centrocampista,Fabián Ruiz,Spagna,12,18,6
+C,Centrocampista,Francisco Conceição,Portogallo,12,18,6
+C,Centrocampista,James Rodríguez,Colombia,12,18,6
+C,Centrocampista,João Neves,Portogallo,12,18,6
+C,Centrocampista,L. Modrić,Croazia,12,18,6
+C,Centrocampista,Rayan Cherki,Francia,12,18,6
+C,Centrocampista,Rodrigo De Paul,Argentina,12,18,6
+C,Centrocampista,T. Reijnders,Paesi Bassi,12,18,6
+C,Centrocampista,A. Tchouaméni,Francia,11,15,4
+C,Centrocampista,Antonio Nusa,Norvegia,11,15,4
+C,Centrocampista,F. de Jong,Paesi Bassi,11,15,4
+C,Centrocampista,I. Perišić,Croazia,11,15,4
+C,Centrocampista,J. McGinn,Scozia,11,15,4
+C,Centrocampista,Leandro Paredes,Argentina,11,15,4
+C,Centrocampista,Mateo Kovacic,Croazia,11,15,4
+C,Centrocampista,Mikel Merino,Spagna,11,15,4
+C,Centrocampista,Moisés Caicedo,Ecuador,11,15,4
+C,Centrocampista,Aleksandar Pavlovic,Germania,10,12,2
+C,Centrocampista,Amad Diallo,Costa d'Avorio,10,12,2
+C,Centrocampista,Bruno Guimarães,Brasile,10,12,2
+C,Centrocampista,D. Ndoye,Svizzera,10,12,2
+C,Centrocampista,Franck Kessié,Costa d'Avorio,10,12,2
+C,Centrocampista,I. Ndiaye,Senegal,10,12,2
+C,Centrocampista,Richard Ríos,Colombia,10,12,2
+C,Centrocampista,Rubén Vargas,Svizzera,10,12,2
+C,Centrocampista,T. Kubo,Giappone,10,12,2
+C,Centrocampista,T. Souček,Repubblica Ceca,10,12,2
+C,Centrocampista,Y. Tielemans,Belgio,10,12,2
+C,Centrocampista,C. Baumgartner,Austria,9,10,1
+C,Centrocampista,C. Talbi,Marocco,9,10,1
+C,Centrocampista,Elliot Anderson,Inghilterra,9,10,1
+C,Centrocampista,G. Xhaka,Svizzera,9,10,1
+C,Centrocampista,M. Baturina,Croazia,9,10,1
+C,Centrocampista,W. McKennie,Stati Uniti,9,10,1
+C,Centrocampista,Warren Zaïre-Emery,Francia,9,10,1
+C,Centrocampista,Anis Hadj Moussa,Algeria,8,9,1
+C,Centrocampista,Ardon Jashari,Svizzera,8,9,1
+C,Centrocampista,Bilal El Khannouss,Marocco,8,9,1
+C,Centrocampista,C. De Ketelaere,Belgio,8,9,1
+C,Centrocampista,D. Kamada,Giappone,8,9,1
+C,Centrocampista,Giorgian de Arrascaeta,Uruguay,8,9,1
+C,Centrocampista,Habib Diarra,Senegal,8,9,1
+C,Centrocampista,Ismael Saibari,Marocco,8,9,1
+C,Centrocampista,J. Hauge,Norvegia,8,9,1
+C,Centrocampista,Julio Enciso,Paraguay,8,9,1
+C,Centrocampista,Kamaldeen Sulemana,Ghana,8,9,1
+C,Centrocampista,Kang-in Lee,Corea del Sud,8,9,1
+C,Centrocampista,L. Bergvall,Svezia,8,9,1
+C,Centrocampista,L. Goretzka,Germania,8,9,1
+C,Centrocampista,M. Akliouche,Francia,8,9,1
+C,Centrocampista,M. Tillman,Stati Uniti,8,9,1
+C,Centrocampista,N. Kanté,Francia,8,9,1
+C,Centrocampista,O. Kökçü,Turchia,8,9,1
+C,Centrocampista,P. Sučić,Croazia,8,9,1
+C,Centrocampista,Paquetá,Brasile,8,9,1
+C,Centrocampista,Pavel Sulc,Repubblica Ceca,8,9,1
+C,Centrocampista,R. Doan,Giappone,8,9,1
+C,Centrocampista,R. Gravenberch,Paesi Bassi,8,9,1
+C,Centrocampista,S. Berge,Norvegia,8,9,1
+C,Centrocampista,T. Buchanan,Canada,8,9,1
+C,Centrocampista,Thomas Partey,Ghana,8,9,1
+C,Centrocampista,Y. Diomande,Costa d'Avorio,8,9,1
+C,Centrocampista,A. Ounahi,Marocco,7,7,0
+C,Centrocampista,B. Nygren,Svezia,7,7,0
+C,Centrocampista,Ben Gannon-Doak,Scozia,7,7,0
+C,Centrocampista,Diego Gómez,Paraguay,7,7,0
+C,Centrocampista,Edson Álvarez,Messico,7,7,0
+C,Centrocampista,Fabinho,Brasile,7,7,0
+C,Centrocampista,Felix Nmecha,Germania,7,7,0
+C,Centrocampista,Gavi,Spagna,7,7,0
+C,Centrocampista,Hannibal,Tunisia,7,7,0
+C,Centrocampista,I. Sangaré,Costa d'Avorio,7,7,0
+C,Centrocampista,Jefferson Lerma,Colombia,7,7,0
+C,Centrocampista,Justin Kluivert,Paesi Bassi,7,7,0
+C,Centrocampista,K. Mainoo,Inghilterra,7,7,0
+C,Centrocampista,L. Ferguson,Scozia,7,7,0
+C,Centrocampista,Lukas Provod,Repubblica Ceca,7,7,0
+C,Centrocampista,M. Sabitzer,Austria,7,7,0
+C,Centrocampista,Manuel Ugarte,Uruguay,7,7,0
+C,Centrocampista,Nico Paz,Argentina,7,7,0
+C,Centrocampista,S. Özcan,Turchia,7,7,0
+C,Centrocampista,Stephen Eustaquio,Canada,7,7,0
+C,Centrocampista,Amadou Onana,Belgio,6,6,0
+C,Centrocampista,Can Uzun,Turchia,6,6,0
+C,Centrocampista,F. Rieder,Svizzera,6,6,0
+C,Centrocampista,G. Lo Celso,Argentina,6,6,0
+C,Centrocampista,G. Simeone,Argentina,6,6,0
+C,Centrocampista,H. Aouar,Algeria,6,6,0
+C,Centrocampista,I. Maza,Algeria,6,6,0
+C,Centrocampista,Ismaël Koné,Canada,6,6,0
+C,Centrocampista,J. Ito,Giappone,6,6,0
+C,Centrocampista,Jae-sung Lee,Corea del Sud,6,6,0
+C,Centrocampista,Kendry Páez,Ecuador,6,6,0
+C,Centrocampista,M. Rogers,Inghilterra,6,6,0
+C,Centrocampista,N. El Aynaoui,Marocco,6,6,0
+C,Centrocampista,N. Sadiki,Repubblica Democratica del Congo,6,6,0
+C,Centrocampista,P. Berg,Norvegia,6,6,0
+C,Centrocampista,P. Gueye,Senegal,6,6,0
+C,Centrocampista,P. Sarr,Senegal,6,6,0
+C,Centrocampista,S. Ghoddos,Iran,6,6,0
+C,Centrocampista,T. Weah,Stati Uniti,6,6,0
+C,Centrocampista,Yasin Ayari,Svezia,6,6,0
+C,Centrocampista,Yéremy Pino,Spagna,6,6,0
+C,Centrocampista,A. Witsel,Belgio,5,5,0
+C,Centrocampista,Agustín Canobbio,Uruguay,5,5,0
+C,Centrocampista,Akram Afif,Qatar,5,5,0
+C,Centrocampista,Alan Franco,Ecuador,5,5,0
+C,Centrocampista,Danilo,Brasile,5,5,0
+C,Centrocampista,Denis Zakaria,Svizzera,5,5,0
+C,Centrocampista,E. Ashour,Egitto,5,5,0
+C,Centrocampista,E. Bajraktarevic,Bosnia ed Erzegovina,5,5,0
+C,Centrocampista,E. Skhiri,Tunisia,5,5,0
+C,Centrocampista,F. Aursnes,Norvegia,5,5,0
+C,Centrocampista,Farès Chaïbi,Algeria,5,5,0
+C,Centrocampista,Francisco Trincão,Portogallo,5,5,0
+C,Centrocampista,G. Reyna,Stati Uniti,5,5,0
+C,Centrocampista,J. Karlström,Svezia,5,5,0
+C,Centrocampista,J. Seri,Costa d'Avorio,5,5,0
+C,Centrocampista,Kerim Alajbegovic,Bosnia ed Erzegovina,5,5,0
+C,Centrocampista,L. Camara,Senegal,5,5,0
+C,Centrocampista,L. Karl,Germania,5,5,0
+C,Centrocampista,Luis Romo,Messico,5,5,0
+C,Centrocampista,M. Ghorbani,Iran,5,5,0
+C,Centrocampista,Mahmoud Trezeguet,Egitto,5,5,0
+C,Centrocampista,Manu Koné,Francia,5,5,0
+C,Centrocampista,Mauricio,Paraguay,5,5,0
+C,Centrocampista,N. Mukau,Repubblica Democratica del Congo,5,5,0
+C,Centrocampista,N. Seiwald,Austria,5,5,0
+C,Centrocampista,Oscar Bobb,Norvegia,5,5,0
+C,Centrocampista,P. Wanner,Austria,5,5,0
+C,Centrocampista,R. Christie,Scozia,5,5,0
+C,Centrocampista,R. Freuler,Svizzera,5,5,0
+C,Centrocampista,Rodrigo Bentancur,Uruguay,5,5,0
+C,Centrocampista,S. Amrabat,Marocco,5,5,0
+C,Centrocampista,T. Adams,Stati Uniti,5,5,0
+C,Centrocampista,T. Koopmeiners,Paesi Bassi,5,5,0
+C,Centrocampista,A. Bouaddi,Marocco,4,4,0
+C,Centrocampista,A. Hrustic,Australia,4,4,0
+C,Centrocampista,A. Jahanbakhsh,Iran,4,4,0
+C,Centrocampista,A. Sher,Iraq,4,4,0
+C,Centrocampista,A. Stiller,Germania,4,4,0
+C,Centrocampista,Adalberto Carrasquilla,Panama,4,4,0
+C,Centrocampista,E. Owusu,Ghana,4,4,0
+C,Centrocampista,F. Chaouat,Tunisia,4,4,0
+C,Centrocampista,G. Kakuta,Repubblica Democratica del Congo,4,4,0
+C,Centrocampista,Hicham Boudaoui,Algeria,4,4,0
+C,Centrocampista,I. Mbaye,Senegal,4,4,0
+C,Centrocampista,Idrissa Gueye,Senegal,4,4,0
+C,Centrocampista,Issahaku Fatawu,Ghana,4,4,0
+C,Centrocampista,Ivan Sunjic,Bosnia ed Erzegovina,4,4,0
+C,Centrocampista,J. Bell,Nuova Zelanda,4,4,0
+C,Centrocampista,J. Bellegarde,Haiti,4,4,0
+C,Centrocampista,Jassem Gaber,Qatar,4,4,0
+C,Centrocampista,Jordan Henderson,Inghilterra,4,4,0
+C,Centrocampista,Juan Fernando Quintero,Colombia,4,4,0
+C,Centrocampista,K. Thorstvedt,Norvegia,4,4,0
+C,Centrocampista,Kevin Lenini,Capo Verde,4,4,0
+C,Centrocampista,M. Pašalić,Croazia,4,4,0
+C,Centrocampista,M. de Roon,Paesi Bassi,4,4,0
+C,Centrocampista,Marko Stamenić,Nuova Zelanda,4,4,0
+C,Centrocampista,Martín Zubimendi,Spagna,4,4,0
+C,Centrocampista,Mohamed Kanno,Arabia Saudita,4,4,0
+C,Centrocampista,Obed Vargas,Messico,4,4,0
+C,Centrocampista,Pedro Neto,Portogallo,4,4,0
+C,Centrocampista,Pedro Vite,Ecuador,4,4,0
+C,Centrocampista,Rodrigo Zalazar,Uruguay,4,4,0
+C,Centrocampista,S. Adingra,Costa d'Avorio,4,4,0
+C,Centrocampista,Saeed Ezatolahi,Iran,4,4,0
+C,Centrocampista,Seung-ho Paik,Corea del Sud,4,4,0
+C,Centrocampista,T. Chong,Curaçao,4,4,0
+C,Centrocampista,T. Mokoena,Sudafrica,4,4,0
+C,Centrocampista,V. Barco,Argentina,4,4,0
+C,Centrocampista,V. Darida,Repubblica Ceca,4,4,0
+C,Centrocampista,W. Endo,Giappone,4,4,0
+C,Centrocampista,Yoel Bárcenas,Panama,4,4,0
+C,Centrocampista,A. Al-Ammari,Iraq,3,3,0
+C,Centrocampista,A. Prass,Austria,3,3,0
+C,Centrocampista,A. Saelemaekers,Belgio,3,3,0
+C,Centrocampista,A. Tanaka,Giappone,3,3,0
+C,Centrocampista,Abbosbek Fayzullaev,Uzbekistan,3,3,0
+C,Centrocampista,Ahmed Fathi,Qatar,3,3,0
+C,Centrocampista,Amar Memic,Bosnia ed Erzegovina,3,3,0
+C,Centrocampista,Aziz Ganiev,Uzbekistan,3,3,0
+C,Centrocampista,C. Chukwuemeka,Austria,3,3,0
+C,Centrocampista,C. Volpato,Australia,3,3,0
+C,Centrocampista,Christ Inao Oulaï,Costa d'Avorio,3,3,0
+C,Centrocampista,D. Bobadilla,Paraguay,3,3,0
+C,Centrocampista,E. Saad,Tunisia,3,3,0
+C,Centrocampista,Edmílson Junior,Qatar,3,3,0
+C,Centrocampista,Elijah Just,Nuova Zelanda,3,3,0
+C,Centrocampista,Exequiel Palacios,Argentina,3,3,0
+C,Centrocampista,Ivan Basic,Bosnia ed Erzegovina,3,3,0
+C,Centrocampista,J. Bacuna,Curaçao,3,3,0
+C,Centrocampista,J. Manzambi,Svizzera,3,3,0
+C,Centrocampista,Jin-gyu Kim,Corea del Sud,3,3,0
+C,Centrocampista,Jonathan Osorio,Canada,3,3,0
+C,Centrocampista,Jáminton Campaz,Colombia,3,3,0
+C,Centrocampista,K. McLean,Scozia,3,3,0
+C,Centrocampista,L. Duarte,Capo Verde,3,3,0
+C,Centrocampista,Louicius Deedson,Haiti,3,3,0
+C,Centrocampista,Luka Sucic,Croazia,3,3,0
+C,Centrocampista,Lukas Cerv,Repubblica Ceca,3,3,0
+C,Centrocampista,M. Leckie,Australia,3,3,0
+C,Centrocampista,M. Svanberg,Svezia,3,3,0
+C,Centrocampista,Marwan Ateya,Egitto,3,3,0
+C,Centrocampista,Meschack Elia,Repubblica Democratica del Congo,3,3,0
+C,Centrocampista,Musab Al-Juwayr,Arabia Saudita,3,3,0
+C,Centrocampista,N. Bentaleb,Algeria,3,3,0
+C,Centrocampista,N. Sigur,Canada,3,3,0
+C,Centrocampista,N. Vlašić,Croazia,3,3,0
+C,Centrocampista,Nizar Al-Rashdan,Giordania,3,3,0
+C,Centrocampista,Noor Al-Rawabdeh,Giordania,3,3,0
+C,Centrocampista,P. Groß,Germania,3,3,0
+C,Centrocampista,R. Khedira,Tunisia,3,3,0
+C,Centrocampista,Ruben Neves,Portogallo,3,3,0
+C,Centrocampista,S. Berhalter,Stati Uniti,3,3,0
+C,Centrocampista,T. Fruk,Croazia,3,3,0
+C,Centrocampista,T. Zwane,Sudafrica,3,3,0
+C,Centrocampista,Z. Iqbal,Iraq,3,3,0
+C,Centrocampista,Zizo,Egitto,3,3,0
+C,Centrocampista,Álex Baena,Spagna,3,3,0
+C,Centrocampista,Álvaro Fidalgo,Messico,3,3,0
+C,Centrocampista,A. Ahmed,Canada,2,2,0
+C,Centrocampista,A. Gigovic,Bosnia ed Erzegovina,2,2,0
+C,Centrocampista,Aiden O'Neill,Australia,2,2,0
+C,Centrocampista,Ali Jasim,Iraq,2,2,0
+C,Centrocampista,Anis Slimane,Tunisia,2,2,0
+C,Centrocampista,Aníbal Godoy,Panama,2,2,0
+C,Centrocampista,B. Aaronson,Stati Uniti,2,2,0
+C,Centrocampista,B. Touré,Costa d'Avorio,2,2,0
+C,Centrocampista,B. Zeneli,Svezia,2,2,0
+C,Centrocampista,Benjamin Tahirović,Bosnia ed Erzegovina,2,2,0
+C,Centrocampista,C. Fassnacht,Svizzera,2,2,0
+C,Centrocampista,C. McCowatt,Nuova Zelanda,2,2,0
+C,Centrocampista,C. Metcalfe,Australia,2,2,0
+C,Centrocampista,C. Pickel,Repubblica Democratica del Congo,2,2,0
+C,Centrocampista,Caleb Yirenkyi,Ghana,2,2,0
+C,Centrocampista,D. Duarte,Capo Verde,2,2,0
+C,Centrocampista,D. Sow,Svizzera,2,2,0
+C,Centrocampista,David Doudera,Repubblica Ceca,2,2,0
+C,Centrocampista,Denis Visinsky,Repubblica Ceca,2,2,0
+C,Centrocampista,Diego Moreira,Belgio,2,2,0
+C,Centrocampista,F. Grillitsch,Austria,2,2,0
+C,Centrocampista,G. Roemeratoe,Curaçao,2,2,0
+C,Centrocampista,G. Yassine,Marocco,2,2,0
+C,Centrocampista,Guus Til,Paesi Bassi,2,2,0
+C,Centrocampista,H. Vanaken,Belgio,2,2,0
+C,Centrocampista,Ibrahim Bayesh,Iraq,2,2,0
+C,Centrocampista,J. Antonisse,Curaçao,2,2,0
+C,Centrocampista,J. Irvine,Australia,2,2,0
+C,Centrocampista,J. Margaritha,Curaçao,2,2,0
+C,Centrocampista,Jhon Arias,Colombia,2,2,0
+C,Centrocampista,Jorge Carrascal,Colombia,2,2,0
+C,Centrocampista,José Luis Rodríguez,Panama,2,2,0
+C,Centrocampista,João Paulo,Capo Verde,2,2,0
+C,Centrocampista,K. Ayari,Tunisia,2,2,0
+C,Centrocampista,K. Ayhan,Turchia,2,2,0
+C,Centrocampista,K. Boudiaf,Qatar,2,2,0
+C,Centrocampista,K. Nakamura,Giappone,2,2,0
+C,Centrocampista,L. Bacuna,Curaçao,2,2,0
+C,Centrocampista,L. Pierre,Haiti,2,2,0
+C,Centrocampista,M. Garbett,Nuova Zelanda,2,2,0
+C,Centrocampista,M. Sadílek,Repubblica Ceca,2,2,0
+C,Centrocampista,M. Torabi,Iran,2,2,0
+C,Centrocampista,Mohanad Lasheen,Egitto,2,2,0
+C,Centrocampista,N. Moro,Croazia,2,2,0
+C,Centrocampista,O. Shukurov,Uzbekistan,2,2,0
+C,Centrocampista,Odildzhon Khamrobekov,Uzbekistan,2,2,0
+C,Centrocampista,Orbelín Pineda,Messico,2,2,0
+C,Centrocampista,Oswin Appollis,Sudafrica,2,2,0
+C,Centrocampista,P. Ciss,Senegal,2,2,0
+C,Centrocampista,R. Cheshmi,Iran,2,2,0
+C,Centrocampista,R. Providence,Haiti,2,2,0
+C,Centrocampista,Ramiz Zerrouki,Algeria,2,2,0
+C,Centrocampista,S. Fofana,Costa d'Avorio,2,2,0
+C,Centrocampista,S. Moutoussamy,Repubblica Democratica del Congo,2,2,0
+C,Centrocampista,Théo Bongonda,Repubblica Democratica del Congo,2,2,0
+C,Centrocampista,Woodensky Pierre,Haiti,2,2,0
+C,Centrocampista,X. Schlager,Austria,2,2,0
+C,Centrocampista,Yannick Semedo,Capo Verde,2,2,0
+C,Centrocampista,Yaya Sithole,Sudafrica,2,2,0
+C,Centrocampista,Youssef Amyn,Iraq,2,2,0
+C,Centrocampista,Ziyad Al-Johani,Arabia Saudita,2,2,0
+C,Centrocampista,Érik Lira,Messico,2,2,0
+C,Centrocampista,İ. Yüksek,Turchia,2,2,0
+C,Centrocampista,A. Boakye,Ghana,1,1,0
+C,Centrocampista,A. Hejji,Arabia Saudita,1,1,0
+C,Centrocampista,A. Martha,Curaçao,1,1,0
+C,Centrocampista,A. Mozgovoy,Uzbekistan,1,1,0
+C,Centrocampista,A. Schöpf,Austria,1,1,0
+C,Centrocampista,A. Seko,Giappone,1,1,0
+C,Centrocampista,A. Sojka,Repubblica Ceca,1,1,0
+C,Centrocampista,A. Tshibola,Repubblica Democratica del Congo,1,1,0
+C,Centrocampista,Abdulaziz Hatim,Qatar,1,1,0
+C,Centrocampista,Abdulla Abdullaev,Uzbekistan,1,1,0
+C,Centrocampista,Abdullah Al-Khaibari,Arabia Saudita,1,1,0
+C,Centrocampista,Alberto Quintero,Panama,1,1,0
+C,Centrocampista,Alex Rufer,Nuova Zelanda,1,1,0
+C,Centrocampista,Amer Jamous,Giordania,1,1,0
+C,Centrocampista,Amir Hadziahmetovic,Bosnia ed Erzegovina,1,1,0
+C,Centrocampista,Amirmohammad Razzaghinia,Iran,1,1,0
+C,Centrocampista,Andrés Cubas,Paraguay,1,1,0
+C,Centrocampista,Assim Madibo,Qatar,1,1,0
+C,Centrocampista,B. Kuwas,Curaçao,1,1,0
+C,Centrocampista,Bara Sapoko Ndiaye,Senegal,1,1,0
+C,Centrocampista,Braian Ojeda,Paraguay,1,1,0
+C,Centrocampista,Brian Cipenga,Repubblica Democratica del Congo,1,1,0
+C,Centrocampista,Brian Gutiérrez,Messico,1,1,0
+C,Centrocampista,Cammy Devlin,Australia,1,1,0
+C,Centrocampista,Carl Sainté,Haiti,1,1,0
+C,Centrocampista,Carlos Harvey,Panama,1,1,0
+C,Centrocampista,Christopher Bonsu Baah,Ghana,1,1,0
+C,Centrocampista,Cristian Martínez,Panama,1,1,0
+C,Centrocampista,Cristian Roldán,Stati Uniti,1,1,0
+C,Centrocampista,César Yanis,Panama,1,1,0
+C,Centrocampista,D. Burnic,Bosnia ed Erzegovina,1,1,0
+C,Centrocampista,D. Castillo,Ecuador,1,1,0
+C,Centrocampista,D. Etienne Jr.,Haiti,1,1,0
+C,Centrocampista,D. Jean Jacques,Haiti,1,1,0
+C,Centrocampista,Dominique Celidor Simon,Haiti,1,1,0
+C,Centrocampista,Dong-gyeong Lee,Corea del Sud,1,1,0
+C,Centrocampista,E. Kayembe,Repubblica Democratica del Congo,1,1,0
+C,Centrocampista,E. Stroud,Svezia,1,1,0
+C,Centrocampista,Emiliano Martínez,Uruguay,1,1,0
+C,Centrocampista,Ermin Mahmic,Bosnia ed Erzegovina,1,1,0
+C,Centrocampista,F. Curtis,Scozia,1,1,0
+C,Centrocampista,Gilberto Mora,Messico,1,1,0
+C,Centrocampista,Gustavo Puerta,Colombia,1,1,0
+C,Centrocampista,H. Hassan,Egitto,1,1,0
+C,Centrocampista,H. Johansson,Svezia,1,1,0
+C,Centrocampista,Hamdy Fathy,Egitto,1,1,0
+C,Centrocampista,Hasan Al-Haydos,Qatar,1,1,0
+C,Centrocampista,Hugo Sochurek,Repubblica Ceca,1,1,0
+C,Centrocampista,Hyun-jun Yang,Corea del Sud,1,1,0
+C,Centrocampista,Hélio Varela,Capo Verde,1,1,0
+C,Centrocampista,I. Gharbi,Tunisia,1,1,0
+C,Centrocampista,Ibrahim Saadeh,Giordania,1,1,0
+C,Centrocampista,In-beom Hwang,Corea del Sud,1,1,0
+C,Centrocampista,J. Adams,Sudafrica,1,1,0
+C,Centrocampista,J. Hadjam,Algeria,1,1,0
+C,Centrocampista,J. Iskanderov,Uzbekistan,1,1,0
+C,Centrocampista,Jamiro Monteiro,Capo Verde,1,1,0
+C,Centrocampista,Jin-seob Park,Corea del Sud,1,1,0
+C,Centrocampista,Jordy Alcívar,Ecuador,1,1,0
+C,Centrocampista,Juan Portilla,Colombia,1,1,0
+C,Centrocampista,Jun-ho Bae,Corea del Sud,1,1,0
+C,Centrocampista,K. Felida,Curaçao,1,1,0
+C,Centrocampista,K. Gorré,Curaçao,1,1,0
+C,Centrocampista,K. Sano,Giappone,1,1,0
+C,Centrocampista,K. Sema,Svezia,1,1,0
+C,Centrocampista,K. Sibo,Ghana,1,1,0
+C,Centrocampista,K. Trewin,Australia,1,1,0
+C,Centrocampista,K. Yakob,Iraq,1,1,0
+C,Centrocampista,Kaku,Paraguay,1,1,0
+C,Centrocampista,Kevin Castaño,Colombia,1,1,0
+C,Centrocampista,Kristijan Jakic,Croazia,1,1,0
+C,Centrocampista,L. Bayliss,Nuova Zelanda,1,1,0
+C,Centrocampista,Luis Chávez,Messico,1,1,0
+C,Centrocampista,M. Aebischer,Svizzera,1,1,0
+C,Centrocampista,M. Saber,Egitto,1,1,0
+C,Centrocampista,M. Thorsby,Norvegia,1,1,0
+C,Centrocampista,M. Zaki Abdelraouf,Egitto,1,1,0
+C,Centrocampista,Marco Pašalić,Croazia,1,1,0
+C,Centrocampista,Mathieu Choinière,Canada,1,1,0
+C,Centrocampista,Matías Galarza Fonda,Paraguay,1,1,0
+C,Centrocampista,Max Arfsten,Stati Uniti,1,1,0
+C,Centrocampista,Mehdi Ghayedi,Iran,1,1,0
+C,Centrocampista,Mohamed Al-Mannai,Qatar,1,1,0
+C,Centrocampista,Mohamed Belhadj Mahmoud,Tunisia,1,1,0
+C,Centrocampista,Mohammad Al Daoud,Giordania,1,1,0
+C,Centrocampista,Mortadha Ben Ouanes,Tunisia,1,1,0
+C,Centrocampista,N. Amiri,Germania,1,1,0
+C,Centrocampista,N. Mbuku,Repubblica Democratica del Congo,1,1,0
+C,Centrocampista,N. Raskin,Belgio,1,1,0
+C,Centrocampista,Nabil Dunga,Egitto,1,1,0
+C,Centrocampista,Nasser Al-Dawsari,Arabia Saudita,1,1,0
+C,Centrocampista,Nathan-Dylan Saliba,Canada,1,1,0
+C,Centrocampista,Nicolás de la Cruz,Uruguay,1,1,0
+C,Centrocampista,Nilson Angulo,Ecuador,1,1,0
+C,Centrocampista,P. Guiagon,Costa d'Avorio,1,1,0
+C,Centrocampista,Paul Okon-Engstler,Australia,1,1,0
+C,Centrocampista,Quinten Timber,Paesi Bassi,1,1,0
+C,Centrocampista,R. Schmid,Austria,1,1,0
+C,Centrocampista,R. Thomas,Nuova Zelanda,1,1,0
+C,Centrocampista,Rajaei Ayed,Giordania,1,1,0
+C,Centrocampista,S. El Mourabet,Marocco,1,1,0
+C,Centrocampista,S. Esanov,Uzbekistan,1,1,0
+C,Centrocampista,Samú Costa,Portogallo,1,1,0
+C,Centrocampista,Sarpreet Singh,Nuova Zelanda,1,1,0
+C,Centrocampista,T. Aasgaard,Norvegia,1,1,0
+C,Centrocampista,T. Fletcher,Scozia,1,1,0
+C,Centrocampista,T. Jamshid,Qatar,1,1,0
+C,Centrocampista,T. Mbatha,Sudafrica,1,1,0
+C,Centrocampista,T. Moremi,Sudafrica,1,1,0
+C,Centrocampista,T. Noslin,Curaçao,1,1,0
+C,Centrocampista,Telmo Arcanjo,Capo Verde,1,1,0
+C,Centrocampista,Yassine Titraoui,Algeria,1,1,0
+C,Centrocampista,Zaid Ismail,Iraq,1,1,0
+C,Centrocampista,Álex Zendejas,Stati Uniti,1,1,0
+A,Attaccante,Erling Haaland,Norvegia,20,44,24
+A,Attaccante,Harry Kane,Inghilterra,20,44,24
+A,Attaccante,Kylian Mbappé,Francia,20,44,24
+A,Attaccante,Lamine Yamal,Spagna,20,44,24
+A,Attaccante,O. Dembélé,Francia,20,44,24
+A,Attaccante,Cristiano Ronaldo,Portogallo,19,40,21
+A,Attaccante,Lionel Messi,Argentina,19,40,21
+A,Attaccante,K. Havertz,Germania,18,37,19
+A,Attaccante,M. Olise,Francia,18,37,19
+A,Attaccante,Vinicius Junior,Brasile,18,37,19
+A,Attaccante,Julián Alvarez,Argentina,17,34,17
+A,Attaccante,Luis Díaz,Colombia,17,34,17
+A,Attaccante,B. Saka,Inghilterra,16,31,15
+A,Attaccante,Cody Gakpo,Paesi Bassi,16,31,15
+A,Attaccante,Raphinha,Brasile,16,31,15
+A,Attaccante,Jérémy Doku,Belgio,15,28,13
+A,Attaccante,L. Sané,Germania,15,28,13
+A,Attaccante,V. Gyökeres,Svezia,15,28,13
+A,Attaccante,Lautaro Martinez,Argentina,14,24,10
+A,Attaccante,Memphis Depay,Paesi Bassi,14,24,10
+A,Attaccante,Nico Williams,Spagna,14,24,10
+A,Attaccante,D. Malen,Paesi Bassi,13,21,8
+A,Attaccante,Désiré Doué,Francia,13,21,8
+A,Attaccante,M. Rashford,Inghilterra,13,21,8
+A,Attaccante,Mikel Oyarzabal,Spagna,13,21,8
+A,Attaccante,Mohamed Salah,Egitto,13,21,8
+A,Attaccante,S. Mané,Senegal,13,21,8
+A,Attaccante,A. Isak,Svezia,12,18,6
+A,Attaccante,A. Semenyo,Ghana,12,18,6
+A,Attaccante,A. Sørloth,Norvegia,12,18,6
+A,Attaccante,Andrej Kramaric,Croazia,12,18,6
+A,Attaccante,Brahim Díaz,Marocco,12,18,6
+A,Attaccante,C. Pulisic,Stati Uniti,12,18,6
+A,Attaccante,Darwin Núñez,Uruguay,12,18,6
+A,Attaccante,P. Schick,Repubblica Ceca,12,18,6
+A,Attaccante,R. Mahrez,Algeria,12,18,6
+A,Attaccante,Endrick,Brasile,11,15,4
+A,Attaccante,Ferran Torres,Spagna,11,15,4
+A,Attaccante,J. David,Canada,11,15,4
+A,Attaccante,Kerem Aktürkoğlu,Turchia,11,15,4
+A,Attaccante,L. Trossard,Belgio,11,15,4
+A,Attaccante,Leao,Portogallo,11,15,4
+A,Attaccante,N. Jackson,Senegal,11,15,4
+A,Attaccante,A. El Kaabi,Marocco,10,12,2
+A,Attaccante,A. Elanga,Svezia,10,12,2
+A,Attaccante,Heung-min Son,Corea del Sud,10,12,2
+A,Attaccante,Joao Felix,Portogallo,10,12,2
+A,Attaccante,Kenan Yıldız,Turchia,10,12,2
+A,Attaccante,Luis Suárez,Colombia,10,12,2
+A,Attaccante,O. Marmoush,Egitto,10,12,2
+A,Attaccante,A. Bonny,Costa d'Avorio,9,10,1
+A,Attaccante,Adam Hlozek,Repubblica Ceca,9,10,1
+A,Attaccante,B. Yılmaz,Turchia,9,10,1
+A,Attaccante,C. Summerville,Paesi Bassi,9,10,1
+A,Attaccante,Ché Adams,Scozia,9,10,1
+A,Attaccante,F. Balogun,Stati Uniti,9,10,1
+A,Attaccante,Iñaki Williams,Ghana,9,10,1
+A,Attaccante,M. Taremi,Iran,9,10,1
+A,Attaccante,Marko Arnautovic,Austria,9,10,1
+A,Attaccante,N. Woltemade,Germania,9,10,1
+A,Attaccante,Romelu Lukaku,Belgio,9,10,1
+A,Attaccante,A. Gordon,Inghilterra,8,9,1
+A,Attaccante,A. Gouiri,Algeria,8,9,1
+A,Attaccante,Abde Ezzalzouli,Marocco,8,9,1
+A,Attaccante,Breel Embolo,Svizzera,8,9,1
+A,Attaccante,C. Larin,Canada,8,9,1
+A,Attaccante,E. Džeko,Bosnia ed Erzegovina,8,9,1
+A,Attaccante,Enner Valencia,Ecuador,8,9,1
+A,Attaccante,Gabriel Martinelli,Brasile,8,9,1
+A,Attaccante,Gonçalo Ramos,Portogallo,8,9,1
+A,Attaccante,I. Sarr,Senegal,8,9,1
+A,Attaccante,M. Thuram,Francia,8,9,1
+A,Attaccante,Miguel Almirón,Paraguay,8,9,1
+A,Attaccante,Santiago Gimenez,Messico,8,9,1
+A,Attaccante,İ. Kahveci,Turchia,8,9,1
+A,Attaccante,A. Ueda,Giappone,7,7,0
+A,Attaccante,Dodi Lukébakio,Belgio,7,7,0
+A,Attaccante,Gonçalo Guedes,Portogallo,7,7,0
+A,Attaccante,M. Gregoritsch,Austria,7,7,0
+A,Attaccante,N. Lang,Paesi Bassi,7,7,0
+A,Attaccante,Antonio Sanabria,Paraguay,6,6,0
+A,Attaccante,D. Undav,Germania,6,6,0
+A,Attaccante,Igor Thiago,Brasile,6,6,0
+A,Attaccante,John Yeboah,Ecuador,6,6,0
+A,Attaccante,Mohamed Amoura,Algeria,6,6,0
+A,Attaccante,N. Okafor,Svizzera,6,6,0
+A,Attaccante,Promise David,Canada,6,6,0
+A,Attaccante,Raúl Jiménez,Messico,6,6,0
+A,Attaccante,Y. Wissa,Repubblica Democratica del Congo,6,6,0
+A,Attaccante,A. Budimir,Croazia,5,5,0
+A,Attaccante,A. Hussein,Iraq,5,5,0
+A,Attaccante,Anthony Valencia,Ecuador,5,5,0
+A,Attaccante,Assane Diao,Senegal,5,5,0
+A,Attaccante,Chris Wood,Nuova Zelanda,5,5,0
+A,Attaccante,D. Maeda,Giappone,5,5,0
+A,Attaccante,E. Shomurodov,Uzbekistan,5,5,0
+A,Attaccante,Elias Achouri,Tunisia,5,5,0
+A,Attaccante,Ermedin Demirovic,Bosnia ed Erzegovina,5,5,0
+A,Attaccante,Firas Al-Buraikan,Arabia Saudita,5,5,0
+A,Attaccante,Hyeon-gyu Oh,Corea del Sud,5,5,0
+A,Attaccante,Ibrahim Sabra,Giordania,5,5,0
+A,Attaccante,J. Ayew,Ghana,5,5,0
+A,Attaccante,J. Mateta,Francia,5,5,0
+A,Attaccante,L. Foster,Sudafrica,5,5,0
+A,Attaccante,N. Irankunda,Australia,5,5,0
+A,Attaccante,Nico González,Argentina,5,5,0
+A,Attaccante,Noni Madueke,Inghilterra,5,5,0
+A,Attaccante,Ramón Sosa,Paraguay,5,5,0
+A,Attaccante,Ricardo Pepi,Stati Uniti,5,5,0
+A,Attaccante,W. Isidor,Haiti,5,5,0
+A,Attaccante,Ahmed Alaaeldin,Qatar,4,4,0
+A,Attaccante,B. Barcola,Francia,4,4,0
+A,Attaccante,B. Brobbey,Paesi Bassi,4,4,0
+A,Attaccante,Borja Iglesias,Spagna,4,4,0
+A,Attaccante,Cucho Hernández,Colombia,4,4,0
+A,Attaccante,Elye Wahi,Costa d'Avorio,4,4,0
+A,Attaccante,Ernest Nuamah,Ghana,4,4,0
+A,Attaccante,Facundo Pellistri,Uruguay,4,4,0
+A,Attaccante,Garry Rodrigues,Capo Verde,4,4,0
+A,Attaccante,J. Locadia,Curaçao,4,4,0
+A,Attaccante,J. Strand Larsen,Norvegia,4,4,0
+A,Attaccante,José Fajardo,Panama,4,4,0
+A,Attaccante,L. Dykes,Scozia,4,4,0
+A,Attaccante,Luiz Henrique,Brasile,4,4,0
+A,Attaccante,M. Mohebi,Iran,4,4,0
+A,Attaccante,Mousa Tamari,Giordania,4,4,0
+A,Attaccante,Nuno Da Costa,Capo Verde,4,4,0
+A,Attaccante,O. Watkins,Inghilterra,4,4,0
+A,Attaccante,Thiago Almada,Argentina,4,4,0
+A,Attaccante,Tomas Chory,Repubblica Ceca,4,4,0
+A,Attaccante,A. Mabil,Australia,3,3,0
+A,Attaccante,Benchimol,Capo Verde,3,3,0
+A,Attaccante,C. Bakambu,Repubblica Democratica del Congo,3,3,0
+A,Attaccante,F. Pierrot,Haiti,3,3,0
+A,Attaccante,Federico Viñas,Uruguay,3,3,0
+A,Attaccante,Gonzalo Plata,Ecuador,3,3,0
+A,Attaccante,H. Tabakovic,Bosnia ed Erzegovina,3,3,0
+A,Attaccante,Hee-chan Hwang,Corea del Sud,3,3,0
+A,Attaccante,Ismael Díaz,Panama,3,3,0
+A,Attaccante,J. Randall,Nuova Zelanda,3,3,0
+A,Attaccante,M. Beier,Germania,3,3,0
+A,Attaccante,M. Muntari,Qatar,3,3,0
+A,Attaccante,Mahmoud Al-Mardi,Giordania,3,3,0
+A,Attaccante,Marko Farji,Iraq,3,3,0
+A,Attaccante,Matías Fernández-Pardo,Belgio,3,3,0
+A,Attaccante,Prince Adu,Ghana,3,3,0
+A,Attaccante,R. Mofokeng,Sudafrica,3,3,0
+A,Attaccante,Roberto Alvarado,Messico,3,3,0
+A,Attaccante,S. Hansen,Curaçao,3,3,0
+A,Attaccante,S. Kalajdzic,Austria,3,3,0
+A,Attaccante,Salem Al-Dawsari,Arabia Saudita,3,3,0
+A,Attaccante,Simon Banza,Repubblica Democratica del Congo,3,3,0
+A,Attaccante,Y. Akgün,Turchia,3,3,0
+A,Attaccante,Zeki Amdouni,Svizzera,3,3,0
+A,Attaccante,A. Qasem,Iraq,2,2,0
+A,Attaccante,A. Schjelderup,Norvegia,2,2,0
+A,Attaccante,B. Thomas-Asante,Ghana,2,2,0
+A,Attaccante,B. Waine,Nuova Zelanda,2,2,0
+A,Attaccante,Bamba Dieng,Senegal,2,2,0
+A,Attaccante,Cecilio Waterman,Panama,2,2,0
+A,Attaccante,Cedric Itten,Svizzera,2,2,0
+A,Attaccante,D. Gül,Turchia,2,2,0
+A,Attaccante,Dailon Livramento,Capo Verde,2,2,0
+A,Attaccante,Dennis Eckert Ayensa,Iran,2,2,0
+A,Attaccante,E. Guessand,Costa d'Avorio,2,2,0
+A,Attaccante,F. Ghedjemis,Algeria,2,2,0
+A,Attaccante,Fiston Mayele,Repubblica Democratica del Congo,2,2,0
+A,Attaccante,G. Caballero,Paraguay,2,2,0
+A,Attaccante,G. Hirst,Scozia,2,2,0
+A,Attaccante,H. Wright,Stati Uniti,2,2,0
+A,Attaccante,Hamza Abdelkarim,Egitto,2,2,0
+A,Attaccante,I. Matanovic,Croazia,2,2,0
+A,Attaccante,I. Toney,Inghilterra,2,2,0
+A,Attaccante,Jhon Córdoba,Colombia,2,2,0
+A,Attaccante,Josué Casimir,Haiti,2,2,0
+A,Attaccante,Jovane Cabral,Capo Verde,2,2,0
+A,Attaccante,Julián Quiñones,Messico,2,2,0
+A,Attaccante,K. Goto,Giappone,2,2,0
+A,Attaccante,Khalid Al-Ghannam,Arabia Saudita,2,2,0
+A,Attaccante,L. Shankland,Scozia,2,2,0
+A,Attaccante,M. Toure,Australia,2,2,0
+A,Attaccante,N. Pépé,Costa d'Avorio,2,2,0
+A,Attaccante,N. Velupillay,Australia,2,2,0
+A,Attaccante,S. Tounekti,Tunisia,2,2,0
+A,Attaccante,T. Oluwaseyi,Canada,2,2,0
+A,Attaccante,Víctor Muñoz,Spagna,2,2,0
+A,Attaccante,Willy Semedo,Capo Verde,2,2,0
+A,Attaccante,Wout Weghorst,Paesi Bassi,2,2,0
+A,Attaccante,A. Al-Hamadi,Iraq,1,1,0
+A,Attaccante,A. Alipour,Iran,1,1,0
+A,Attaccante,A. Amaimouni-Echghouyab,Marocco,1,1,0
+A,Attaccante,A. Bernhardsson,Svezia,1,1,0
+A,Attaccante,A. Hosseinzadeh,Iran,1,1,0
+A,Attaccante,A. Londoño,Panama,1,1,0
+A,Attaccante,Abdullah Al-Hamdan,Arabia Saudita,1,1,0
+A,Attaccante,Adil Boulbina,Algeria,1,1,0
+A,Attaccante,Ahmed Al Ganehi,Qatar,1,1,0
+A,Attaccante,Alan Minda,Ecuador,1,1,0
+A,Attaccante,Alexis Vega,Messico,1,1,0
+A,Attaccante,Ali Azaizeh,Giordania,1,1,0
+A,Attaccante,Ali Olwan,Giordania,1,1,0
+A,Attaccante,Ali Yousif,Iraq,1,1,0
+A,Attaccante,Almoez Ali,Qatar,1,1,0
+A,Attaccante,Andrés Gómez,Colombia,1,1,0
+A,Attaccante,Armando González,Messico,1,1,0
+A,Attaccante,Azizbek Amanov,Uzbekistan,1,1,0
+A,Attaccante,Brian Rodríguez,Uruguay,1,1,0
+A,Attaccante,Cherif Ndiaye,Senegal,1,1,0
+A,Attaccante,César Huerta,Messico,1,1,0
+A,Attaccante,D. Khamdamov,Uzbekistan,1,1,0
+A,Attaccante,D. Nazon,Haiti,1,1,0
+A,Attaccante,E. Makgopa,Sudafrica,1,1,0
+A,Attaccante,G. Martínez Ayala,Messico,1,1,0
+A,Attaccante,G. Nilsson,Svezia,1,1,0
+A,Attaccante,Gabriel Ávalos,Paraguay,1,1,0
+A,Attaccante,Gervane Kastaneer,Curaçao,1,1,0
+A,Attaccante,Gue-sung Cho,Corea del Sud,1,1,0
+A,Attaccante,H. Mastouri,Tunisia,1,1,0
+A,Attaccante,I. Adel,Egitto,1,1,0
+A,Attaccante,I. Rayners,Sudafrica,1,1,0
+A,Attaccante,I. Sergeev,Uzbekistan,1,1,0
+A,Attaccante,Isidro Pitta,Paraguay,1,1,0
+A,Attaccante,J. Kuchta,Repubblica Ceca,1,1,0
+A,Attaccante,J. Leweling,Germania,1,1,0
+A,Attaccante,J. Masharipov,Uzbekistan,1,1,0
+A,Attaccante,Jacob Shaffelburg,Canada,1,1,0
+A,Attaccante,Jeremy Arévalo,Ecuador,1,1,0
+A,Attaccante,Ji-sung Eom,Corea del Sud,1,1,0
+A,Attaccante,Jordy Caicedo,Ecuador,1,1,0
+A,Attaccante,José Manuel López,Argentina,1,1,0
+A,Attaccante,Jovo Lukic,Bosnia ed Erzegovina,1,1,0
+A,Attaccante,K. Barbarouses,Nuova Zelanda,1,1,0
+A,Attaccante,K. Ogawa,Giappone,1,1,0
+A,Attaccante,K. Shiogai,Giappone,1,1,0
+A,Attaccante,Kevin Rodríguez,Ecuador,1,1,0
+A,Attaccante,L. Millar,Canada,1,1,0
+A,Attaccante,M. Chytil,Repubblica Ceca,1,1,0
+A,Attaccante,M. Flores,Canada,1,1,0
+A,Attaccante,Mohanad Ali,Iraq,1,1,0
+A,Attaccante,Nadhir Benbouali,Algeria,1,1,0
+A,Attaccante,O. Aydın,Turchia,1,1,0
+A,Attaccante,O. Diakité,Costa d'Avorio,1,1,0
+A,Attaccante,O. Urunov,Uzbekistan,1,1,0
+A,Attaccante,Odeh Fakhouri,Giordania,1,1,0
+A,Attaccante,P. Musa,Croazia,1,1,0
+A,Attaccante,P. Wimmer,Austria,1,1,0
+A,Attaccante,R. Elloumi,Tunisia,1,1,0
+A,Attaccante,R. Stewart,Scozia,1,1,0
+A,Attaccante,Rayan,Brasile,1,1,0
+A,Attaccante,Rodrigo Aguirre,Uruguay,1,1,0
+A,Attaccante,Ryan Mendes,Capo Verde,1,1,0
+A,Attaccante,S. Moghanlou,Iran,1,1,0
+A,Attaccante,S. Rahimi,Marocco,1,1,0
+A,Attaccante,Saleh Al-Shehri,Arabia Saudita,1,1,0
+A,Attaccante,Samed Bazdar,Bosnia ed Erzegovina,1,1,0
+A,Attaccante,Shararh,Giordania,1,1,0
+A,Attaccante,Sultan Mandash,Arabia Saudita,1,1,0
+A,Attaccante,T. Maseko,Sudafrica,1,1,0
+A,Attaccante,T. Yengi,Australia,1,1,0
+A,Attaccante,Taha Ali,Svezia,1,1,0
+A,Attaccante,Tomás Rodríguez,Panama,1,1,0
+A,Attaccante,Y. Suzuki,Giappone,1,1,0
+A,Attaccante,Yassin Fortuné,Haiti,1,1,0
+A,Attaccante,Yusuf Abdurisag,Qatar,1,1,0
+A,Attaccante,Álex Arce,Paraguay,1,1,0
