@@ -8,7 +8,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, Json } from '@/types/database.types'
-import { fetchTeamSquad } from './squad'
+import { fetchTeamSquad, fetchTeamCoach } from './squad'
 import { positionIdToFMRole } from './positions'
 import type { ParsedFixture, SMFixture } from './types'
 
@@ -304,6 +304,33 @@ export async function refreshFMSquads(
       }
     } catch (e) {
       errors.push(`team ${team.name}: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+
+  // Coach upsert — best-effort per team
+  for (const team of teams ?? []) {
+    if (team.sportmonks_team_id == null) continue
+    try {
+      const coach = await fetchTeamCoach(team.sportmonks_team_id)
+      if (!coach) continue
+      const { data: existing } = await db
+        .from('fm_coach')
+        .select('id')
+        .eq('competition_id', competition_id)
+        .eq('national_team_id', team.id)
+        .maybeSingle()
+      if (existing) {
+        await db.from('fm_coach').update({ name: coach.name, sportmonks_coach_id: coach.id }).eq('id', existing.id)
+      } else {
+        await db.from('fm_coach').insert({
+          competition_id,
+          national_team_id: team.id,
+          name: coach.name,
+          sportmonks_coach_id: coach.id,
+        })
+      }
+    } catch {
+      // coach endpoint may be unavailable on some plan tiers — skip silently
     }
   }
 
