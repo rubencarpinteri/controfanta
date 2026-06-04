@@ -57,7 +57,7 @@ export default async function RoseNazionaliPage({
         <div>
           <h2 className="text-[16px] font-semibold text-ink-1">Rose Nazionali</h2>
           <p className="mt-0.5 text-[12px] text-ink-4">
-            Tutte le squadre del Mondiale divise per girone ufficiale. Tocca una nazionale per vedere i convocati.
+            Tutte le squadre del Mondiale divise per girone ufficiale. Tocca una nazionale per vedere i convocati e le quotazioni in crediti.
           </p>
         </div>
         <div className="flex items-center gap-4 text-[11px] text-ink-4">
@@ -137,7 +137,10 @@ export default async function RoseNazionaliPage({
                                   <span className="w-6 shrink-0 text-right tabular-nums text-[10px] text-ink-5">
                                     {p.shirt_number ?? '—'}
                                   </span>
-                                  <span className="truncate">{p.name}</span>
+                                  <span className="min-w-0 flex-1 truncate">{p.name}</span>
+                                  <span className="shrink-0 tabular-nums text-[11px] font-semibold text-ink-3">
+                                    {p.base_price} <span className="text-[9px] font-normal text-ink-5">cr</span>
+                                  </span>
                                 </li>
                               ))}
                             </ul>
