@@ -95,12 +95,21 @@ export default async function RosaPage({ params }: { params: Promise<{ id: strin
     getFMCoaches(ctx.competition.id),
   ])
 
-  // Load price map for active phase
-  const { data: priceRows } = await supabase
-    .from('fm_phase_player_price')
-    .select('player_id, price')
-    .eq('phase_id', activePhase.id)
-  const priceMap = new Map<string, number>((priceRows ?? []).map((r) => [r.player_id, r.price]))
+  // Load price map for active phase. PostgREST caps each response at 1000
+  // rows (db-max-rows) and the WC pool is ~1250 players, so we MUST page
+  // through or alphabetically-late nations silently lose their prices.
+  const PRICE_PAGE = 1000
+  const priceMap = new Map<string, number>()
+  for (let from = 0; ; from += PRICE_PAGE) {
+    const { data: priceRows } = await supabase
+      .from('fm_phase_player_price')
+      .select('player_id, price')
+      .eq('phase_id', activePhase.id)
+      .range(from, from + PRICE_PAGE - 1)
+    const batch = priceRows ?? []
+    for (const r of batch) priceMap.set(r.player_id, r.price)
+    if (batch.length < PRICE_PAGE) break
+  }
 
   return (
     <div className="space-y-4">

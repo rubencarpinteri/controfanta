@@ -15,14 +15,22 @@ export default async function PricesPage({ params }: { params: Promise<{ id: str
   ])
 
   const supabase = await createClient()
-  const { data: priceRows } = await supabase
-    .from('fm_phase_player_price')
-    .select('phase_id, player_id, price, source')
-    .in('phase_id', phases.map((p) => p.id))
-
-  const priceMap = new Map<string, number>(
-    (priceRows ?? []).map((r) => [`${r.phase_id}:${r.player_id}`, r.price])
-  )
+  // PostgREST caps each response at 1000 rows. Across all phases this table
+  // holds ~7500 rows (≈1250 players × 6 phases), so we MUST page through or
+  // most prices silently vanish from the grid. Fetch in 1000-row chunks.
+  const PRICE_PAGE = 1000
+  const phaseIds = phases.map((p) => p.id)
+  const priceMap = new Map<string, number>()
+  for (let from = 0; ; from += PRICE_PAGE) {
+    const { data: priceRows } = await supabase
+      .from('fm_phase_player_price')
+      .select('phase_id, player_id, price, source')
+      .in('phase_id', phaseIds)
+      .range(from, from + PRICE_PAGE - 1)
+    const batch = priceRows ?? []
+    for (const r of batch) priceMap.set(`${r.phase_id}:${r.player_id}`, r.price)
+    if (batch.length < PRICE_PAGE) break
+  }
 
   const pricedCounts = phases.map((phase) => ({
     phaseId: phase.id,
