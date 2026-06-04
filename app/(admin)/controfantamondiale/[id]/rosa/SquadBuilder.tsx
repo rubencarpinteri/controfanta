@@ -206,15 +206,25 @@ export function SquadBuilder({
       <div className="rounded-xl border border-hairline bg-glass-1 p-3">
         <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-ink-4">Allenatore</p>
         {isReadOnly ? (
-          myCoach ? (
-            <div className="flex items-center gap-2.5">
-              <TeamCrest name={myCoach.fm_national_team.name} logoUrl={myCoach.fm_national_team.logo_url} flagUrl={myCoach.fm_national_team.flag_url} fifaCode={myCoach.fm_national_team.fifa_code} size={18} />
-              <span className="text-[13px] font-medium text-ink-1">{myCoach.name}</span>
-              <span className="text-[11px] text-ink-4">{myCoach.fm_national_team.name}</span>
-            </div>
-          ) : (
-            <p className="text-[12px] text-ink-5">Nessun allenatore selezionato</p>
-          )
+          <div className="max-h-48 overflow-y-auto divide-y divide-hairline rounded-lg border border-hairline">
+            {coaches.map((c) => {
+              const isSelected = c.id === coachId
+              return (
+                <div
+                  key={c.id}
+                  className={`flex items-center gap-2.5 px-3 py-2 ${isSelected ? 'bg-indigo-500/10' : ''}`}
+                >
+                  <TeamCrest name={c.fm_national_team.name} logoUrl={c.fm_national_team.logo_url} flagUrl={c.fm_national_team.flag_url} fifaCode={c.fm_national_team.fifa_code} size={16} />
+                  <span className={`flex-1 text-[12px] font-medium truncate ${isSelected ? 'text-indigo-400' : 'text-ink-1'}`}>{c.name}</span>
+                  <span className="text-[11px] text-ink-5 shrink-0">{c.fm_national_team.name}</span>
+                  {isSelected && <span className="text-[10px] font-semibold text-indigo-400 shrink-0">✓</span>}
+                </div>
+              )
+            })}
+            {coaches.length === 0 && (
+              <p className="px-3 py-4 text-center text-[12px] text-ink-5">Nessun allenatore disponibile</p>
+            )}
+          </div>
         ) : (
           <select
             value={coachId ?? ''}
