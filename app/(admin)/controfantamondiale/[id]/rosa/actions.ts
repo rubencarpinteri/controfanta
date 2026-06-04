@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { loadFMUnifiedConfig } from '@/lib/fantamondiale/loadUnifiedConfig'
 import { resolvePhaseBudget } from '@/lib/fantamondiale/budget'
 import type { FMPlayerRole } from '@/domain/fantamondiale/config/schema'
+import { isUuid } from '@/lib/slug'
 
 const ROLE_LABEL: Record<FMPlayerRole, string> = {
   P: 'portieri',
@@ -13,13 +14,21 @@ const ROLE_LABEL: Record<FMPlayerRole, string> = {
   A: 'attaccanti',
 }
 
-async function getTeamId(competitionId: string, userId: string): Promise<string | null> {
+async function getTeamId(legaCompRef: string, userId: string): Promise<string | null> {
   const supabase = await createClient()
+  // legaCompRef is the URL param — either a UUID or a slug. Resolve to the
+  // fm_league_competition row first so we get the UUID primary key.
+  const { data: lc } = await supabase
+    .from('fm_league_competition')
+    .select('id')
+    .eq(isUuid(legaCompRef) ? 'id' : 'slug', legaCompRef)
+    .maybeSingle()
+  if (!lc) return null
   const { data } = await supabase
     .from('fm_fantasy_team')
     .select('id')
-    .eq('competition_id', competitionId)
-    .eq('user_id', userId)
+    .eq('league_competition_id', lc.id)
+    .eq('manager_id', userId)
     .maybeSingle()
   return data?.id ?? null
 }
@@ -167,12 +176,14 @@ export async function setSquadCoachAction(fd: FormData) {
 
   const { data: phase } = await supabase
     .from('fm_phase')
-    .select('status')
+    .select('status, competition_id, budget_config')
     .eq('id', phaseId)
     .single()
   if (!phase || phase.status !== 'open') throw new Error('La fase non è aperta per la selezione della rosa')
 
-  const squadId = await ensureSquad(phaseId, fantasyTeamId, 500)
+  const config = await loadFMUnifiedConfig(supabase, phase.competition_id)
+  const budgetTotal = resolvePhaseBudget(phase.budget_config, config.squad.budget_default)
+  const squadId = await ensureSquad(phaseId, fantasyTeamId, budgetTotal)
   await supabase.from('fm_phase_squad').update({ coach_id: coachId }).eq('id', squadId)
 
   revalidatePath(`/controfantamondiale/${competitionId}/rosa`)
