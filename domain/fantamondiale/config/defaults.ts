@@ -55,7 +55,7 @@ export const DEFAULT_FM_CONFIG: FMCompetitionConfig = {
     pool_size: 25,
     starters: 11,
     bench: 14,
-    budget_default: 500,
+    budget_default: 100,
     role_quotas: { P: 3, D: 8, C: 8, A: 6 },
   },
 
