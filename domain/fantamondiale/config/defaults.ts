@@ -29,14 +29,14 @@ const DEFAULT_ENGINE: FMEngineConfig = {
   base_score:   6.0,
 }
 
-// 5 ownership bands. Larger penalty = more popular pick.
-// Top cap 50%, smooth quartile edges (10/25/50/75/100).
+// 6 ownership bands. Top cap 65%. More granular at high ownership.
 const DEFAULT_POPULARITY_BRACKETS: FMBracket[] = [
   { min_pct:  0, max_pct:  10, pct:  0 },
   { min_pct: 11, max_pct:  25, pct: 10 },
-  { min_pct: 26, max_pct:  50, pct: 25 },
-  { min_pct: 51, max_pct:  75, pct: 40 },
-  { min_pct: 76, max_pct: 100, pct: 50 },
+  { min_pct: 26, max_pct:  45, pct: 25 },
+  { min_pct: 46, max_pct:  65, pct: 40 },
+  { min_pct: 66, max_pct:  80, pct: 55 },
+  { min_pct: 81, max_pct: 100, pct: 65 },
 ]
 
 // Inverse: rarer MVP picks get bigger bonuses. Top cap 50%, same edges.
