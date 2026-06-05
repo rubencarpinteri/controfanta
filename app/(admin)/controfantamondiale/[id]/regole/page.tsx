@@ -88,6 +88,10 @@ export default async function RegolePage({ params }: { params: Promise<{ id: str
                 : `Titolare sotto ${config.substitution.min_minutes}′ giocati`}
             </span>
           </div>
+          <p className="text-[11px] text-ink-5 leading-relaxed">
+            Un titolare che segna, fa assist o incide comunque (gol, assist, cartellini, rigori…) viene
+            <span className="font-semibold text-ink-3"> sempre contato</span>, anche se gioca pochi minuti: il suo contributo non si perde mai.
+          </p>
         </div>
       </Section>
 

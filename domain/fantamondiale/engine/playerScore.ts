@@ -45,7 +45,7 @@ function deriveSlope(engine: FMEngineConfig): number {
   return (engine.voto_max - engine.pivot_vote) / denom
 }
 
-function hasDecisiveEvent(stats: FMEnginePlayerInput['stats']): boolean {
+export function hasDecisiveEvent(stats: FMEnginePlayerInput['stats']): boolean {
   return (
     stats.goals           > 0 ||
     stats.assists         > 0 ||

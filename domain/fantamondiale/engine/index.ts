@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, Json } from '@/types/database.types'
 import { fmCompetitionConfigSchema } from '@/domain/fantamondiale/config/schema'
 import { loadFMUnifiedConfig } from '@/lib/fantamondiale/loadUnifiedConfig'
-import { scorePlayerRaw, finalizePlayerForLega } from './playerScore'
+import { scorePlayerRaw, finalizePlayerForLega, hasDecisiveEvent } from './playerScore'
 import {
   applySubstitutions,
   type FMRole,
@@ -224,14 +224,40 @@ export async function runRoundEngine(roundId: string, supabase: Supabase): Promi
   // the final per-player scores below.
   const sub = config.substitution
 
+  // A starter counts as "played" (kept, not substituted) when he has a usable
+  // score AND either reached the minute threshold OR made a decisive
+  // contribution. The decisive-event clause is what protects a player who, say,
+  // scores at minute 2 and is subbed off injured at minute 11 — his goal must
+  // always count, regardless of the minute threshold.
   const didPlay = (playerId: string, matchId: string): boolean => {
+    const raw = rawByKey.get(`${playerId}:${matchId}`)
+    const hasUsableScore = !!raw && raw.voto_base !== null
+
     if (sub.trigger === 'no_rating') {
-      const raw = rawByKey.get(`${playerId}:${matchId}`)
-      return !!raw && raw.voto_base !== null
+      // Sub only on a true s.v. (no usable voto at all).
+      return hasUsableScore
     }
-    // 'min_minutes'
+
+    // 'min_minutes': must have a usable score to contribute at all, then keep
+    // him if he played enough OR he had a decisive event (goal/assist/card…).
+    if (!hasUsableScore) return false
     const stats = statsByKey.get(`${playerId}:${matchId}`)
-    return !!stats && stats.minutes_played >= sub.min_minutes
+    if (!stats) return false
+    if (stats.minutes_played >= sub.min_minutes) return true
+    return hasDecisiveEvent({
+      minutes_played: stats.minutes_played,
+      rating: stats.rating != null ? Number(stats.rating) : null,
+      goals: stats.goals,
+      penalties_scored: stats.penalties_scored ?? 0,
+      assists: stats.assists,
+      yellow_cards: stats.yellow_cards,
+      red_cards: stats.red_cards,
+      penalties_saved: stats.penalties_saved,
+      penalties_missed: stats.penalties_missed,
+      own_goals: stats.own_goals,
+      goals_conceded: stats.goals_conceded,
+      is_mvp: stats.is_mvp,
+    })
   }
 
   const fieldedByTeam = new Map<string, FieldedPlayer[]>()
