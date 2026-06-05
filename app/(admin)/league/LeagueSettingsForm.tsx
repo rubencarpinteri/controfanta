@@ -30,11 +30,15 @@ function SubmitButton() {
   )
 }
 
-function ScopeBanner({ children }: { children: React.ReactNode }) {
+function ScopePill({ color, children }: { color: 'green' | 'amber'; children: React.ReactNode }) {
+  const cls =
+    color === 'green'
+      ? 'bg-emerald-500/10 text-emerald-400'
+      : 'bg-amber-500/10 text-amber-400'
   return (
-    <p className="text-[11px] uppercase tracking-widest text-ink-4 font-semibold">
+    <span className={`inline-flex items-center rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${cls}`}>
       {children}
-    </p>
+    </span>
   )
 }
 
@@ -52,7 +56,7 @@ export function LeagueSettingsForm({ league }: { league: League }) {
           description="Nome, fuso orario e arrotondamento voti. Valgono per ogni competizione."
         />
         <CardContent className="space-y-4">
-          <ScopeBanner>Ambito: tutta la lega</ScopeBanner>
+          <ScopePill color="green">Tutta la lega</ScopePill>
 
           <Input
             label="Nome lega"
@@ -88,7 +92,7 @@ export function LeagueSettingsForm({ league }: { league: League }) {
           description="Etichetta stagione e budget del draft Serie A, condiviso tra Campionato, Battle Royale e Coppa. ControFanta Mondiale non usa questi valori."
         />
         <CardContent className="space-y-4">
-          <ScopeBanner>Ambito: tutte le competizioni Serie A (Campionato, Battle Royale, Coppa)</ScopeBanner>
+          <ScopePill color="amber">Solo Serie A</ScopePill>
 
           <Input
             label="Etichetta stagione"

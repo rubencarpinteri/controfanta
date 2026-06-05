@@ -2,6 +2,7 @@ import { requireLeagueAdmin } from '@/lib/league'
 import { createClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { LeagueSettingsForm } from './LeagueSettingsForm'
+import { EngineConfigForm } from '../regole-di-gioco/EngineConfigForm'
 
 export const metadata = { title: 'Impostazioni Lega' }
 
@@ -17,18 +18,23 @@ const FM_STATUS_COLOR: Record<string, string> = {
   completed: 'text-indigo-300 bg-indigo-500/10',
 }
 
+function ScopePill({ color, children }: { color: 'green' | 'indigo'; children: React.ReactNode }) {
+  const cls =
+    color === 'green'
+      ? 'bg-emerald-500/10 text-emerald-400'
+      : 'bg-indigo-500/10 text-indigo-300'
+  return (
+    <span className={`inline-flex items-center rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${cls}`}>
+      {children}
+    </span>
+  )
+}
+
 export default async function LeagueSettingsPage() {
   const ctx = await requireLeagueAdmin()
   const supabase = await createClient()
 
-  // All competitions across both sides: Serie A (campionato/battle_royale/coppa)
-  // and ControFanta Mondiale. Used to render the per-competition setup links so
-  // every active competition appears explicitly in Impostazioni.
-  //
-  // FM is listed via this Lega's INSTANCES (fm_league_competition), not the
-  // global templates — the setup route resolves the URL [id] as the Lega
-  // instance id, so linking the template id would dead-end on /dashboard.
-  const [{ data: serieAComps }, { data: fmInstances }] = await Promise.all([
+  const [{ data: serieAComps }, { data: fmInstances }, { data: engineConfig }] = await Promise.all([
     supabase
       .from('competitions')
       .select('id, slug, name, type, status, season')
@@ -39,9 +45,13 @@ export default async function LeagueSettingsPage() {
       .select('id, slug, fm_competition(name, edition, status)')
       .eq('league_id', ctx.league.id)
       .order('created_at', { ascending: true }),
+    supabase
+      .from('league_engine_config')
+      .select('*')
+      .eq('league_id', ctx.league.id)
+      .maybeSingle(),
   ])
 
-  // Normalize the embedded template join (PostgREST may type it as array).
   const fmComps = (fmInstances ?? []).map((row) => {
     const tpl = Array.isArray(row.fm_competition) ? row.fm_competition[0] : row.fm_competition
     return {
@@ -53,45 +63,61 @@ export default async function LeagueSettingsPage() {
   })
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
         <h1 className="text-xl font-bold text-ink-1">Impostazioni</h1>
         <p className="mt-0.5 text-sm text-ink-3">
-          Identità della lega, regole di gioco condivise, e impostazioni specifiche di ogni
-          competizione. Ogni sezione indica chiaramente il suo ambito.
+          Tutto in un posto. Il badge su ogni sezione indica a che livello si applica la modifica.
         </p>
       </div>
 
-      {/* ── Identità + Serie A draft ── */}
+      {/* ── Identità lega + Draft Serie A ───────────────────────────────── */}
       <LeagueSettingsForm league={ctx.league} />
 
-      {/* ── Regole di gioco ── */}
+      {/* ── Motore di calcolo ────────────────────────────────────────────── */}
       <Card>
         <CardHeader
-          title="Regole di gioco"
-          description="Motore di calcolo, bonus/malus, soglie gol, popolarità, MVP. Valide per OGNI competizione (Campionato, Battle Royale, Coppa, ControFanta Mondiale)."
+          title="Motore di calcolo"
+          description="Pivot, bonus/malus, popolarità, MVP, soglie gol e punti W/D/L."
+          action={<ScopePill color="green">Tutta la lega</ScopePill>}
         />
         <CardContent>
-          <a
-            href="/regole-di-gioco"
-            className="flex items-center justify-between rounded-lg border border-indigo-500/30 bg-indigo-500/5 px-4 py-3 transition-colors hover:bg-indigo-500/10"
-          >
-            <div>
-              <p className="text-[13px] font-semibold text-indigo-300">Apri Regole di gioco →</p>
-              <p className="mt-0.5 text-[12px] text-ink-3">
-                Pivot, bonus/malus, soglie gol, smussamento, punti W/D/L, fasce popolarità e MVP.
-              </p>
-            </div>
-            <span className="text-indigo-300">→</span>
-          </a>
+          <EngineConfigForm current={engineConfig ?? null} />
         </CardContent>
       </Card>
 
-      {/* ── Competizioni: una riga per ogni competizione attiva ── */}
+      {/* ── Regole speciali ──────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader
+          title="Regole speciali"
+          description="Dinamiche di gioco votate dalla lega. Non configurabili — sempre attive."
+          action={<ScopePill color="green">Tutta la lega</ScopePill>}
+        />
+        <CardContent>
+          <div className="rounded-lg border border-hairline bg-glass-1 px-4 py-3">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[13px] font-semibold text-ink-1">Immunità</p>
+                <p className="mt-1 text-[12px] text-ink-3 leading-relaxed max-w-prose">
+                  Se un giocatore è presente in <strong className="text-ink-2">una sola formazione effettiva</strong> della lega durante una giornata
+                  (titolare che ha giocato, oppure riserva entrata in campo), il malus per cartellino giallo e rosso viene annullato.
+                  Il cartellino appare nel dettaglio del punteggio come <span className="font-mono text-[11px]">Giallo (Immunità)</span> a 0 punti.
+                </p>
+              </div>
+              <span className="shrink-0 rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-emerald-500/10 text-emerald-400">
+                Attiva
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Competizioni ─────────────────────────────────────────────────── */}
       <Card>
         <CardHeader
           title="Competizioni"
-          description="Ogni competizione ha il proprio Setup: rosa, formazioni, struttura del calendario. Le regole di calcolo restano globali (vedi sopra)."
+          description="Rosa, formazioni, fasi e budget. Le regole di calcolo restano globali."
+          action={<ScopePill color="indigo">Per competizione</ScopePill>}
         />
         <CardContent>
           <div className="space-y-2">
@@ -115,7 +141,6 @@ export default async function LeagueSettingsPage() {
                      : c.type === 'battle_royale' ? 'Battle Royale (tutti contro tutti)'
                      : 'Coppa (a eliminazione)'}
                     {c.season ? ` · ${c.season}` : ''}
-                    {' · '}usa il draft settimanale Serie A configurato sopra
                   </p>
                 </div>
                 <span className="text-ink-4">→</span>
@@ -138,8 +163,6 @@ export default async function LeagueSettingsPage() {
                   </div>
                   <p className="mt-0.5 text-[12px] text-ink-3">
                     Edizione {c.edition} · Setup rosa, formazioni e matrice allenatore.
-                    Rosa rigenerata a ogni nuova Fase (es. Mondiale: Gironi → Ottavi → Quarti →
-                    Semifinali → Finale).
                   </p>
                 </div>
                 <span className="text-ink-4">→</span>
@@ -149,64 +172,33 @@ export default async function LeagueSettingsPage() {
         </CardContent>
       </Card>
 
-      {/* ── Sezioni operative ── */}
+      {/* ── Gestione operativa ───────────────────────────────────────────── */}
       <Card>
         <CardHeader
-          title="Altre sezioni"
-          description="Gestione membri, ruoli ambigui, rose Serie A, formazioni, monitoring."
+          title="Gestione"
+          description="Membri, ruoli ambigui, rose Serie A, formazioni, monitoring cron."
         />
         <CardContent>
           <nav className="space-y-1">
-            <a
-              href="/league/members"
-              className="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-glass-1"
-            >
-              <div>
-                <p className="font-medium text-ink-1">Membri e inviti</p>
-                <p className="text-xs text-ink-3">Invita manager, cambia ruoli, gestisci le squadre</p>
-              </div>
-              <span className="text-ink-4">→</span>
-            </a>
-            <a
-              href="/league/role-rules"
-              className="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-glass-1"
-            >
-              <div>
-                <p className="font-medium text-ink-1">Regole ruoli ambigui</p>
-                <p className="text-xs text-ink-3">Configura E → DEF o MID e altri ruoli ambigui (Serie A)</p>
-              </div>
-              <span className="text-ink-4">→</span>
-            </a>
-            <a
-              href="/formations"
-              className="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-glass-1"
-            >
-              <div>
-                <p className="font-medium text-ink-1">Formazioni valide</p>
-                <p className="text-xs text-ink-3">Gestisci formazioni e slot Mantra (Serie A)</p>
-              </div>
-              <span className="text-ink-4">→</span>
-            </a>
-            <a
-              href="/roster"
-              className="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-glass-1"
-            >
-              <div>
-                <p className="font-medium text-ink-1">Gestione rose</p>
-                <p className="text-xs text-ink-3">Visualizza e modifica le rose Serie A</p>
-              </div>
-              <span className="text-ink-4">→</span>
-            </a>
-            <a
-              href="/league/cron-status"
-              className="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-glass-1"
-            >
-              <div>
-                <p className="font-medium text-ink-1">Stato cron SportMonks</p>
-                <p className="text-xs text-ink-3">Ultimo tick, errori 24h, cronologia run</p>
-              </div>
-              <span className="text-ink-4">→</span>
-            </a>
+            {[
+              { href: '/league/members',    label: 'Membri e inviti',         sub: 'Invita manager, cambia ruoli, gestisci le squadre' },
+              { href: '/league/role-rules', label: 'Regole ruoli ambigui',    sub: 'Configura E → DEF o MID e altri ruoli ambigui (Serie A)' },
+              { href: '/formations',        label: 'Formazioni valide',       sub: 'Gestisci formazioni e slot Mantra (Serie A)' },
+              { href: '/roster',            label: 'Gestione rose',           sub: 'Visualizza e modifica le rose Serie A' },
+              { href: '/league/cron-status',label: 'Stato cron SportMonks',  sub: 'Ultimo tick, errori 24h, cronologia run' },
+            ].map(({ href, label, sub }) => (
+              <a
+                key={href}
+                href={href}
+                className="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-glass-1"
+              >
+                <div>
+                  <p className="font-medium text-ink-1">{label}</p>
+                  <p className="text-xs text-ink-3">{sub}</p>
+                </div>
+                <span className="text-ink-4">→</span>
+              </a>
+            ))}
           </nav>
         </CardContent>
       </Card>
