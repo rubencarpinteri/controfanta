@@ -95,6 +95,16 @@ export default async function RosaPage({ params }: { params: Promise<{ id: strin
     getFMCoaches(ctx.competition.id),
   ])
 
+  // Competition-level frozen coach tiers (shown next to each coach so managers
+  // can weigh favoredness when picking an allenatore).
+  const { data: tierRows } = await supabase
+    .from('fm_competition_coach_tier')
+    .select('coach_id, tier')
+    .eq('competition_id', ctx.competition.id)
+  const coachTiers: Record<string, string> = Object.fromEntries(
+    (tierRows ?? []).map((r) => [r.coach_id, r.tier])
+  )
+
   // Load price map for active phase. PostgREST caps each response at 1000
   // rows (db-max-rows) and the WC pool is ~1250 players, so we MUST page
   // through or alphabetically-late nations silently lose their prices.
@@ -148,6 +158,7 @@ export default async function RosaPage({ params }: { params: Promise<{ id: strin
         teams={teams}
         players={players}
         coaches={coaches}
+        coachTiers={coachTiers}
         priceMap={priceMap}
         selectedPlayerIds={squadPlayerIds}
         selectedCoachId={coachId}

@@ -27,12 +27,21 @@ type CoachWithTeam = FMCoach & {
   fm_national_team: Pick<FMNationalTeam, 'name' | 'fifa_code' | 'flag_emoji' | 'logo_url' | 'flag_url'>
 }
 
+// Frozen competition-level coach tiers (see Allenatori admin page).
+const TIER_BADGE: Record<string, { short: string; cls: string }> = {
+  tier_1: { short: 'T1', cls: 'text-indigo-400 bg-indigo-400/10' },
+  tier_2: { short: 'T2', cls: 'text-emerald-400 bg-emerald-400/10' },
+  tier_3: { short: 'T3', cls: 'text-amber-400 bg-amber-400/10' },
+  tier_4: { short: 'T4', cls: 'text-rose-400 bg-rose-400/10' },
+}
+
 interface Props {
   competitionId: string
   phase: FMPhase
   teams: FMNationalTeam[]
   players: PlayerWithTeam[]
   coaches: CoachWithTeam[]
+  coachTiers: Record<string, string>
   priceMap: Map<string, number>
   selectedPlayerIds: Set<string>
   selectedCoachId: string | null
@@ -50,6 +59,7 @@ export function SquadBuilder({
   teams,
   players,
   coaches,
+  coachTiers,
   priceMap,
   selectedPlayerIds: initialSelected,
   selectedCoachId: initialCoach,
@@ -209,6 +219,7 @@ export function SquadBuilder({
           <div className="max-h-48 overflow-y-auto divide-y divide-hairline rounded-lg border border-hairline">
             {coaches.map((c) => {
               const isSelected = c.id === coachId
+              const tier = TIER_BADGE[coachTiers[c.id] ?? '']
               return (
                 <div
                   key={c.id}
@@ -216,6 +227,9 @@ export function SquadBuilder({
                 >
                   <TeamCrest name={c.fm_national_team.name} logoUrl={c.fm_national_team.logo_url} flagUrl={c.fm_national_team.flag_url} fifaCode={c.fm_national_team.fifa_code} size={16} />
                   <span className={`flex-1 text-[12px] font-medium truncate ${isSelected ? 'text-indigo-400' : 'text-ink-1'}`}>{c.name}</span>
+                  {tier && (
+                    <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${tier.cls}`}>{tier.short}</span>
+                  )}
                   <span className="text-[11px] text-ink-5 shrink-0">{c.fm_national_team.name}</span>
                   {isSelected && <span className="text-[10px] font-semibold text-indigo-400 shrink-0">✓</span>}
                 </div>
@@ -233,11 +247,14 @@ export function SquadBuilder({
             className="w-full rounded-lg border border-hairline bg-glass-2 px-3 py-2 text-[13px] text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           >
             <option value="">— Nessun allenatore —</option>
-            {coaches.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} ({c.fm_national_team.name})
-              </option>
-            ))}
+            {coaches.map((c) => {
+              const tier = TIER_BADGE[coachTiers[c.id] ?? '']
+              return (
+                <option key={c.id} value={c.id}>
+                  {tier ? `[${tier.short}] ` : ''}{c.name} ({c.fm_national_team.name})
+                </option>
+              )
+            })}
           </select>
         )}
       </div>
@@ -357,6 +374,11 @@ export function SquadBuilder({
               <span className="w-5 shrink-0 text-center text-[10px] font-bold text-ink-4">CT</span>
               <TeamCrest name={myCoach.fm_national_team.name} logoUrl={myCoach.fm_national_team.logo_url} flagUrl={myCoach.fm_national_team.flag_url} fifaCode={myCoach.fm_national_team.fifa_code} size={18} />
               <span className="flex-1 text-[13px] font-medium text-ink-1">{myCoach.name}</span>
+              {TIER_BADGE[coachTiers[myCoach.id] ?? ''] && (
+                <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${TIER_BADGE[coachTiers[myCoach.id] ?? '']!.cls}`}>
+                  {TIER_BADGE[coachTiers[myCoach.id] ?? '']!.short}
+                </span>
+              )}
               <span className="text-[11px] text-ink-4">{myCoach.fm_national_team.name}</span>
             </div>
           )}
