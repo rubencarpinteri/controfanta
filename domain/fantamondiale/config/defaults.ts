@@ -19,6 +19,7 @@ import type {
   FMBracket,
   FMEngineConfig,
 } from './schema'
+import { DEFAULT_COACH_KNOCKOUT_MATRIX } from './schema'
 
 const DEFAULT_ENGINE: FMEngineConfig = {
   pivot_rating: 6.50,
@@ -103,6 +104,8 @@ export const DEFAULT_FM_CONFIG: FMCompetitionConfig = {
     tier_3: { win:  4, draw:  2, loss: -1 },
     tier_4: { win:  6, draw:  3, loss:  0 },
   },
+
+  coach_tier_knockout_matrix: DEFAULT_COACH_KNOCKOUT_MATRIX,
 
   tie_breakers: [
     'br_points',

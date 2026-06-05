@@ -216,7 +216,11 @@ export default async function RegolePage({ params }: { params: Promise<{ id: str
         </div>
       </Section>
 
-      <Section title="Allenatore — Matrice Tier × Risultato">
+      <Section title="Allenatore — Fase a Gironi (Tier × Risultato)">
+        <p className="mb-3 text-[11px] text-ink-5">
+          Ogni allenatore ha un Tier fisso per tutto il Mondiale, assegnato in base alla probabilità
+          di superare il girone. Nella fase a gironi il bonus/malus dipende solo dal proprio Tier.
+        </p>
         <div className="overflow-x-auto">
           <table className="w-full text-[12px]">
             <thead>
@@ -233,6 +237,56 @@ export default async function RegolePage({ params }: { params: Promise<{ id: str
                 return (
                   <tr key={tier}>
                     <td className="py-1.5 text-ink-2 font-medium">{tier.replace('_', ' ').toUpperCase()}</td>
+                    <td className="py-1.5 text-center tabular-nums text-emerald-400 font-semibold">
+                      {row.win >= 0 ? '+' : ''}{row.win}
+                    </td>
+                    <td className="py-1.5 text-center tabular-nums text-ink-3">
+                      {row.draw >= 0 ? '+' : ''}{row.draw}
+                    </td>
+                    <td className="py-1.5 text-center tabular-nums text-rose-400">
+                      {row.loss >= 0 ? '+' : ''}{row.loss}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Section>
+
+      <Section title="Allenatore — Fasi a Eliminazione (relativo all'avversario)">
+        <p className="mb-3 text-[11px] text-ink-5">
+          Dai sedicesimi in poi il bonus/malus dipende dal <strong>vantaggio</strong> =
+          Tier avversario − proprio Tier (Tier 1 = più forte). Favorito netto: poco per la
+          vittoria, molto da perdere. Sfavorito: tanto da guadagnare, niente da perdere.
+          Il pareggio vale in caso di qualificazione ai rigori.
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-[12px]">
+            <thead>
+              <tr className="border-b border-hairline">
+                <th className="pb-2 text-left text-ink-4 font-medium">Vantaggio</th>
+                <th className="pb-2 text-left text-ink-5 font-medium">Esempio</th>
+                <th className="pb-2 text-center text-emerald-400 font-medium">Vittoria</th>
+                <th className="pb-2 text-center text-ink-4 font-medium">Rigori</th>
+                <th className="pb-2 text-center text-rose-400 font-medium">Sconfitta</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-hairline">
+              {([
+                ['fav_pos3', '+3', 'T1 vs T4'],
+                ['fav_pos2', '+2', 'T1 vs T3'],
+                ['fav_pos1', '+1', 'T2 vs T3'],
+                ['fav_even', '0', 'Stesso Tier'],
+                ['fav_neg1', '−1', 'T3 vs T2'],
+                ['fav_neg2', '−2', 'T4 vs T2'],
+                ['fav_neg3', '−3', 'T4 vs T1'],
+              ] as const).map(([key, label, example]) => {
+                const row = config.coach_tier_knockout_matrix[key]
+                return (
+                  <tr key={key}>
+                    <td className="py-1.5 text-ink-2 font-medium tabular-nums">{label}</td>
+                    <td className="py-1.5 text-ink-4">{example}</td>
                     <td className="py-1.5 text-center tabular-nums text-emerald-400 font-semibold">
                       {row.win >= 0 ? '+' : ''}{row.win}
                     </td>

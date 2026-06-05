@@ -54,6 +54,16 @@ export async function runRoundEngine(roundId: string, supabase: Supabase): Promi
     .single()
   if (roundErr || !round) throw new Error(`Round not found: ${roundErr?.message}`)
 
+  // Phase kind decides coach scoring mode: group_stage → absolute tier
+  // matrix; any knockout round → opponent-relative favoredness matrix.
+  const { data: phase, error: phaseErr } = await supabase
+    .from('fm_phase')
+    .select('kind')
+    .eq('id', round.phase_id)
+    .single()
+  if (phaseErr || !phase) throw new Error(`Phase not found: ${phaseErr?.message}`)
+  const isKnockout = phase.kind !== 'group_stage'
+
   const composed = await loadFMUnifiedConfig(supabase, round.competition_id)
   const config = fmCompetitionConfigSchema.parse(composed)
 
@@ -128,12 +138,19 @@ export async function runRoundEngine(roundId: string, supabase: Supabase): Promi
   if (coachErr) throw new Error(`Coaches load failed: ${coachErr.message}`)
   const coachById = new Map((coaches ?? []).map((c) => [c.id, c]))
 
+  // Tiers are competition-level and frozen for the whole tournament.
+  // Load ALL of them (not just drafted coaches) — knockout scoring needs
+  // the opponent's tier, and the opponent may be undrafted.
   const { data: coachTiers, error: tierErr } = await supabase
-    .from('fm_phase_coach_tier')
-    .select('coach_id, tier')
-    .eq('phase_id', round.phase_id)
-    .in('coach_id', uniqueCoachIds)
+    .from('fm_competition_coach_tier')
+    .select('coach_id, tier, fm_coach(national_team_id)')
+    .eq('competition_id', round.competition_id)
   if (tierErr) throw new Error(`Coach tiers load failed: ${tierErr.message}`)
+  const tierByNationalTeamId = new Map<string, FMEngineCoachInput['tier']>()
+  for (const ct of coachTiers ?? []) {
+    const ntId = (ct.fm_coach as { national_team_id: string } | null)?.national_team_id
+    if (ntId) tierByNationalTeamId.set(ntId, ct.tier as FMEngineCoachInput['tier'])
+  }
   const tierByCoachId = new Map(
     (coachTiers ?? []).map((ct) => [ct.coach_id, ct.tier as FMEngineCoachInput['tier']])
   )
@@ -312,10 +329,18 @@ export async function runRoundEngine(roundId: string, supabase: Supabase): Promi
     const match = matchByTeamId.get(coach.national_team_id)
     if (!match) continue
 
+    const opponentTeamId =
+      match.home_team_id === coach.national_team_id
+        ? match.away_team_id
+        : match.home_team_id
+    const opponentTier = tierByNationalTeamId.get(opponentTeamId) ?? null
+
     const input: FMEngineCoachInput = {
       coachId,
       nationalTeamId: coach.national_team_id,
       tier,
+      opponentTier,
+      isKnockout,
       matchContext: {
         real_match_id: match.id,
         scoring_round_id: roundId,

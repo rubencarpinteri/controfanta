@@ -1,4 +1,5 @@
 import type { FMCompetitionConfig } from '@/domain/fantamondiale/config/schema'
+import { computeFavoredness, favorednessKey } from '@/domain/fantamondiale/config/schema'
 import type { FMEngineCoachInput, FMCoachMatchScoreResult } from './types'
 
 function resolveMatchResult(
@@ -21,7 +22,7 @@ export function scoreCoach(
   input: FMEngineCoachInput,
   config: FMCompetitionConfig,
 ): FMCoachMatchScoreResult | null {
-  const { matchContext, nationalTeamId, tier, coachId } = input
+  const { matchContext, nationalTeamId, tier, opponentTier, isKnockout, coachId } = input
 
   const result = resolveMatchResult(
     nationalTeamId,
@@ -33,7 +34,14 @@ export function scoreCoach(
 
   if (!result) return null
 
-  const tierRow = config.coach_tier_matrix[tier]
+  // Knockout rounds (round of 32 onward) score on *favoredness* —
+  // own tier relative to the opponent's tier. The group stage, and any
+  // knockout match where the opponent tier can't be resolved, fall back
+  // to the absolute group matrix.
+  const tierRow =
+    isKnockout && opponentTier
+      ? config.coach_tier_knockout_matrix[favorednessKey(computeFavoredness(tier, opponentTier))]
+      : config.coach_tier_matrix[tier]
 
   let bonus_or_malus: number
   if (result === 'home_win') {

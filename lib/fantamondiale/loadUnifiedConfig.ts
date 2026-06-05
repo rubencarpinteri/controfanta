@@ -106,6 +106,7 @@ function parseCompetitionShape(raw: Json | null | undefined): {
   formations: FMCompetitionConfig['formations']
   substitution: FMCompetitionConfig['substitution']
   coach_tier_matrix: FMCompetitionConfig['coach_tier_matrix']
+  coach_tier_knockout_matrix: FMCompetitionConfig['coach_tier_knockout_matrix']
   tie_breakers: FMCompetitionConfig['tie_breakers']
 } {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
@@ -114,6 +115,7 @@ function parseCompetitionShape(raw: Json | null | undefined): {
       formations: DEFAULT_FM_CONFIG.formations,
       substitution: DEFAULT_FM_CONFIG.substitution,
       coach_tier_matrix: DEFAULT_FM_CONFIG.coach_tier_matrix,
+      coach_tier_knockout_matrix: DEFAULT_FM_CONFIG.coach_tier_knockout_matrix,
       tie_breakers: DEFAULT_FM_CONFIG.tie_breakers,
     }
   }
@@ -137,6 +139,8 @@ function parseCompetitionShape(raw: Json | null | undefined): {
     substitution: parseSubstitution(r.substitution),
     coach_tier_matrix:
       (r.coach_tier_matrix as FMCompetitionConfig['coach_tier_matrix']) ?? DEFAULT_FM_CONFIG.coach_tier_matrix,
+    coach_tier_knockout_matrix:
+      (r.coach_tier_knockout_matrix as FMCompetitionConfig['coach_tier_knockout_matrix']) ?? DEFAULT_FM_CONFIG.coach_tier_knockout_matrix,
     tie_breakers: Array.isArray(r.tie_breakers)
       ? (r.tie_breakers as FMCompetitionConfig['tie_breakers'])
       : DEFAULT_FM_CONFIG.tie_breakers,
@@ -204,6 +208,7 @@ export function composeFMConfig(
     formations:   shape.formations,
     substitution: shape.substitution,
     coach_tier_matrix: shape.coach_tier_matrix,
+    coach_tier_knockout_matrix: shape.coach_tier_knockout_matrix,
     tie_breakers: shape.tie_breakers,
 
     engine: {

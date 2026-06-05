@@ -883,6 +883,48 @@ export type Database = {
         }
         Relationships: []
       }
+      fm_competition_coach_tier: {
+        Row: {
+          coach_id: string
+          competition_id: string
+          created_at: string
+          id: string
+          tier: Database["public"]["Enums"]["fm_team_tier"]
+          updated_at: string
+        }
+        Insert: {
+          coach_id: string
+          competition_id: string
+          created_at?: string
+          id?: string
+          tier: Database["public"]["Enums"]["fm_team_tier"]
+          updated_at?: string
+        }
+        Update: {
+          coach_id?: string
+          competition_id?: string
+          created_at?: string
+          id?: string
+          tier?: Database["public"]["Enums"]["fm_team_tier"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fm_competition_coach_tier_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "fm_coach"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fm_competition_coach_tier_competition_id_fkey"
+            columns: ["competition_id"]
+            isOneToOne: false
+            referencedRelation: "fm_competition"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fm_competition_config: {
         Row: {
           competition_id: string
@@ -4259,6 +4301,8 @@ export const Constants = {
     },
   },
 } as const
+
+
 export type AuditAction = Database["public"]["Enums"]["audit_action"]
 export type RatingClass = Database["public"]["Enums"]["rating_class"]
 export type MatchdayStatus = Database["public"]["Enums"]["matchday_status"]
@@ -4322,3 +4366,4 @@ export type FMMatchStatus = Database["public"]["Enums"]["fm_match_status"]
 export type FMMatchResult = Database["public"]["Enums"]["fm_match_result"]
 export type FMCalcOrderEnum = Database["public"]["Enums"]["fm_calc_order"]
 export type FMAuditAction = Database["public"]["Enums"]["fm_audit_action"]
+export type FMCompetitionCoachTier = Database["public"]["Tables"]["fm_competition_coach_tier"]["Row"]

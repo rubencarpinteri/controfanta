@@ -149,6 +149,64 @@ export const fmCoachTierMatrixSchema = z.object({
 })
 export type FMCoachTierMatrix = z.infer<typeof fmCoachTierMatrixSchema>
 
+// ---- coach knockout matrix (opponent-relative) -------------
+//
+// From the round of 32 onward, a coach's bonus/malus no longer
+// depends on their own (frozen) tier alone but on *favoredness*:
+//
+//   favoredness = opponentTierNumber − ownTierNumber   (−3 … +3)
+//
+// where tier_1 = 1 (strongest) … tier_4 = 4 (weakest). So a tier_1
+// coach facing tier_4 is +3 (max favorite); a tier_4 facing tier_1
+// is −3 (max underdog); same tier is 0 (coin flip). Favorites earn
+// little for winning and are punished hard for losing; underdogs the
+// reverse. `draw` applies when the tie is decided on penalties.
+const fmWinDrawLoss = z.object({ win: z.number(), draw: z.number(), loss: z.number() })
+
+export const fmCoachKnockoutMatrixSchema = z.object({
+  fav_pos3: fmWinDrawLoss,
+  fav_pos2: fmWinDrawLoss,
+  fav_pos1: fmWinDrawLoss,
+  fav_even: fmWinDrawLoss,
+  fav_neg1: fmWinDrawLoss,
+  fav_neg2: fmWinDrawLoss,
+  fav_neg3: fmWinDrawLoss,
+})
+export type FMCoachKnockoutMatrix = z.infer<typeof fmCoachKnockoutMatrixSchema>
+
+export const DEFAULT_COACH_KNOCKOUT_MATRIX: FMCoachKnockoutMatrix = {
+  fav_pos3: { win: 0, draw: -2, loss: -4 },
+  fav_pos2: { win: 1, draw: -1, loss: -3 },
+  fav_pos1: { win: 2, draw:  0, loss: -2 },
+  fav_even: { win: 3, draw:  1, loss: -1 },
+  fav_neg1: { win: 4, draw:  2, loss:  0 },
+  fav_neg2: { win: 5, draw:  3, loss:  1 },
+  fav_neg3: { win: 6, draw:  3, loss:  1 },
+}
+
+/** Maps a favoredness integer (−3 … +3) to its matrix key. */
+export function favorednessKey(favoredness: number): keyof FMCoachKnockoutMatrix {
+  if (favoredness >= 3) return 'fav_pos3'
+  if (favoredness === 2) return 'fav_pos2'
+  if (favoredness === 1) return 'fav_pos1'
+  if (favoredness === 0) return 'fav_even'
+  if (favoredness === -1) return 'fav_neg1'
+  if (favoredness === -2) return 'fav_neg2'
+  return 'fav_neg3'
+}
+
+const TIER_NUMBER: Record<'tier_1' | 'tier_2' | 'tier_3' | 'tier_4', number> = {
+  tier_1: 1, tier_2: 2, tier_3: 3, tier_4: 4,
+}
+
+/** favoredness = opponentTierNumber − ownTierNumber, clamped to [−3, 3]. */
+export function computeFavoredness(
+  ownTier: keyof typeof TIER_NUMBER,
+  opponentTier: keyof typeof TIER_NUMBER,
+): number {
+  return TIER_NUMBER[opponentTier] - TIER_NUMBER[ownTier]
+}
+
 // ---- Engine v3.0 — Pivot + Bonus (aligned with Serie A) ---
 
 /**
@@ -206,6 +264,7 @@ export const fmCompetitionConfigSchema = z.object({
   popularity_brackets: fmBracketsSchema,
   mvp_bonus_brackets: fmBracketsSchema,
   coach_tier_matrix: fmCoachTierMatrixSchema,
+  coach_tier_knockout_matrix: fmCoachKnockoutMatrixSchema.default(DEFAULT_COACH_KNOCKOUT_MATRIX),
   tie_breakers: z.array(fmTieBreakerSchema).min(1),
   calc_order: fmCalcOrderSchema,
   engine: fmEngineConfigSchema,

@@ -35,6 +35,14 @@ export type FMEngineCoachInput = {
   coachId: string
   nationalTeamId: string
   tier: 'tier_1' | 'tier_2' | 'tier_3' | 'tier_4'
+  /**
+   * Opponent's frozen tier. Required for opponent-relative knockout
+   * scoring; null in the group stage (or if it can't be resolved, in
+   * which case scoring falls back to the absolute group matrix).
+   */
+  opponentTier: 'tier_1' | 'tier_2' | 'tier_3' | 'tier_4' | null
+  /** True for round_of_32 onward — selects the opponent-relative matrix. */
+  isKnockout: boolean
   matchContext: {
     real_match_id: string
     scoring_round_id: string
