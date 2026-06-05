@@ -29,21 +29,22 @@ const DEFAULT_ENGINE: FMEngineConfig = {
   base_score:   6.0,
 }
 
-// 6 ownership bands. Top cap 65%. More granular at high ownership.
+// 6 ownership bands. Top cap 70%. More punishing at high ownership to match
+// the 300-credit economy (more top players affordable → popularity must bite).
 const DEFAULT_POPULARITY_BRACKETS: FMBracket[] = [
   { min_pct:  0, max_pct:  10, pct:  0 },
   { min_pct: 11, max_pct:  25, pct: 10 },
   { min_pct: 26, max_pct:  45, pct: 25 },
-  { min_pct: 46, max_pct:  65, pct: 40 },
-  { min_pct: 66, max_pct:  80, pct: 55 },
-  { min_pct: 81, max_pct: 100, pct: 65 },
+  { min_pct: 46, max_pct:  65, pct: 50 },
+  { min_pct: 66, max_pct:  80, pct: 60 },
+  { min_pct: 81, max_pct: 100, pct: 70 },
 ]
 
 // Inverse: rarer MVP picks get bigger bonuses. Mirrors the 6-band PP curve.
 const DEFAULT_MVP_BRACKETS: FMBracket[] = [
-  { min_pct:  0, max_pct:  10, pct: 65 },
-  { min_pct: 11, max_pct:  25, pct: 55 },
-  { min_pct: 26, max_pct:  45, pct: 40 },
+  { min_pct:  0, max_pct:  10, pct: 70 },
+  { min_pct: 11, max_pct:  25, pct: 60 },
+  { min_pct: 26, max_pct:  45, pct: 50 },
   { min_pct: 46, max_pct:  65, pct: 25 },
   { min_pct: 66, max_pct:  80, pct: 10 },
   { min_pct: 81, max_pct: 100, pct:  0 },
@@ -56,7 +57,7 @@ export const DEFAULT_FM_CONFIG: FMCompetitionConfig = {
     pool_size: 25,
     starters: 11,
     bench: 14,
-    budget_default: 100,
+    budget_default: 300,
     role_quotas: { P: 3, D: 8, C: 8, A: 6 },
   },
 
@@ -72,7 +73,9 @@ export const DEFAULT_FM_CONFIG: FMCompetitionConfig = {
 
   // Serie A-aligned football B/M values.
   football: {
-    goal: { P: 4.0, D: 2.8, C: 2.2, A: 1.8 },
+    // Flat goal = 2.0 (double the assist). Matches the live engine config,
+    // which flattened the old per-role goal curve.
+    goal: { P: 2.0, D: 2.0, C: 2.0, A: 2.0 },
     penalty_scored_discount: 0.3,
     assist: 1.0,
     clean_sheet: { P: 0.8, D: 0.5, min_minutes: 60 },
