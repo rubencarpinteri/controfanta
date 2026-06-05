@@ -55,7 +55,7 @@ export default async function FormazionePage({ params }: { params: Promise<{ id:
       const { data: squadPlayers } = await supabase
         .from('fm_phase_squad_player')
         .select('player_id')
-        .eq('squad_id', squad.id)
+        .eq('phase_squad_id', squad.id)
       squadPlayerIds = (squadPlayers ?? []).map((sp) => sp.player_id)
     }
 

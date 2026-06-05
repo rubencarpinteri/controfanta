@@ -24,7 +24,7 @@ export async function saveLineupAction(fd: FormData) {
     .from('fm_fantasy_team')
     .select('id')
     .eq('id', fantasyTeamId)
-    .eq('user_id', user.id)
+    .eq('manager_id', user.id)
     .maybeSingle()
   if (!team) throw new Error('Non autorizzato')
 
@@ -51,7 +51,7 @@ export async function saveLineupAction(fd: FormData) {
   const { data: squadRows } = await supabase
     .from('fm_phase_squad_player')
     .select('player_id, fm_player(role)')
-    .eq('squad_id', phaseSquadId)
+    .eq('phase_squad_id', phaseSquadId)
 
   const squadIds = new Set<string>((squadRows ?? []).map((r) => r.player_id))
   const roleById = new Map<string, FMRole>()
@@ -111,10 +111,15 @@ export async function saveLineupAction(fd: FormData) {
     player_id: pid,
     is_starter: false,
     slot_position: 'bench',
-    slot_order: 0,
+    // slot_order must be unique per lineup (DB constraint); continue after the
+    // 11 starters. Substitution priority is driven by bench_order, not this.
+    slot_order: starterIds.length + i + 1,
     bench_order: i + 1,
   }))
-  await supabase.from('fm_matchday_lineup_player').insert([...starterRows, ...benchRows])
+  const { error: playersError } = await supabase
+    .from('fm_matchday_lineup_player')
+    .insert([...starterRows, ...benchRows])
+  if (playersError) throw new Error(`Errore nel salvataggio dei giocatori: ${playersError.message}`)
 
   revalidatePath(`/controfantamondiale/${competitionId}/formazione`)
 }
