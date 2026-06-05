@@ -41,7 +41,7 @@ export type FMEngineCoachInput = {
    * which case scoring falls back to the absolute group matrix).
    */
   opponentTier: 'tier_1' | 'tier_2' | 'tier_3' | 'tier_4' | null
-  /** True for round_of_32 onward — selects the opponent-relative matrix. */
+  /** True for any non-group phase — selects the opponent-relative matrix. */
   isKnockout: boolean
   matchContext: {
     real_match_id: string
