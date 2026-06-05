@@ -42,6 +42,13 @@ export interface EnginePlayerInput {
 
   /** Frozen at lineup deadline. 0 if no snapshot yet (engine skips MVP/penalty). */
   ownership_pct: number
+
+  /**
+   * When true, card malus (yellow + red) is waived for this player.
+   * Set by the engine orchestrator when the player appears in exactly one
+   * effective lineup across all teams in the league for this matchday.
+   */
+  immunita_granted?: boolean
 }
 
 // ---- Config types ------------------------------------------

@@ -106,8 +106,14 @@ function computeBonusMalus(
 
   add('Assist', input.assists, bm.assist)
   add('Autogol', input.own_goals, bm.own_goal)
-  add('Giallo', input.yellow_cards, bm.yellow_card)
-  add('Rosso', input.red_cards, bm.red_card)
+  if (input.immunita_granted) {
+    // Card malus waived — show the cards in the breakdown at 0 so the UI can display the immunity badge
+    if (input.yellow_cards > 0) add('Giallo (Immunità)', input.yellow_cards, 0)
+    if (input.red_cards > 0) add('Rosso (Immunità)', input.red_cards, 0)
+  } else {
+    add('Giallo', input.yellow_cards, bm.yellow_card)
+    add('Rosso', input.red_cards, bm.red_card)
+  }
   add('Rigore sbagliato', input.penalties_missed, bm.penalty_missed)
 
   if (rc === 'GK') {

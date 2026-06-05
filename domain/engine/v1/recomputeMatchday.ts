@@ -105,20 +105,25 @@ export interface RecomputeOutput {
   playerScores: PlayerScoreEntry[]
   /** Per-competition fixture + standings results. */
   competitionResults: CompetitionRoundResult[]
+  /**
+   * Player IDs that received Immunità this matchday (appeared in exactly one
+   * effective lineup across the league). Subset may have no cards — the badge
+   * still shows; the scoring impact is only when cards > 0.
+   */
+  immunitaGrantedIds: string[]
 }
 
 // ---- Main ---------------------------------------------------
 
 export function recomputeMatchday(input: RecomputeInput): RecomputeOutput {
-  // 1. Run the engine on every player
+  // 1. Pass 1 — run engine on every player without immunity
   const engineResult = computeMatchday(input.playerStats, input.engineConfig)
 
   // 2. Apply active overrides to per-player fantavoto
   const overrideMap = new Map(input.overrides.map((o) => [o.player_id, o.override_fantavoto]))
-  const playerCalculations: PlayerCalcArtefact[] = engineResult.player_results.map((output) => {
+  let playerCalculations: PlayerCalcArtefact[] = engineResult.player_results.map((output) => {
     const ov = overrideMap.get(output.player_id)
     if (output.kind === 'skipped') {
-      // NV players ignore overrides — reflect that explicitly.
       return {
         output,
         is_override: false,
@@ -150,7 +155,66 @@ export function recomputeMatchday(input: RecomputeInput): RecomputeOutput {
     fantaVotoMap.set(pc.output.player_id, pc.effective_fantavoto)
   }
 
-  // 4. Aggregate team totals via bench substitution
+  // 4. Pass 1 bench substitution — needed to resolve who actually played
+  const pass1Scores = computeTeamScores({
+    lineupPlayers: input.lineupPlayers,
+    submissionTeamMap: input.submissionTeamMap,
+    slotRolesMap: input.slotRolesMap,
+    fantaVotoMap,
+  })
+
+  // 5. Immunità — count effective lineup appearances per player across the league.
+  //    Effective lineup = sub_status 'active' (titolare who played) or 'bench_used'
+  //    (bench player who subbed in). Players appearing in exactly 1 effective lineup
+  //    are granted Immunità (card malus waived).
+  const effectiveCount = new Map<string, number>()
+  for (const ps of pass1Scores.playerScores) {
+    if (ps.sub_status === 'active' || ps.sub_status === 'bench_used') {
+      effectiveCount.set(ps.player_id, (effectiveCount.get(ps.player_id) ?? 0) + 1)
+    }
+  }
+
+  const immunitaGrantedIds: string[] = []
+  for (const ps of pass1Scores.playerScores) {
+    if (
+      (ps.sub_status === 'active' || ps.sub_status === 'bench_used') &&
+      effectiveCount.get(ps.player_id) === 1
+    ) {
+      immunitaGrantedIds.push(ps.player_id)
+    }
+  }
+
+  const immunitaSet = new Set(immunitaGrantedIds)
+
+  // 6. Pass 2 — recompute scores for immune players who have cards.
+  //    Manual overrides are left untouched (manager's explicit decision takes precedence).
+  const immunitaWithCards = input.playerStats.filter(
+    (s) =>
+      immunitaSet.has(s.player_id) &&
+      (s.yellow_cards > 0 || s.red_cards > 0) &&
+      !overrideMap.has(s.player_id)
+  )
+
+  if (immunitaWithCards.length > 0) {
+    const immuneInputs = immunitaWithCards.map((s) => ({ ...s, immunita_granted: true }))
+    const immuneResults = computeMatchday(immuneInputs, input.engineConfig)
+    const immuneResultMap = new Map(immuneResults.player_results.map((r) => [r.player_id, r]))
+
+    playerCalculations = playerCalculations.map((pc) => {
+      const immuneResult = immuneResultMap.get(pc.output.player_id)
+      if (!immuneResult || immuneResult.kind === 'skipped') return pc
+      const final = applyDisplay(immuneResult.fantavoto, input.applyDisplayRounding)
+      fantaVotoMap.set(immuneResult.player_id, final)
+      return {
+        output: { ...immuneResult, fantavoto: final } as PlayerCalculationResult,
+        is_override: false,
+        override_player_id_match: null,
+        effective_fantavoto: final,
+      }
+    })
+  }
+
+  // 7. Final bench substitution with updated fantaVotoMap
   const { teamScores, playerScores } = computeTeamScores({
     lineupPlayers: input.lineupPlayers,
     submissionTeamMap: input.submissionTeamMap,
@@ -158,13 +222,13 @@ export function recomputeMatchday(input: RecomputeInput): RecomputeOutput {
     fantaVotoMap,
   })
 
-  // 5. Build team_id → total fantavoto map for competition computation
+  // 8. Build team_id → total fantavoto map for competition computation
   const teamFantavotoMap = new Map<string, number>()
   for (const ts of teamScores) {
     teamFantavotoMap.set(ts.team_id, ts.total_fantavoto)
   }
 
-  // 6. Compute each active competition's round
+  // 9. Compute each active competition's round
   const competitionResults: CompetitionRoundResult[] = input.competitions.map((comp) => {
     const cfg: ScoringConfig = {
       method: 'goal_thresholds',
@@ -188,7 +252,7 @@ export function recomputeMatchday(input: RecomputeInput): RecomputeOutput {
     }
   })
 
-  return { playerCalculations, teamScores, playerScores, competitionResults }
+  return { playerCalculations, teamScores, playerScores, competitionResults, immunitaGrantedIds }
 }
 
 // ---- Helpers ------------------------------------------------
