@@ -3,6 +3,13 @@ import type { Database, Json } from '@/types/database.types'
 import { fmCompetitionConfigSchema } from '@/domain/fantamondiale/config/schema'
 import { loadFMUnifiedConfig } from '@/lib/fantamondiale/loadUnifiedConfig'
 import { scorePlayerRaw, finalizePlayerForLega } from './playerScore'
+import {
+  applySubstitutions,
+  type FMRole,
+  type SubStarter,
+  type SubBench,
+  type FieldedPlayer,
+} from './substitution'
 import { scoreCoach } from './coachScore'
 import { aggregateTeamRoundScore } from './roundScore'
 import { computeBattleRoyale } from './battleRoyale'
@@ -71,18 +78,18 @@ export async function runRoundEngine(roundId: string, supabase: Supabase): Promi
   // ---- 3. Submitted lineups (across every Lega instance) ----------------
   const { data: lineups, error: lineupErr } = await supabase
     .from('fm_matchday_lineup')
-    .select('id, fantasy_team_id, fm_matchday_lineup_player(player_id, is_starter)')
+    .select('id, fantasy_team_id, fm_matchday_lineup_player(player_id, is_starter, bench_order)')
     .eq('scoring_round_id', roundId)
     .not('submitted_at', 'is', null)
   if (lineupErr) throw new Error(`Lineups load failed: ${lineupErr.message}`)
   if (!lineups || lineups.length === 0) throw new Error('No submitted lineups found for this round')
 
   // ---- 4. Players, stats, squads, coaches -------------------------------
+  // Load ALL lineup players (starters + bench) — bench players need raw
+  // scores so they can be subbed in.
   const allPlayerIds = [
     ...new Set(
-      lineups.flatMap((l) =>
-        l.fm_matchday_lineup_player.filter((p) => p.is_starter).map((p) => p.player_id)
-      )
+      lineups.flatMap((l) => l.fm_matchday_lineup_player.map((p) => p.player_id))
     ),
   ]
   const { data: players, error: playerErr } = await supabase
@@ -140,8 +147,8 @@ export async function runRoundEngine(roundId: string, supabase: Supabase): Promi
 
   for (const lineup of lineups) {
     for (const lp of lineup.fm_matchday_lineup_player) {
-      if (!lp.is_starter) continue
-
+      // Raw score every lineup player (starter or bench) — a bench player
+      // who comes on must already have a computed score.
       const player = playerById.get(lp.player_id)
       if (!player) continue
 
@@ -205,6 +212,55 @@ export async function runRoundEngine(roundId: string, supabase: Supabase): Promi
       .from('fm_player_match_score')
       .upsert(playerScoreRows, { onConflict: 'scoring_round_id,player_id,real_match_id' })
     if (error) throw new Error(`Player score upsert failed: ${error.message}`)
+  }
+
+  // ============================================================
+  // STEP 1.5: Resolve bench substitutions per team.
+  // ============================================================
+  // Lega-agnostic: a team's fielded set depends only on its own lineup +
+  // match stats, not on ownership. "Module is king": strict role-locked,
+  // bench-order-ranked subs, no cross-role fallback, play short when the
+  // same-role bench is exhausted. The fielded set drives BOTH ownership and
+  // the final per-player scores below.
+  const sub = config.substitution
+
+  const didPlay = (playerId: string, matchId: string): boolean => {
+    if (sub.trigger === 'no_rating') {
+      const raw = rawByKey.get(`${playerId}:${matchId}`)
+      return !!raw && raw.voto_base !== null
+    }
+    // 'min_minutes'
+    const stats = statsByKey.get(`${playerId}:${matchId}`)
+    return !!stats && stats.minutes_played >= sub.min_minutes
+  }
+
+  const fieldedByTeam = new Map<string, FieldedPlayer[]>()
+
+  for (const lineup of lineups) {
+    const starters: SubStarter[] = []
+    const benchList: SubBench[] = []
+
+    for (const lp of lineup.fm_matchday_lineup_player) {
+      const player = playerById.get(lp.player_id)
+      if (!player) continue
+      const match = matchByTeamId.get(player.national_team_id)
+      const played = match ? didPlay(lp.player_id, match.id) : false
+      const role = player.role as FMRole
+
+      if (lp.is_starter) {
+        starters.push({ player_id: lp.player_id, role, played })
+      } else {
+        benchList.push({
+          player_id: lp.player_id,
+          role,
+          bench_order: lp.bench_order ?? 999,
+          played,
+        })
+      }
+    }
+
+    const { fielded } = applySubstitutions(starters, benchList)
+    fieldedByTeam.set(lineup.fantasy_team_id, fielded)
   }
 
   // ============================================================
@@ -319,16 +375,16 @@ export async function runRoundEngine(roundId: string, supabase: Supabase): Promi
     legaInstancesProcessed += 1
 
     // 4a. Ownership snapshot within this Lega.
-    // For each starter across this Lega's submitted lineups, count how many
-    // distinct teams in THIS Lega own that player, divide by total teams.
+    // Counts only players who ACTUALLY PLAYED (fielded = starters who played
+    // + bench subs who came on). A benched player who never enters does not
+    // count toward ownership. For each fielded player, count how many distinct
+    // teams in THIS Lega fielded him, divided by total teams.
     const ownershipCounts = new Map<string, number>()
     for (const teamId of legaTeamIds) {
-      const lineup = lineupByTeamId.get(teamId)
-      if (!lineup) continue
-      const startersInTeam = new Set<string>(
-        lineup.fm_matchday_lineup_player.filter((p) => p.is_starter).map((p) => p.player_id)
-      )
-      for (const pid of startersInTeam) {
+      const fielded = fieldedByTeam.get(teamId)
+      if (!fielded) continue
+      const fieldedIds = new Set<string>(fielded.map((f) => f.player_id))
+      for (const pid of fieldedIds) {
         ownershipCounts.set(pid, (ownershipCounts.get(pid) ?? 0) + 1)
       }
     }
@@ -377,15 +433,17 @@ export async function runRoundEngine(roundId: string, supabase: Supabase): Promi
         continue
       }
 
-      const starters = lineup.fm_matchday_lineup_player.filter((p) => p.is_starter)
-      const playerFinalScores = starters.flatMap((lp) => {
-        const player = playerById.get(lp.player_id)
+      // Score the fielded set: starters who played + bench subs who came on.
+      // Empty slots (play short) simply contribute nothing.
+      const fielded = fieldedByTeam.get(teamId) ?? []
+      const playerFinalScores = fielded.flatMap((fp) => {
+        const player = playerById.get(fp.player_id)
         if (!player) return []
         const match = matchByTeamId.get(player.national_team_id)
         if (!match) return []
-        const raw = rawByKey.get(`${lp.player_id}:${match.id}`)
+        const raw = rawByKey.get(`${fp.player_id}:${match.id}`)
         if (!raw) return []
-        const own = ownershipPctByPlayer.get(lp.player_id) ?? 0
+        const own = ownershipPctByPlayer.get(fp.player_id) ?? 0
         const { final_score } = finalizePlayerForLega(
           { raw_subtotal: raw.raw_subtotal, is_mvp: raw.is_mvp },
           own,

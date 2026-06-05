@@ -61,6 +61,11 @@ export const DEFAULT_FM_CONFIG: FMCompetitionConfig = {
     role_quotas: { P: 3, D: 8, C: 8, A: 6 },
   },
 
+  substitution: {
+    trigger: 'min_minutes',
+    min_minutes: 15,
+  },
+
   formations: [
     '3-4-3',
     '3-5-2',

@@ -72,6 +72,25 @@ export const fmFormationListSchema = z.array(
   z.string().regex(/^\d-\d-\d$/, 'expected "X-Y-Z" format'),
 ).min(1)
 
+// ---- substitution rule -------------------------------------
+
+/**
+ * Bench substitution rule. The chosen module is absolute (never reshapes);
+ * a titolare who "doesn't play" is replaced by the first same-role bench
+ * player in bench order. No cross-role fallback — same-role bench exhausted
+ * means the slot stays empty and the team plays short.
+ *
+ * `trigger` decides WHEN a starter is considered "didn't play":
+ *   - 'min_minutes': minutes_played < min_minutes (default 15)
+ *   - 'no_rating':   the starter has no usable rating (s.v.)
+ */
+export const fmSubstitutionConfigSchema = z.object({
+  trigger: z.enum(['min_minutes', 'no_rating']).default('min_minutes'),
+  /** Used only when trigger === 'min_minutes'. */
+  min_minutes: z.number().int().min(0).max(90).default(15),
+})
+export type FMSubstitutionConfig = z.infer<typeof fmSubstitutionConfigSchema>
+
 // ---- football bonuses / maluses (Serie A-aligned) ----------
 
 export const fmFootballScoringSchema = z.object({
@@ -182,6 +201,7 @@ export const fmCompetitionConfigSchema = z.object({
   schema_version: z.literal(1),
   squad: fmSquadConfigSchema,
   formations: fmFormationListSchema,
+  substitution: fmSubstitutionConfigSchema.default({ trigger: 'min_minutes', min_minutes: 15 }),
   football: fmFootballScoringSchema,
   popularity_brackets: fmBracketsSchema,
   mvp_bonus_brackets: fmBracketsSchema,

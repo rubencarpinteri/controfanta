@@ -1260,6 +1260,7 @@ export type Database = {
       }
       fm_matchday_lineup_player: {
         Row: {
+          bench_order: number | null
           created_at: string
           id: string
           is_starter: boolean
@@ -1269,6 +1270,7 @@ export type Database = {
           slot_position: string
         }
         Insert: {
+          bench_order?: number | null
           created_at?: string
           id?: string
           is_starter?: boolean
@@ -1278,6 +1280,7 @@ export type Database = {
           slot_position: string
         }
         Update: {
+          bench_order?: number | null
           created_at?: string
           id?: string
           is_starter?: boolean

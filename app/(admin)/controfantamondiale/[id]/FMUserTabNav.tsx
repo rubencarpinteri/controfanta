@@ -8,6 +8,7 @@ const TABS = [
   { label: 'Risultati e Classifica', suffix: '/risultati' },
   { label: 'La Mia Rosa',    suffix: '/rosa' },
   { label: 'Formazione',     suffix: '/formazione' },
+  { label: 'Schieramenti',   suffix: '/schieramenti' },
   { label: 'Rose Nazionali', suffix: '/nazionali' },
   { label: 'Regole',         suffix: '/regole' },
 ]

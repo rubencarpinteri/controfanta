@@ -76,6 +76,13 @@ export function FMConfigEditor({
     setSaved(false)
   }
 
+  function updateSubstitution<K extends keyof FMCompetitionConfig['substitution']>(
+    key: K, value: FMCompetitionConfig['substitution'][K]
+  ) {
+    setCfg((prev) => ({ ...prev, substitution: { ...prev.substitution, [key]: value } }))
+    setSaved(false)
+  }
+
   function updateFormations(text: string) {
     const list = text
       .split(/[\s,]+/)
@@ -210,6 +217,68 @@ export function FMConfigEditor({
             </span>
           ))}
         </div>
+      </div>
+
+      {/* ── Substitution rule ── */}
+      <div className="rounded-xl border border-hairline bg-glass-1 p-5 space-y-4">
+        <div>
+          <p className="text-[13px] font-semibold text-ink-1">Sostituzioni</p>
+          <p className="mt-0.5 text-[11px] text-ink-4 leading-relaxed">
+            Il modulo scelto è insindacabile: un titolare che non gioca viene sostituito dalla
+            prima riserva dello stesso ruolo, in ordine di panchina. Niente sostituzioni tra ruoli
+            diversi — finita la panchina del ruolo, lo slot resta vuoto e si gioca in meno.
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-[9px] uppercase tracking-wider text-ink-5 mb-1.5 font-semibold">
+            Quando scatta la sostituzione
+          </label>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            {(
+              [
+                ['min_minutes', 'Minuti minimi', 'Sostituisci se il titolare gioca meno dei minuti indicati'],
+                ['no_rating', 'Nessun voto (s.v.)', 'Sostituisci solo se il titolare non ha un voto utilizzabile'],
+              ] as const
+            ).map(([value, label, desc]) => {
+              const active = cfg.substitution.trigger === value
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => updateSubstitution('trigger', value)}
+                  className={`flex-1 rounded-lg border px-3 py-2.5 text-left transition-colors ${
+                    active
+                      ? 'border-indigo-500 bg-indigo-500/10'
+                      : 'border-hairline bg-glass-2 hover:bg-glass-1'
+                  }`}
+                >
+                  <span className={`block text-[12px] font-semibold ${active ? 'text-indigo-300' : 'text-ink-2'}`}>
+                    {label}
+                  </span>
+                  <span className="mt-0.5 block text-[10px] text-ink-4 leading-snug">{desc}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {cfg.substitution.trigger === 'min_minutes' && (
+          <div className="max-w-[180px]">
+            <label className="block text-[9px] uppercase tracking-wider text-ink-5 mb-1 font-semibold">
+              Minuti minimi
+            </label>
+            <input
+              type="number"
+              step={1}
+              min={0}
+              max={90}
+              value={cfg.substitution.min_minutes}
+              onChange={(e) => updateSubstitution('min_minutes', Number(e.target.value))}
+              className="w-full rounded-lg border border-hairline bg-glass-2 px-3 py-2 text-[13px] text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+          </div>
+        )}
       </div>
 
       {/* ── Coach tier matrix ── */}

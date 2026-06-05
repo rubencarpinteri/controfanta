@@ -63,6 +63,34 @@ export default async function RegolePage({ params }: { params: Promise<{ id: str
         </div>
       </Section>
 
+      <Section title="Panchina e Sostituzioni">
+        <div className="space-y-3 text-[13px] text-ink-2">
+          <p className="text-[12px] text-ink-3 leading-relaxed">
+            La panchina deve contenere <span className="font-semibold text-ink-1">almeno un giocatore per ruolo</span> (1 P, 1 D, 1 C, 1 A);
+            puoi aggiungerne altri fino a esaurire la rosa. Più riserve schieri, più giocatori riveli.
+          </p>
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-200 leading-relaxed">
+            Titolari e panchina diventano <span className="font-semibold">pubblici al primo calcio d&apos;inizio</span> del turno:
+            chi vedi nelle panchine altrui ti dice quali giocatori sono &ldquo;presi&rdquo;. Tieni nascosta più rosa possibile.
+          </div>
+          <p className="text-[12px] text-ink-3 leading-relaxed">
+            <span className="font-semibold text-ink-1">Il modulo è insindacabile.</span> Se un titolare non gioca, entra la
+            prima riserva dello <span className="font-semibold text-ink-1">stesso ruolo</span>, in ordine di panchina.
+            Nessuna sostituzione tra ruoli diversi: finite le riserve di quel ruolo lo slot resta vuoto e
+            <span className="font-semibold text-ink-1"> giochi in meno</span>. Ai fini di popolarità e MVP contano solo i giocatori
+            effettivamente scesi in campo.
+          </p>
+          <div className="flex justify-between border-t border-hairline pt-2">
+            <span className="text-ink-4">Quando scatta la sostituzione</span>
+            <span className="font-medium text-ink-1 text-right">
+              {config.substitution.trigger === 'no_rating'
+                ? 'Titolare senza voto (s.v.)'
+                : `Titolare sotto ${config.substitution.min_minutes}′ giocati`}
+            </span>
+          </div>
+        </div>
+      </Section>
+
       <Section title="Motore di calcolo">
         <p className="mb-3 text-[11px] text-ink-5 leading-relaxed">
           Motore v3.0 &ldquo;Pivot + Bonus&rdquo;, identico al Campionato. Una sola retta lega il rating SportMonks

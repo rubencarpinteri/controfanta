@@ -89,9 +89,22 @@ function parsePoints(
   }
 }
 
+function parseSubstitution(raw: unknown): FMCompetitionConfig['substitution'] {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return DEFAULT_FM_CONFIG.substitution
+  const r = raw as Record<string, unknown>
+  const trigger = r.trigger === 'no_rating' || r.trigger === 'min_minutes'
+    ? r.trigger
+    : DEFAULT_FM_CONFIG.substitution.trigger
+  const min_minutes = typeof r.min_minutes === 'number'
+    ? r.min_minutes
+    : DEFAULT_FM_CONFIG.substitution.min_minutes
+  return { trigger, min_minutes }
+}
+
 function parseCompetitionShape(raw: Json | null | undefined): {
   squad: FMCompetitionConfig['squad']
   formations: FMCompetitionConfig['formations']
+  substitution: FMCompetitionConfig['substitution']
   coach_tier_matrix: FMCompetitionConfig['coach_tier_matrix']
   tie_breakers: FMCompetitionConfig['tie_breakers']
 } {
@@ -99,6 +112,7 @@ function parseCompetitionShape(raw: Json | null | undefined): {
     return {
       squad: DEFAULT_FM_CONFIG.squad,
       formations: DEFAULT_FM_CONFIG.formations,
+      substitution: DEFAULT_FM_CONFIG.substitution,
       coach_tier_matrix: DEFAULT_FM_CONFIG.coach_tier_matrix,
       tie_breakers: DEFAULT_FM_CONFIG.tie_breakers,
     }
@@ -120,6 +134,7 @@ function parseCompetitionShape(raw: Json | null | undefined): {
   return {
     squad,
     formations: Array.isArray(r.formations) ? (r.formations as string[]) : DEFAULT_FM_CONFIG.formations,
+    substitution: parseSubstitution(r.substitution),
     coach_tier_matrix:
       (r.coach_tier_matrix as FMCompetitionConfig['coach_tier_matrix']) ?? DEFAULT_FM_CONFIG.coach_tier_matrix,
     tie_breakers: Array.isArray(r.tie_breakers)
@@ -187,6 +202,7 @@ export function composeFMConfig(
     schema_version: 1,
     squad:        shape.squad,
     formations:   shape.formations,
+    substitution: shape.substitution,
     coach_tier_matrix: shape.coach_tier_matrix,
     tie_breakers: shape.tie_breakers,
 

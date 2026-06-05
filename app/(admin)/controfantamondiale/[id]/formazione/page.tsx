@@ -39,6 +39,8 @@ export default async function FormazionePage({ params }: { params: Promise<{ id:
   const fantasyTeamId = ctx.fantasyTeamId
   let squadPlayerIds: string[] = []
   let currentLineupIds = new Set<string>()
+  let currentBenchIds: string[] = []
+  let currentFormation: string | null = null
   let lineupId: string | null = null
 
   if (fantasyTeamId && activePhase) {
@@ -59,19 +61,25 @@ export default async function FormazionePage({ params }: { params: Promise<{ id:
 
     const { data: lineup } = await supabase
       .from('fm_matchday_lineup')
-      .select('id')
+      .select('id, formation')
       .eq('scoring_round_id', activeRound.id)
       .eq('fantasy_team_id', fantasyTeamId)
       .maybeSingle()
 
     if (lineup) {
       lineupId = lineup.id
+      currentFormation = lineup.formation
       const { data: lineupPlayers } = await supabase
         .from('fm_matchday_lineup_player')
-        .select('player_id')
+        .select('player_id, is_starter, bench_order')
         .eq('lineup_id', lineup.id)
-        .eq('is_starter', true)
-      currentLineupIds = new Set((lineupPlayers ?? []).map((lp) => lp.player_id))
+      currentLineupIds = new Set(
+        (lineupPlayers ?? []).filter((lp) => lp.is_starter).map((lp) => lp.player_id)
+      )
+      currentBenchIds = (lineupPlayers ?? [])
+        .filter((lp) => !lp.is_starter)
+        .sort((a, b) => (a.bench_order ?? 99) - (b.bench_order ?? 99))
+        .map((lp) => lp.player_id)
     }
   }
 
@@ -115,6 +123,8 @@ export default async function FormazionePage({ params }: { params: Promise<{ id:
           fantasyTeamId={fantasyTeamId}
           players={squadPlayers ?? []}
           selectedLineupIds={currentLineupIds}
+          initialBenchIds={currentBenchIds}
+          initialFormation={currentFormation}
           lineupId={lineupId}
           allowedFormations={config.formations}
           isReadOnly={isReadOnly}
