@@ -1,6 +1,7 @@
 import { requireFMContext, getFMRounds } from '@/lib/fantamondiale/server'
 import { createClient } from '@/lib/supabase/server'
 import { TeamCrest } from '@/components/fm/TeamCrest'
+import { CoachTierBadge } from '@/components/fm/CoachTierBadge'
 
 const ROLE_COLORS: Record<string, string> = {
   P: 'text-amber-400',
@@ -118,6 +119,51 @@ export default async function SchieramentiPage({ params }: { params: Promise<{ i
   )
   const lineupByTeam = new Map((lineups ?? []).map((l) => [l.fantasy_team_id, l]))
 
+  // Each team's coach for this phase (fixed at squad time) + its frozen tier.
+  type CoachMeta = {
+    name: string
+    team: { name: string; fifa_code: string; logo_url: string | null; flag_url: string | null } | null
+    tier: string | null
+  }
+  const coachByTeam = new Map<string, CoachMeta>()
+  const { data: squads } = await supabase
+    .from('fm_phase_squad')
+    .select('fantasy_team_id, coach_id')
+    .eq('phase_id', activeRound.phase_id)
+    .in('fantasy_team_id', teamIds.length > 0 ? teamIds : ['00000000-0000-0000-0000-000000000000'])
+    .not('coach_id', 'is', null)
+
+  const coachIds = [...new Set((squads ?? []).map((s) => s.coach_id).filter((c): c is string => !!c))]
+  if (coachIds.length > 0) {
+    const [coachRows, tierRows] = await Promise.all([
+      supabase
+        .from('fm_coach')
+        .select('id, name, fm_national_team(name, fifa_code, logo_url, flag_url)')
+        .in('id', coachIds),
+      supabase
+        .from('fm_competition_coach_tier')
+        .select('coach_id, tier')
+        .eq('competition_id', ctx.competition.id)
+        .in('coach_id', coachIds),
+    ])
+    const tierByCoach = new Map((tierRows.data ?? []).map((r) => [r.coach_id, r.tier]))
+    const coachInfo = new Map(
+      (coachRows.data ?? []).map((c) => [
+        c.id,
+        {
+          name: c.name,
+          team: (c.fm_national_team as CoachMeta['team']) ?? null,
+          tier: tierByCoach.get(c.id) ?? null,
+        } as CoachMeta,
+      ])
+    )
+    for (const s of squads ?? []) {
+      if (s.coach_id && coachInfo.has(s.coach_id)) {
+        coachByTeam.set(s.fantasy_team_id, coachInfo.get(s.coach_id)!)
+      }
+    }
+  }
+
   return (
     <div className="space-y-4">
       {header}
@@ -125,6 +171,7 @@ export default async function SchieramentiPage({ params }: { params: Promise<{ i
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         {(teams ?? []).map((team) => {
           const lineup = lineupByTeam.get(team.id)
+          const coach = coachByTeam.get(team.id)
           const isMine = team.id === ctx.fantasyTeamId
 
           const starters = (lineup?.fm_matchday_lineup_player ?? []).filter((p) => p.is_starter)
@@ -160,6 +207,22 @@ export default async function SchieramentiPage({ params }: { params: Promise<{ i
                 <div className="px-4 py-4 text-[12px] text-ink-5">Formazione non inviata.</div>
               ) : (
                 <div className="p-3 space-y-3">
+                  {/* Allenatore */}
+                  {coach && (
+                    <div className="flex items-center gap-2 rounded-md border border-hairline bg-glass-2 px-2 py-1.5">
+                      <span className="w-4 text-[10px] font-bold text-ink-4">CT</span>
+                      <TeamCrest
+                        name={coach.team?.name ?? ''}
+                        logoUrl={coach.team?.logo_url ?? null}
+                        flagUrl={coach.team?.flag_url ?? null}
+                        fifaCode={coach.team?.fifa_code ?? ''}
+                        size={14}
+                        className="w-4"
+                      />
+                      <span className="flex-1 text-[11px] font-medium text-ink-1 truncate">{coach.name}</span>
+                      <CoachTierBadge tier={coach.tier} />
+                    </div>
+                  )}
                   {/* Titolari */}
                   <div className="space-y-1.5">
                     {startersByRole.map(({ role, players }) =>

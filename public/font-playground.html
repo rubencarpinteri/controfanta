@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Font Playground — CONTROFANTA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=Libre+Baskerville:wght@400;700&family=Inter:wght@300;400;500;600;700&family=Karla:wght@300;400;500;600;700&family=Source+Sans+3:wght@300;400;500;600;700&family=Lora:wght@400;500;600;700&family=Ultra&family=Bevan&family=Albert+Sans:wght@300;400;500;600;700&family=Bricolage+Grotesque:wght@300;400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Fraunces:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Hanken+Grotesk:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700&family=Righteous&family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --border: rgba(0,0,0,0.09);
+    --ink1: #0d0e12;
+    --ink2: #3d3f4a;
+    --ink3: #6b6e7e;
+    --accent: #4f46e5;
+    --accent-soft: #eef2ff;
+    --radius: 10px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink1);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+    display: flex;
+    gap: 0;
+  }
+
+  /* ---- SIDEBAR ---- */
+  #sidebar {
+    width: 280px;
+    min-width: 280px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+  }
+
+  #sidebar h1 {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink3);
+  }
+
+  .control-group { display: flex; flex-direction: column; gap: 6px; }
+
+  .control-group label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink3);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .control-group label span {
+    font-weight: 700;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+
+  select, input[type=range] {
+    width: 100%;
+    border-radius: 6px;
+  }
+
+  select {
+    border: 1px solid var(--border);
+    padding: 7px 10px;
+    font-size: 13px;
+    background: var(--bg);
+    color: var(--ink1);
+    appearance: none;
+    cursor: pointer;
+    outline: none;
+  }
+  select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+  input[type=range] {
+    accent-color: var(--accent);
+    height: 4px;
+    cursor: pointer;
+  }
+
+  .divider { height: 1px; background: var(--border); }
+
+  .copy-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 11px;
+    color: var(--ink2);
+    line-height: 1.6;
+    font-family: monospace;
+    word-break: break-all;
+  }
+
+  /* ---- MAIN ---- */
+  #main {
+    flex: 1;
+    padding: 32px 40px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+  }
+
+  .preview-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 32px 36px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .preview-card h2 {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink3);
+    margin-bottom: 4px;
+  }
+
+  /* preview text targets */
+  .t-display    { color: var(--ink1); }
+  .t-heading    { color: var(--ink1); }
+  .t-subheading { color: var(--ink2); }
+  .t-body       { color: var(--ink2); }
+  .t-label      { color: var(--ink3); }
+  .t-ui         { color: var(--ink1); }
+
+  /* nav mock */
+  .mock-nav {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 12px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .mock-nav .brand {
+    font-weight: 800;
+    font-size: 16px;
+    letter-spacing: -0.02em;
+    color: var(--accent);
+  }
+  .mock-nav .nav-item {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink2);
+  }
+  .mock-nav .nav-item.active { color: var(--ink1); font-weight: 600; }
+
+  /* card mock */
+  .mock-player-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    background: var(--bg);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+  .player-avatar {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px; color: var(--accent);
+    flex-shrink: 0;
+  }
+  .player-info { flex: 1; }
+  .player-name { font-weight: 600; font-size: 14px; color: var(--ink1); }
+  .player-sub  { font-size: 12px; color: var(--ink3); margin-top: 2px; }
+  .player-score {
+    font-size: 22px; font-weight: 700; color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* table mock */
+  table { width: 100%; border-collapse: collapse; }
+  th { font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink3); padding: 8px 12px; border-bottom: 1px solid var(--border); text-align: left; }
+  td { font-size: 13px; padding: 10px 12px; color: var(--ink2); border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  td.num { font-variant-numeric: tabular-nums; font-weight: 500; color: var(--ink1); }
+
+  .badge {
+    display: inline-flex; align-items: center; padding: 2px 8px;
+    border-radius: 99px; font-size: 11px; font-weight: 600;
+    background: var(--accent-soft); color: var(--accent);
+  }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer;
+    font-size: 13px; font-weight: 600;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--ink2); }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside id="sidebar">
+  <h1>Font Playground</h1>
+
+  <div class="control-group">
+    <label>Font family</label>
+    <select id="fontSelect">
+      <option value="'Anton', sans-serif">Anton</option>
+      <option value="'Oswald', sans-serif">Oswald</option>
+      <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
+      <option value="'IBM Plex Sans', sans-serif">IBM Plex Sans</option>
+      <option value="'Libre Baskerville', serif">Libre Baskerville</option>
+      <option value="'Inter', sans-serif">Inter</option>
+      <option value="'Karla', sans-serif">Karla</option>
+      <option value="'Source Sans 3', sans-serif">Source Sans 3</option>
+      <option value="'Lora', serif">Lora</option>
+      <option value="'Ultra', serif">Ultra</option>
+      <option value="'Bevan', serif">Bevan</option>
+      <option value="'Albert Sans', sans-serif">Albert Sans</option>
+      <option value="'Bricolage Grotesque', sans-serif">Bricolage Grotesque</option>
+      <option value="'DM Sans', sans-serif">DM Sans</option>
+      <option value="'Fraunces', serif">Fraunces</option>
+      <option value="'Hanken Grotesk', sans-serif">Hanken Grotesk</option>
+      <option value="'Manrope', sans-serif">Manrope</option>
+      <option value="'Righteous', sans-serif">Righteous</option>
+      <option value="'Space Grotesk', sans-serif">Space Grotesk</option>
+      <option value="'Space Mono', monospace">Space Mono</option>
+    </select>
+  </div>
+
+  <div class="control-group">
+    <label>Base size <span id="sizeVal">14px</span></label>
+    <input type="range" id="sizeRange" min="12" max="20" step="0.5" value="14" />
+  </div>
+
+  <div class="control-group">
+    <label>Letter spacing <span id="spacingVal">0em</span></label>
+    <input type="range" id="spacingRange" min="-0.04" max="0.1" step="0.005" value="0" />
+  </div>
+
+  <div class="control-group">
+    <label>Line height <span id="lineVal">1.5</span></label>
+    <input type="range" id="lineRange" min="1" max="2" step="0.05" value="1.5" />
+  </div>
+
+  <div class="control-group">
+    <label>Font weight <span id="weightVal">400</span></label>
+    <input type="range" id="weightRange" min="300" max="800" step="100" value="400" />
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="control-group">
+    <label>Theme</label>
+    <select id="themeSelect">
+      <option value="light">Light</option>
+      <option value="dark">Dark</option>
+    </select>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="control-group">
+    <label>Current values</label>
+    <div class="copy-box" id="copyBox">—</div>
+  </div>
+</aside>
+
+<!-- MAIN PREVIEW -->
+<main id="main">
+
+  <!-- NAV -->
+  <div class="preview-card">
+    <h2>Navigazione</h2>
+    <div class="mock-nav" id="preview-nav">
+      <span class="brand">CONTRO<span style="color:var(--ink1)">FANTA</span></span>
+      <span class="nav-item active">Classifica</span>
+      <span class="nav-item">Rosa</span>
+      <span class="nav-item">Listone</span>
+      <span class="nav-item">Risultati</span>
+    </div>
+  </div>
+
+  <!-- TYPE SCALE -->
+  <div class="preview-card">
+    <h2>Scala tipografica</h2>
+    <div class="t-display" id="t-display" style="font-size:2.4em; font-weight:700; letter-spacing:-0.02em; line-height:1.1">Mondiale 2026 — Gruppo A</div>
+    <div class="t-heading" id="t-heading" style="font-size:1.5em; font-weight:600; letter-spacing:-0.01em">Classifica Generale</div>
+    <div class="t-subheading" id="t-subheading" style="font-size:1.1em; font-weight:500">Risultati del weekend · Giornata 3</div>
+    <div class="t-body" id="t-body" style="font-size:1em; font-weight:400; max-width:560px">Ogni settimana puoi acquistare giocatori dal listone al prezzo di mercato. La penalità di ownership e il bonus MVP sono i meccanismi strategici chiave della lega.</div>
+    <div class="t-label" id="t-label" style="font-size:0.8em; font-weight:600; text-transform:uppercase; letter-spacing:0.06em">Portieri · Difensori · Centrocampisti · Attaccanti</div>
+  </div>
+
+  <!-- PLAYER CARDS -->
+  <div class="preview-card">
+    <h2>Schede giocatori</h2>
+    <div class="two-col">
+      <div class="mock-player-card">
+        <div class="player-avatar">MB</div>
+        <div class="player-info">
+          <div class="player-name">Mbappé</div>
+          <div class="player-sub">Francia · ATT · <span class="badge">MVP</span></div>
+        </div>
+        <div class="player-score">8.4</div>
+      </div>
+      <div class="mock-player-card">
+        <div class="player-avatar">VK</div>
+        <div class="player-info">
+          <div class="player-name">Vinicius Jr.</div>
+          <div class="player-sub">Brasile · ATT</div>
+        </div>
+        <div class="player-score">7.1</div>
+      </div>
+      <div class="mock-player-card">
+        <div class="player-avatar">EB</div>
+        <div class="player-info">
+          <div class="player-name">Bellingham</div>
+          <div class="player-sub">Inghilterra · CEN</div>
+        </div>
+        <div class="player-score">6.8</div>
+      </div>
+      <div class="mock-player-card">
+        <div class="player-avatar">AP</div>
+        <div class="player-info">
+          <div class="player-name">Pedri</div>
+          <div class="player-sub">Spagna · CEN</div>
+        </div>
+        <div class="player-score">7.5</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="preview-card">
+    <h2>Classifica lega</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Manager</th>
+          <th>Squadra</th>
+          <th>Punti</th>
+          <th>Crediti</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="num">1</td><td>Ruben</td><td>Los Galacticos</td><td class="num">142.3</td><td class="num">38</td></tr>
+        <tr><td class="num">2</td><td>Marco</td><td>FC Tattico</td><td class="num">138.7</td><td class="num">22</td></tr>
+        <tr><td class="num">3</td><td>Sofia</td><td>Diavoli Rossi</td><td class="num">131.0</td><td class="num">61</td></tr>
+        <tr><td class="num">4</td><td>Luca</td><td>Aquile Azzurre</td><td class="num">128.5</td><td class="num">14</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- BUTTONS / UI -->
+  <div class="preview-card">
+    <h2>UI Controls</h2>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center">
+      <button class="btn btn-primary">Acquista giocatore</button>
+      <button class="btn btn-ghost">Vedi rosa</button>
+      <button class="btn btn-ghost">Modifica formazione</button>
+      <span class="badge">Serie A</span>
+      <span class="badge" style="background:#fef9c3;color:#854d0e">In campo</span>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  const previewTargets = document.querySelectorAll(
+    '#preview-nav, #t-display, #t-heading, #t-subheading, #t-body, #t-label, .mock-player-card, table, .btn, .badge, .player-name, .player-sub, .player-score'
+  );
+  const allPreview = document.querySelectorAll('#main *');
+
+  const fontSelect   = document.getElementById('fontSelect');
+  const sizeRange    = document.getElementById('sizeRange');
+  const spacingRange = document.getElementById('spacingRange');
+  const lineRange    = document.getElementById('lineRange');
+  const weightRange  = document.getElementById('weightRange');
+  const themeSelect  = document.getElementById('themeSelect');
+  const copyBox      = document.getElementById('copyBox');
+
+  const sizeVal    = document.getElementById('sizeVal');
+  const spacingVal = document.getElementById('spacingVal');
+  const lineVal    = document.getElementById('lineVal');
+  const weightVal  = document.getElementById('weightVal');
+
+  function applyFont() {
+    const font    = fontSelect.value;
+    const size    = sizeRange.value;
+    const spacing = parseFloat(spacingRange.value).toFixed(3);
+    const line    = parseFloat(lineRange.value).toFixed(2);
+    const weight  = weightRange.value;
+
+    sizeVal.textContent    = size + 'px';
+    spacingVal.textContent = spacing + 'em';
+    lineVal.textContent    = line;
+    weightVal.textContent  = weight;
+
+    const main = document.getElementById('main');
+    main.style.fontFamily      = font;
+    main.style.fontSize        = size + 'px';
+    main.style.letterSpacing   = spacing + 'em';
+    main.style.lineHeight      = line;
+    main.style.fontWeight      = weight;
+
+    // propagate to all children so nothing overrides from UA styles
+    allPreview.forEach(el => {
+      el.style.fontFamily    = 'inherit';
+      el.style.letterSpacing = 'inherit';
+      el.style.lineHeight    = 'inherit';
+    });
+
+    const shortName = fontSelect.options[fontSelect.selectedIndex].text;
+    copyBox.textContent =
+      `Font: ${shortName}\n` +
+      `Size: ${size}px\n` +
+      `Tracking: ${spacing}em\n` +
+      `Line-height: ${line}\n` +
+      `Weight: ${weight}`;
+  }
+
+  const THEMES = {
+    light: {
+      '--bg': '#f4f5f7', '--surface': '#ffffff',
+      '--border': 'rgba(0,0,0,0.09)',
+      '--ink1': '#0d0e12', '--ink2': '#3d3f4a', '--ink3': '#6b6e7e',
+      '--accent': '#4f46e5', '--accent-soft': '#eef2ff',
+    },
+    dark: {
+      '--bg': '#0f1117', '--surface': '#181b24',
+      '--border': 'rgba(255,255,255,0.08)',
+      '--ink1': '#f0f1f5', '--ink2': '#a0a3b1', '--ink3': '#636678',
+      '--accent': '#818cf8', '--accent-soft': '#1e2040',
+    },
+  };
+
+  themeSelect.addEventListener('change', () => {
+    const t = THEMES[themeSelect.value];
+    Object.entries(t).forEach(([k, v]) => document.documentElement.style.setProperty(k, v));
+  });
+
+  [fontSelect, sizeRange, spacingRange, lineRange, weightRange].forEach(el => {
+    el.addEventListener('input', applyFont);
+  });
+
+  applyFont();
+</script>
+</body>
+</html>

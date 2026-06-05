@@ -2,6 +2,8 @@ import { requireFMContext, getFMPhases, getFMRounds } from '@/lib/fantamondiale/
 import { createClient } from '@/lib/supabase/server'
 import type { FMCompetitionConfig } from '@/domain/fantamondiale/config/schema'
 import { DEFAULT_FM_CONFIG } from '@/domain/fantamondiale/config/defaults'
+import { TeamCrest } from '@/components/fm/TeamCrest'
+import { CoachTierBadge } from '@/components/fm/CoachTierBadge'
 import { LineupPicker } from './LineupPicker'
 
 export default async function FormazionePage({ params }: { params: Promise<{ id: string }> }) {
@@ -43,15 +45,18 @@ export default async function FormazionePage({ params }: { params: Promise<{ id:
   let currentFormation: string | null = null
   let lineupId: string | null = null
 
+  let coachId: string | null = null
+
   if (fantasyTeamId && activePhase) {
     const { data: squad } = await supabase
       .from('fm_phase_squad')
-      .select('id')
+      .select('id, coach_id')
       .eq('phase_id', activePhase.id)
       .eq('fantasy_team_id', fantasyTeamId)
       .maybeSingle()
 
     if (squad) {
+      coachId = squad.coach_id ?? null
       const { data: squadPlayers } = await supabase
         .from('fm_phase_squad_player')
         .select('player_id')
@@ -90,6 +95,32 @@ export default async function FormazionePage({ params }: { params: Promise<{ id:
     .in('id', squadPlayerIds.length > 0 ? squadPlayerIds : ['00000000-0000-0000-0000-000000000000'])
     .order('name', { ascending: true })
 
+  // Load the squad's coach (fixed for the phase) + its frozen tier, so it's
+  // always visible here — including when the round is locked/closed.
+  let coach: { name: string; team: { name: string; fifa_code: string; logo_url: string | null; flag_url: string | null } | null; tier: string | null } | null = null
+  if (coachId) {
+    const [coachRes, tierRes] = await Promise.all([
+      supabase
+        .from('fm_coach')
+        .select('name, fm_national_team(name, fifa_code, logo_url, flag_url)')
+        .eq('id', coachId)
+        .maybeSingle(),
+      supabase
+        .from('fm_competition_coach_tier')
+        .select('tier')
+        .eq('competition_id', ctx.competition.id)
+        .eq('coach_id', coachId)
+        .maybeSingle(),
+    ])
+    if (coachRes.data) {
+      coach = {
+        name: coachRes.data.name,
+        team: (coachRes.data.fm_national_team as { name: string; fifa_code: string; logo_url: string | null; flag_url: string | null } | null) ?? null,
+        tier: tierRes.data?.tier ?? null,
+      }
+    }
+  }
+
   const isReadOnly = !ctx.fantasyTeamId || activeRound.status !== 'open'
 
   return (
@@ -111,6 +142,22 @@ export default async function FormazionePage({ params }: { params: Promise<{ id:
           {activeRound.status === 'open' ? 'Aperta' : 'Chiusa'}
         </span>
       </div>
+
+      {coach && (
+        <div className="flex items-center gap-3 rounded-xl border border-hairline bg-glass-1 px-4 py-3">
+          <span className="w-7 shrink-0 text-center text-[10px] font-bold uppercase tracking-wider text-ink-4">CT</span>
+          <TeamCrest
+            name={coach.team?.name ?? ''}
+            logoUrl={coach.team?.logo_url ?? null}
+            flagUrl={coach.team?.flag_url ?? null}
+            fifaCode={coach.team?.fifa_code ?? ''}
+            size={22}
+          />
+          <span className="flex-1 text-[13px] font-semibold text-ink-1 truncate">{coach.name}</span>
+          <CoachTierBadge tier={coach.tier} full />
+          <span className="text-[11px] text-ink-4 shrink-0">{coach.team?.name ?? '—'}</span>
+        </div>
+      )}
 
       {squadPlayerIds.length === 0 && fantasyTeamId ? (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-[12px] text-amber-400">
