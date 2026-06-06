@@ -276,7 +276,7 @@ export const fmCompetitionConfigSchema = z.object({
   mvp_bonus_brackets: fmBracketsSchema,
   coach_tier_matrix: fmCoachTierMatrixSchema,
   coach_tier_knockout_matrix: fmCoachKnockoutMatrixSchema.default(DEFAULT_COACH_KNOCKOUT_MATRIX),
-  coach_knockout_draw_mode: fmKnockoutDrawModeSchema.default('draw'),
+  coach_knockout_draw_mode: fmKnockoutDrawModeSchema.default('advancer_wins'),
   tie_breakers: z.array(fmTieBreakerSchema).min(1),
   calc_order: fmCalcOrderSchema,
   engine: fmEngineConfigSchema,
