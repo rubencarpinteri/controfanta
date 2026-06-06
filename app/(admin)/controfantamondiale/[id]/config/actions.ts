@@ -9,6 +9,7 @@ import {
   fmSquadConfigSchema,
   fmFormationListSchema,
   fmCoachTierMatrixSchema,
+  fmKnockoutDrawModeSchema,
   fmTieBreakerSchema,
 } from '@/domain/fantamondiale/config/schema'
 import type { Json } from '@/types/database.types'
@@ -22,6 +23,7 @@ const fmShapeSchema = z.object({
   squad: fmSquadConfigSchema,
   formations: fmFormationListSchema,
   coach_tier_matrix: fmCoachTierMatrixSchema,
+  coach_knockout_draw_mode: fmKnockoutDrawModeSchema,
   tie_breakers: z.array(fmTieBreakerSchema).min(1),
 })
 
@@ -51,6 +53,7 @@ export async function saveConfigAction(fd: FormData) {
     squad: validated.data.squad,
     formations: validated.data.formations,
     coach_tier_matrix: validated.data.coach_tier_matrix,
+    coach_knockout_draw_mode: validated.data.coach_knockout_draw_mode,
     tie_breakers: validated.data.tie_breakers,
   })
 
@@ -68,6 +71,7 @@ export async function saveConfigAction(fd: FormData) {
     squad: shape.squad as unknown as Json,
     formations: shape.formations as unknown as Json,
     coach_tier_matrix: shape.coach_tier_matrix as unknown as Json,
+    coach_knockout_draw_mode: shape.coach_knockout_draw_mode,
     tie_breakers: shape.tie_breakers as unknown as Json,
   }
 
