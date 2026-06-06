@@ -27,7 +27,11 @@ import type { Database } from '@/types/database.types'
 import { fmCompetitionConfigSchema } from '@/domain/fantamondiale/config/schema'
 import { loadFMUnifiedConfig } from '@/lib/fantamondiale/loadUnifiedConfig'
 import { scorePlayerRaw, finalizePlayerForLega, hasDecisiveEvent } from './playerScore'
+import { scoreCoach } from './coachScore'
 import { applySubstitutions, type FMRole, type SubStarter, type SubBench } from './substitution'
+import type { FMEngineCoachInput } from './types'
+
+type CoachTier = FMEngineCoachInput['tier']
 
 type Supabase = SupabaseClient<Database>
 
@@ -59,11 +63,24 @@ export type LiveSnapshotPlayer = {
   final_score_now: number
 }
 
+export type LiveSnapshotCoach = {
+  name: string
+  tier: string | null
+  team: LiveTeamRef | null
+  /** Live (provisional) coach bonus/malus; null until his match kicks off. */
+  live_score: number | null
+  /** Coach's nation result so far: W / D / L (null before kickoff). */
+  live_result: 'W' | 'D' | 'L' | null
+}
+
 export type LiveSnapshotTeam = {
   fantasy_team_id: string
   name: string
   formation: string | null
-  coach: { name: string; tier: string | null; team: LiveTeamRef | null } | null
+  coach: LiveSnapshotCoach | null
+  /** Players-only total. */
+  players_total: number
+  /** players_total + coach live_score. */
   live_total: number
   players: LiveSnapshotPlayer[]
 }
@@ -104,6 +121,14 @@ export async function computeLiveRoundSnapshot(
   const composed = await loadFMUnifiedConfig(supabase, round.competition_id)
   const config = fmCompetitionConfigSchema.parse(composed)
   const sub = config.substitution
+
+  // Phase kind decides coach scoring mode: knockout → opponent-relative.
+  const { data: phase } = await supabase
+    .from('fm_phase')
+    .select('kind')
+    .eq('id', round.phase_id)
+    .maybeSingle()
+  const isKnockout = !!phase && phase.kind !== 'group_stage'
 
   // ---- 2. Matches for the round (live-tolerant: scores may be null) ------
   const { data: matches } = await supabase
@@ -153,7 +178,7 @@ export async function computeLiveRoundSnapshot(
     .in('real_match_id', matchIds.length > 0 ? matchIds : ['00000000-0000-0000-0000-000000000000'])
   const statsByKey = new Map((allStats ?? []).map((s) => [`${s.player_id}:${s.real_match_id}`, s]))
 
-  // ---- 5. Coaches (display only) ----------------------------------------
+  // ---- 5. Coaches (live-scored via the match result) --------------------
   const { data: phaseSquads } = await supabase
     .from('fm_phase_squad')
     .select('fantasy_team_id, coach_id')
@@ -166,30 +191,92 @@ export async function computeLiveRoundSnapshot(
       .map((s) => [s.fantasy_team_id, s.coach_id]),
   )
   const coachIds = [...new Set(coachIdByTeam.values())]
-  const coachInfoById = new Map<
-    string,
-    { name: string; tier: string | null; team: LiveTeamRef | null }
-  >()
+
+  type CoachInfo = {
+    name: string
+    tier: CoachTier | null
+    team: LiveTeamRef | null
+    national_team_id: string | null
+  }
+  const coachInfoById = new Map<string, CoachInfo>()
+  // Nation → tier across the WHOLE competition: knockout coach scoring needs
+  // the opponent's tier, and the opponent may be an undrafted coach.
+  const tierByNationalTeamId = new Map<string, CoachTier>()
+
   if (coachIds.length > 0) {
-    const [coachRows, tierRows] = await Promise.all([
+    const [coachRows, allTierRows] = await Promise.all([
       supabase
         .from('fm_coach')
-        .select('id, name, fm_national_team(name, fifa_code, logo_url, flag_url)')
+        .select('id, name, national_team_id, fm_national_team(name, fifa_code, logo_url, flag_url)')
         .in('id', coachIds),
       supabase
         .from('fm_competition_coach_tier')
-        .select('coach_id, tier')
-        .eq('competition_id', round.competition_id)
-        .in('coach_id', coachIds),
+        .select('coach_id, tier, fm_coach(national_team_id)')
+        .eq('competition_id', round.competition_id),
     ])
-    const tierByCoach = new Map((tierRows.data ?? []).map((r) => [r.coach_id, r.tier]))
+    const tierByCoach = new Map<string, CoachTier>()
+    for (const r of allTierRows.data ?? []) {
+      tierByCoach.set(r.coach_id, r.tier as CoachTier)
+      const ntId = (r.fm_coach as { national_team_id: string } | null)?.national_team_id
+      if (ntId) tierByNationalTeamId.set(ntId, r.tier as CoachTier)
+    }
     for (const c of coachRows.data ?? []) {
       coachInfoById.set(c.id, {
         name: c.name,
         tier: tierByCoach.get(c.id) ?? null,
         team: (c.fm_national_team as LiveTeamRef | null) ?? null,
+        national_team_id: c.national_team_id ?? null,
       })
     }
+  }
+
+  // Provisional coach score for one team's coach, from the live match result.
+  // Returns null score (pending) until the coach's match has kicked off.
+  function liveCoach(coachId: string | undefined): LiveSnapshotCoach | null {
+    if (!coachId) return null
+    const info = coachInfoById.get(coachId)
+    if (!info) return null
+    const base: LiveSnapshotCoach = {
+      name: info.name,
+      tier: info.tier,
+      team: info.team,
+      live_score: null,
+      live_result: null,
+    }
+    if (!info.national_team_id || !info.tier) return base
+    const match = matchByTeamId.get(info.national_team_id)
+    // Only score once the match is underway — a 0-0 "draw" pre-kickoff is noise.
+    if (!match || (match.status !== 'in_progress' && match.status !== 'finished')) return base
+
+    const opponentTeamId =
+      match.home_team_id === info.national_team_id ? match.away_team_id : match.home_team_id
+    const scored = scoreCoach(
+      {
+        coachId,
+        nationalTeamId: info.national_team_id,
+        tier: info.tier,
+        opponentTier: tierByNationalTeamId.get(opponentTeamId) ?? null,
+        isKnockout,
+        matchContext: {
+          real_match_id: match.id,
+          scoring_round_id: roundId,
+          home_team_id: match.home_team_id,
+          away_team_id: match.away_team_id,
+          home_score: match.home_score ?? 0,
+          away_score: match.away_score ?? 0,
+        },
+      },
+      config,
+    )
+    if (!scored) return base
+
+    const isHome = info.national_team_id === match.home_team_id
+    const coachWon =
+      (scored.match_result === 'home_win' && isHome) ||
+      (scored.match_result === 'away_win' && !isHome)
+    const live_result: 'W' | 'D' | 'L' =
+      scored.match_result === 'draw' ? 'D' : coachWon ? 'W' : 'L'
+    return { ...base, live_score: scored.final_score, live_result }
   }
 
   // ============================================================
@@ -391,11 +478,10 @@ export async function computeLiveRoundSnapshot(
   const teamsOut: LiveSnapshotTeam[] = (teams ?? []).map((team) => {
     const lineup = lineupByTeam.get(team.id)
     const fieldedVia = fieldedNowVia.get(team.id) ?? new Map()
-    const coachId = coachIdByTeam.get(team.id)
-    const coach = coachId ? (coachInfoById.get(coachId) ?? null) : null
+    const coach = liveCoach(coachIdByTeam.get(team.id))
 
     const players: LiveSnapshotPlayer[] = []
-    let live_total = 0
+    let players_total = 0
 
     for (const lp of lineup?.fm_matchday_lineup_player ?? []) {
       const player = playerById.get(lp.player_id)
@@ -430,7 +516,7 @@ export async function computeLiveRoundSnapshot(
         popularity_penalty_potential = finMax.popularity_penalty_amount
         mvp_bonus = finNow.mvp_bonus_amount
         final_score_now = finNow.final_score
-        if (counts) live_total += finNow.final_score
+        if (counts) players_total += finNow.final_score
       }
 
       players.push({
@@ -450,11 +536,13 @@ export async function computeLiveRoundSnapshot(
       })
     }
 
+    const live_total = players_total + (coach?.live_score ?? 0)
     return {
       fantasy_team_id: team.id,
       name: team.name,
       formation: lineup?.formation ?? null,
       coach,
+      players_total: Math.round(players_total * 100) / 100,
       live_total: Math.round(live_total * 100) / 100,
       players,
     }

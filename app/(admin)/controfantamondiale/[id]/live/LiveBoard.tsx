@@ -150,6 +150,32 @@ function TeamCard({ team, rank, isMine }: { team: LiveSnapshotTeam; rank: number
             />
             <span className="flex-1 text-[11px] font-medium text-ink-1 truncate">{team.coach.name}</span>
             <CoachTierBadge tier={team.coach.tier} />
+            {team.coach.live_result && (
+              <span
+                className={`shrink-0 rounded px-1 text-[8px] font-bold uppercase ${
+                  team.coach.live_result === 'W'
+                    ? 'bg-emerald-400/15 text-emerald-300'
+                    : team.coach.live_result === 'L'
+                      ? 'bg-rose-400/15 text-rose-300'
+                      : 'bg-ink-5/10 text-ink-4'
+                }`}
+              >
+                {team.coach.live_result === 'W' ? 'Vince' : team.coach.live_result === 'L' ? 'Perde' : 'Pari'}
+              </span>
+            )}
+            <span
+              className={`shrink-0 w-10 text-right tabular-nums font-semibold ${
+                team.coach.live_score == null
+                  ? 'text-ink-5'
+                  : team.coach.live_score >= 0
+                    ? 'text-ink-1'
+                    : 'text-rose-400'
+              }`}
+            >
+              {team.coach.live_score == null
+                ? '—'
+                : `${team.coach.live_score > 0 ? '+' : ''}${fmt(team.coach.live_score)}`}
+            </span>
           </div>
         )}
 
