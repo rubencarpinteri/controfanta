@@ -1,14 +1,16 @@
-import { requireFMContext, getFMTeams, getFMPlayers } from '@/lib/fantamondiale/server'
+import { requireFMContext, getFMTeams, getFMPlayers, getFMCoaches } from '@/lib/fantamondiale/server'
+import { createClient } from '@/lib/supabase/server'
 import { TeamCrest } from '@/components/fm/TeamCrest'
+import { CoachTierBadge } from '@/components/fm/CoachTierBadge'
 
 export const metadata = { title: 'Rose Nazionali' }
 
-// Display order + Italian labels for the player roles.
+// Display order + Italian labels for the player roles (semantic role tints).
 const ROLE_GROUPS = [
-  { code: 'P', label: 'Portieri', cls: 'text-amber-400' },
-  { code: 'D', label: 'Difensori', cls: 'text-emerald-400' },
-  { code: 'C', label: 'Centrocampisti', cls: 'text-indigo-400' },
-  { code: 'A', label: 'Attaccanti', cls: 'text-rose-400' },
+  { code: 'P', label: 'Portieri', cls: 'text-role-por' },
+  { code: 'D', label: 'Difensori', cls: 'text-role-def' },
+  { code: 'C', label: 'Centrocampisti', cls: 'text-role-mid' },
+  { code: 'A', label: 'Attaccanti', cls: 'text-role-att' },
 ] as const
 
 // "Group A" → "Girone A" for the Italian UI.
@@ -24,11 +26,25 @@ export default async function RoseNazionaliPage({
 }) {
   const { id } = await params
   const ctx = await requireFMContext(id)
+  const supabase = await createClient()
 
-  const [teams, players] = await Promise.all([
+  const [teams, players, coaches] = await Promise.all([
     getFMTeams(ctx.competition.id),
     getFMPlayers(ctx.competition.id),
+    getFMCoaches(ctx.competition.id),
   ])
+
+  // Frozen competition-level coach tiers, mapped to each national team via its
+  // coach so the allenatore (name + tier) can sit at the foot of every squad.
+  const { data: tierRows } = await supabase
+    .from('fm_competition_coach_tier')
+    .select('coach_id, tier')
+    .eq('competition_id', ctx.competition.id)
+  const tierByCoach = new Map<string, string>((tierRows ?? []).map((r) => [r.coach_id, r.tier]))
+  const coachByTeam = new Map<string, { name: string; tier: string | null }>()
+  for (const c of coaches) {
+    coachByTeam.set(c.national_team_id, { name: c.name, tier: tierByCoach.get(c.id) ?? null })
+  }
 
   // Players bucketed by team.
   const playersByTeam = new Map<string, typeof players>()
@@ -53,62 +69,71 @@ export default async function RoseNazionaliPage({
   return (
     <div className="space-y-6">
       {/* Header + legend */}
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="text-[16px] font-semibold text-ink-1">Rose Nazionali</h2>
-          <p className="mt-0.5 text-[12px] text-ink-4">
-            Tutte le squadre del Mondiale divise per girone ufficiale. Tocca una nazionale per vedere i convocati e le quotazioni in crediti.
-          </p>
-        </div>
-        <div className="flex items-center gap-4 text-[11px] text-ink-4">
+      <header className="pt-1">
+        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-4">
+          Mondiale · {teams.length} nazionali
+        </p>
+        <h1
+          className="font-semibold tracking-tight text-ink-1"
+          style={{ fontSize: 'clamp(26px, 7vw, 32px)', lineHeight: 1.12, letterSpacing: '-0.03em' }}
+        >
+          Rose <span className="serif text-ink-3">nazionali</span>
+        </h1>
+        <p className="mt-2 max-w-prose text-[13.5px] leading-snug text-ink-3">
+          Tutte le squadre del Mondiale divise per girone. Tocca una nazionale per vedere i convocati, le quotazioni e l&apos;allenatore.
+        </p>
+        <div className="mt-3 flex items-center gap-4 text-[12px] text-ink-4">
           <span className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-emerald-400" /> In gara ({activeCount})
+            <span className="h-2 w-2 rounded-full bg-emerald-500" /> In gara ({activeCount})
           </span>
           <span className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-rose-500" /> Eliminata
           </span>
         </div>
-      </div>
+      </header>
 
       {/* Groups */}
       {sortedGroups.map(([key, groupTeams]) => (
-        <section key={key} className="space-y-2">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-4">
+        <section key={key} className="space-y-2.5">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-4">
             {girone(key === '￿' ? null : key)}
           </p>
-          <div className="grid gap-2 sm:grid-cols-2">
+          {/* items-start: keep each card at its own height so opening one
+              <details> doesn't stretch its row-neighbor into an empty box. */}
+          <div className="grid items-start gap-2.5 sm:grid-cols-2">
             {groupTeams
               .slice()
               .sort((a, b) => a.name.localeCompare(b.name))
               .map((team) => {
                 const squad = (playersByTeam.get(team.id) ?? []).slice()
                 const eliminated = team.status === 'eliminated'
+                const coach = coachByTeam.get(team.id) ?? null
                 return (
                   <details
                     key={team.id}
-                    className="group rounded-xl border border-hairline bg-glass-1 overflow-hidden"
+                    className="group overflow-hidden rounded-2xl border border-hairline bg-glass-1 backdrop-blur-xl"
                   >
-                    <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 hover:bg-glass-2 transition-colors">
+                    <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3.5 transition-colors hover:bg-glass-2">
                       <span className="relative shrink-0">
                         <TeamCrest
                           name={team.name}
                           logoUrl={team.logo_url}
                           flagUrl={team.flag_url}
                           fifaCode={team.fifa_code}
-                          size={26}
-                          className={eliminated ? 'grayscale opacity-50' : ''}
+                          size={28}
+                          className={eliminated ? 'opacity-50 grayscale' : ''}
                         />
                         <span
                           className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-surface-0 ${
-                            eliminated ? 'bg-rose-500' : 'bg-emerald-400'
+                            eliminated ? 'bg-rose-500' : 'bg-emerald-500'
                           }`}
                         />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className={`block truncate text-[13px] font-semibold ${eliminated ? 'text-ink-4' : 'text-ink-1'}`}>
+                        <span className={`block truncate text-[14.5px] font-semibold ${eliminated ? 'text-ink-4' : 'text-ink-1'}`}>
                           {team.name}
                         </span>
-                        <span className="block text-[10px] text-ink-5">
+                        <span className="mono block text-[11px] text-ink-5">
                           {team.fifa_code} · {squad.length} convocati{eliminated ? ' · eliminata' : ''}
                         </span>
                       </span>
@@ -120,7 +145,7 @@ export default async function RoseNazionaliPage({
                       </svg>
                     </summary>
 
-                    <div className="border-t border-hairline px-4 py-3 space-y-3">
+                    <div className="space-y-3 border-t border-hairline px-4 py-3.5">
                       {ROLE_GROUPS.map(({ code, label, cls }) => {
                         const rolePlayers = squad
                           .filter((p) => p.role === code)
@@ -128,17 +153,17 @@ export default async function RoseNazionaliPage({
                         if (rolePlayers.length === 0) return null
                         return (
                           <div key={code}>
-                            <p className={`mb-1 text-[10px] font-semibold uppercase tracking-widest ${cls}`}>
+                            <p className={`mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${cls}`}>
                               {label}
                             </p>
                             <ul className="space-y-0.5">
                               {rolePlayers.map((p) => (
-                                <li key={p.id} className="flex items-center gap-2 text-[12px] text-ink-2">
-                                  <span className="w-6 shrink-0 text-right tabular-nums text-[10px] text-ink-5">
+                                <li key={p.id} className="flex items-center gap-2 text-[13px] text-ink-2">
+                                  <span className="mono w-6 shrink-0 text-right text-[11px] tabular-nums text-ink-5">
                                     {p.shirt_number ?? '—'}
                                   </span>
                                   <span className="min-w-0 flex-1 truncate">{p.name}</span>
-                                  <span className="shrink-0 tabular-nums text-[11px] font-semibold text-ink-3">
+                                  <span className="mono shrink-0 text-[12px] font-semibold tabular-nums text-ink-3">
                                     {p.base_price} <span className="text-[9px] font-normal text-ink-5">cr</span>
                                   </span>
                                 </li>
@@ -148,7 +173,20 @@ export default async function RoseNazionaliPage({
                         )
                       })}
                       {squad.length === 0 && (
-                        <p className="text-[11px] text-ink-5">Nessun convocato disponibile.</p>
+                        <p className="text-[12px] text-ink-5">Nessun convocato disponibile.</p>
+                      )}
+
+                      {/* Allenatore — name + frozen tier, at the foot of the squad. */}
+                      {coach && (
+                        <div className="flex items-center gap-2 border-t border-hairline pt-3">
+                          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-4">
+                            Allenatore
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold text-ink-1">
+                            {coach.name}
+                          </span>
+                          <CoachTierBadge tier={coach.tier} full />
+                        </div>
                       )}
                     </div>
                   </details>
