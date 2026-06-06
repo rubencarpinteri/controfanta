@@ -261,7 +261,9 @@ export default async function RegolePage({ params }: { params: Promise<{ id: str
           Dai sedicesimi in poi il bonus/malus dipende dal <strong>vantaggio</strong> =
           Tier avversario − proprio Tier (Tier 1 = più forte). Favorito netto: poco per la
           vittoria, molto da perdere. Sfavorito: tanto da guadagnare, niente da perdere.
-          Il pareggio vale in caso di qualificazione ai rigori.
+          {config.coach_knockout_draw_mode === 'advancer_wins'
+            ? ' In caso di qualificazione ai rigori non c’è pareggio: chi passa il turno (o vince il titolo) prende la vittoria, l’altro la sconfitta.'
+            : ' Il pareggio vale in caso di qualificazione ai rigori.'}
         </p>
         <div className="overflow-x-auto">
           <table className="w-full text-[12px]">
@@ -270,7 +272,9 @@ export default async function RegolePage({ params }: { params: Promise<{ id: str
                 <th className="pb-2 text-left text-ink-4 font-medium">Vantaggio</th>
                 <th className="pb-2 text-left text-ink-5 font-medium">Esempio</th>
                 <th className="pb-2 text-center text-emerald-400 font-medium">Vittoria</th>
-                <th className="pb-2 text-center text-ink-4 font-medium">Rigori</th>
+                {config.coach_knockout_draw_mode !== 'advancer_wins' && (
+                  <th className="pb-2 text-center text-ink-4 font-medium">Rigori</th>
+                )}
                 <th className="pb-2 text-center text-rose-400 font-medium">Sconfitta</th>
               </tr>
             </thead>
@@ -292,9 +296,11 @@ export default async function RegolePage({ params }: { params: Promise<{ id: str
                     <td className="py-1.5 text-center tabular-nums text-emerald-400 font-semibold">
                       {row.win >= 0 ? '+' : ''}{row.win}
                     </td>
-                    <td className="py-1.5 text-center tabular-nums text-ink-3">
-                      {row.draw >= 0 ? '+' : ''}{row.draw}
-                    </td>
+                    {config.coach_knockout_draw_mode !== 'advancer_wins' && (
+                      <td className="py-1.5 text-center tabular-nums text-ink-3">
+                        {row.draw >= 0 ? '+' : ''}{row.draw}
+                      </td>
+                    )}
                     <td className="py-1.5 text-center tabular-nums text-rose-400">
                       {row.loss >= 0 ? '+' : ''}{row.loss}
                     </td>
