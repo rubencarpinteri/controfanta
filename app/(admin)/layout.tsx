@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getAuthUser } from '@/lib/auth'
 import { getLeagueContext, isRealSuperAdmin, isViewingAsManager } from '@/lib/league'
 import { AdminSidebar } from '@/components/nav/AdminSidebar'
+import { FontSwitcher } from '@/components/admin/FontSwitcher'
 import { toggleViewAsManagerAction } from './preview-actions'
 
 export default async function AdminLayout({
@@ -78,6 +79,7 @@ export default async function AdminLayout({
           {children}
         </div>
       </main>
+      {isAdmin && <FontSwitcher />}
     </div>
   )
 }

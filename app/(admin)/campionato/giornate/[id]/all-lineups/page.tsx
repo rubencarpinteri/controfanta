@@ -463,7 +463,7 @@ export default async function AllLineupsPage({
             }}
           >
             <span className="font-semibold">{matchday.name}</span>
-            <span className="font-normal italic text-ink-3" style={{ fontFamily: 'var(--font-instrument-serif), Times New Roman, serif' }}>
+            <span className="serif text-ink-3">
               — formazioni
             </span>
           </h1>

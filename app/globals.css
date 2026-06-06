@@ -72,9 +72,12 @@
   --shadow-2: var(--elev-2);
   --shadow-3: var(--elev-3);
 
-  --font-sans:  var(--font-geist-sans), 'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-mono:  var(--font-geist-mono), 'Geist Mono', ui-monospace, SFMono-Regular, monospace;
-  --font-serif: var(--font-instrument-serif), 'Instrument Serif', 'Times New Roman', serif;
+  /* Semantic font slots — each resolves to one of the loaded faces and is
+     swappable at runtime by the admin Font Switcher. Defaults live in :root
+     below; the @theme entries only add generic fallbacks per slot type. */
+  --font-sans:  var(--cf-font-body),    ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono:  var(--cf-font-mono),    ui-monospace, SFMono-Regular, monospace;
+  --font-serif: var(--cf-font-accent),  ui-sans-serif, system-ui, sans-serif;
 
   --tracking-display: -0.025em;
   --tracking-body:    -0.012em;
@@ -91,6 +94,14 @@
 /* ---------- LIGHT THEME (default) — soft, airy, pale chromatic ---------- */
 :root {
   color-scheme: light;
+
+  /* Default font slot mapping (theme-independent). Overridden per-device by the
+     admin Font Switcher via documentElement inline styles. */
+  --cf-font-heading: var(--font-mozilla-headline);
+  --cf-font-body:    var(--font-inter);
+  --cf-font-accent:  var(--font-stack-sans-headline);
+  --cf-font-mono:    var(--font-jetbrains-mono);
+  --cf-accent-style: italic;
 
   --bg-0: #f4f5fb;
   --bg-1: #eef0f8;
@@ -180,6 +191,7 @@ body {
 }
 
 h1, h2, h3, .display {
+  font-family: var(--cf-font-heading), var(--cf-font-body), ui-sans-serif, system-ui, sans-serif;
   letter-spacing: var(--tracking-display);
   color: var(--ink-1);
 }
@@ -292,10 +304,13 @@ table {
   line-height: 1;
 }
 
+/* Accent-word treatment. The display faces have no true italic, so when the
+   accent style is "italic" the browser synthesizes an oblique — the Font
+   Switcher exposes this as a toggle. */
 .serif {
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-weight: 400;
+  font-family: var(--cf-font-accent), ui-sans-serif, system-ui, sans-serif;
+  font-style: var(--cf-accent-style, italic);
+  font-weight: 500;
 }
 
 .hairline {
