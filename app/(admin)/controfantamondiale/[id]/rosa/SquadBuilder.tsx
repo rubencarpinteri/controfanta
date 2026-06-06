@@ -6,18 +6,31 @@ import { TeamCrest } from '@/components/fm/TeamCrest'
 import type { FMPhase, FMNationalTeam, FMPlayer, FMCoach } from '@/types/database.types'
 import type { FMRoleQuota, FMPlayerRole } from '@/domain/fantamondiale/config/schema'
 
+// Mantra role tints — semantic tokens that flip with the theme (see globals.css).
+// P→portiere(gold) D→difesa(blue) C→centrocampo(teal) A→attacco(red).
 const ROLE_COLORS: Record<string, string> = {
-  P: 'text-amber-400',
-  D: 'text-emerald-400',
-  C: 'text-indigo-400',
-  A: 'text-rose-400',
+  P: 'text-role-por',
+  D: 'text-role-def',
+  C: 'text-role-mid',
+  A: 'text-role-att',
 }
 
 const ROLE_BG: Record<string, string> = {
-  P: 'border-amber-500/40 bg-amber-500/10',
-  D: 'border-emerald-500/40 bg-emerald-500/10',
-  C: 'border-indigo-500/40 bg-indigo-500/10',
-  A: 'border-rose-500/40 bg-rose-500/10',
+  P: 'border-role-por/40 bg-role-por/10',
+  D: 'border-role-def/40 bg-role-def/10',
+  C: 'border-role-mid/40 bg-role-mid/10',
+  A: 'border-role-att/40 bg-role-att/10',
+}
+
+// Role tag chip — currentColor trick: role tint drives border + tinted bg + text.
+function RoleTag({ role }: { role: string }) {
+  return (
+    <span
+      className={`inline-flex h-6 min-w-[26px] shrink-0 items-center justify-center rounded-md border px-1.5 text-[11px] font-bold uppercase ${ROLE_BG[role] ?? ''} ${ROLE_COLORS[role] ?? 'text-ink-3'}`}
+    >
+      {role}
+    </span>
+  )
 }
 
 type PlayerWithTeam = FMPlayer & {
@@ -177,33 +190,40 @@ export function SquadBuilder({
 
   const remaining = budgetTotal - spent
   const budgetPct = Math.min(100, (spent / budgetTotal) * 100)
-  const budgetColor = remaining < 20 ? 'bg-rose-500' : remaining < 50 ? 'bg-amber-500' : 'bg-emerald-500'
+  const budgetBar =
+    remaining < 20 ? 'bg-rose-500' : remaining < 50 ? 'bg-amber-500' : 'bg-gradient-to-r from-accent-soft to-accent'
+  const remainingText =
+    remaining < 20 ? 'text-rose-500' : remaining < 50 ? 'text-amber-500' : 'text-emerald-500'
 
   return (
     <div className="space-y-3">
-      {/* ── Budget bar ─────────────────────────────────────────────────────── */}
-      <div className="rounded-xl border border-hairline bg-glass-1 p-3">
-        <div className="flex items-center justify-between mb-1.5">
-          <span className="text-[11px] text-ink-4">Budget</span>
-          <span className="text-[11px] font-semibold tabular-nums text-ink-1">
-            {remaining} cr <span className="font-normal text-ink-5">/ {budgetTotal}</span>
-          </span>
+      {/* ── Budget hero ────────────────────────────────────────────────────── */}
+      <div className="rounded-2xl border border-hairline bg-glass-2 p-4 shadow-1 backdrop-blur-xl">
+        <div className="mb-3 flex items-end justify-between gap-4">
+          <div>
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-4">Budget</p>
+            <div className="flex items-baseline gap-1.5">
+              <span className="mono text-[26px] font-bold leading-none text-ink-1">{spent}</span>
+              <span className="mono text-[15px] text-ink-4">/ {budgetTotal}</span>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-4">Rimangono</p>
+            <span className={`mono text-[22px] font-bold leading-none ${remainingText}`}>{remaining}</span>
+          </div>
         </div>
-        <div className="h-1.5 rounded-full bg-glass-3 overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all ${budgetColor}`}
-            style={{ width: `${budgetPct}%` }}
-          />
+        <div className="h-[7px] overflow-hidden rounded-full bg-hairline-strong">
+          <div className={`h-full rounded-full transition-all ${budgetBar}`} style={{ width: `${budgetPct}%` }} />
         </div>
-        <div className="mt-2 grid grid-cols-4 gap-1 text-center">
+        <div className="mt-3 grid grid-cols-4 gap-2 text-center">
           {(['P', 'D', 'C', 'A'] as const).map((role) => {
             const count = roleCounts[role]
             const quota = roleQuotas[role]
             const full = count >= quota
             return (
-              <div key={role} className="rounded-lg bg-glass-2 py-1">
-                <p className={`text-[10px] font-bold ${ROLE_COLORS[role]}`}>{role}</p>
-                <p className={`text-[13px] font-light tabular-nums ${full ? 'text-emerald-400' : 'text-ink-1'}`}>
+              <div key={role} className="rounded-xl border border-hairline bg-glass-1 py-2">
+                <p className={`text-[11px] font-bold ${ROLE_COLORS[role]}`}>{role}</p>
+                <p className={`mono mt-0.5 text-[15px] font-semibold ${full ? 'text-emerald-500' : 'text-ink-1'}`}>
                   {count}<span className="text-ink-5">/{quota}</span>
                 </p>
               </div>
@@ -213,30 +233,30 @@ export function SquadBuilder({
       </div>
 
       {/* ── Coach selector ─────────────────────────────────────────────────── */}
-      <div className="rounded-xl border border-hairline bg-glass-1 p-3">
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-ink-4">Allenatore</p>
+      <div className="rounded-2xl border border-hairline bg-glass-1 p-4 backdrop-blur-xl">
+        <p className="mb-2.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-4">Allenatore</p>
         {isReadOnly ? (
-          <div className="max-h-48 overflow-y-auto divide-y divide-hairline rounded-lg border border-hairline">
+          <div className="max-h-56 divide-y divide-hairline overflow-y-auto rounded-xl border border-hairline">
             {coaches.map((c) => {
               const isSelected = c.id === coachId
               const tier = TIER_BADGE[coachTiers[c.id] ?? '']
               return (
                 <div
                   key={c.id}
-                  className={`flex items-center gap-2.5 px-3 py-2 ${isSelected ? 'bg-indigo-500/10' : ''}`}
+                  className={`flex items-center gap-2.5 px-3 py-2.5 ${isSelected ? 'bg-accent-muted' : ''}`}
                 >
-                  <TeamCrest name={c.fm_national_team.name} logoUrl={c.fm_national_team.logo_url} flagUrl={c.fm_national_team.flag_url} fifaCode={c.fm_national_team.fifa_code} size={16} />
-                  <span className={`flex-1 text-[12px] font-medium truncate ${isSelected ? 'text-indigo-400' : 'text-ink-1'}`}>{c.name}</span>
+                  <TeamCrest name={c.fm_national_team.name} logoUrl={c.fm_national_team.logo_url} flagUrl={c.fm_national_team.flag_url} fifaCode={c.fm_national_team.fifa_code} size={18} />
+                  <span className={`flex-1 truncate text-[14px] font-medium ${isSelected ? 'text-accent' : 'text-ink-1'}`}>{c.name}</span>
                   {tier && (
                     <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${tier.cls}`}>{tier.short}</span>
                   )}
-                  <span className="text-[11px] text-ink-5 shrink-0">{c.fm_national_team.name}</span>
-                  {isSelected && <span className="text-[10px] font-semibold text-indigo-400 shrink-0">✓</span>}
+                  <span className="shrink-0 text-[12px] text-ink-5">{c.fm_national_team.name}</span>
+                  {isSelected && <span className="shrink-0 text-[11px] font-semibold text-accent">✓</span>}
                 </div>
               )
             })}
             {coaches.length === 0 && (
-              <p className="px-3 py-4 text-center text-[12px] text-ink-5">Nessun allenatore disponibile</p>
+              <p className="px-3 py-4 text-center text-[13px] text-ink-5">Nessun allenatore disponibile</p>
             )}
           </div>
         ) : (
@@ -244,7 +264,7 @@ export function SquadBuilder({
             value={coachId ?? ''}
             onChange={(e) => handleCoachChange(e.target.value || null)}
             disabled={pending}
-            className="w-full rounded-lg border border-hairline bg-glass-2 px-3 py-2 text-[13px] text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="w-full rounded-xl border border-hairline-strong bg-glass-2 px-3 py-3 text-[16px] text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo"
           >
             <option value="">— Nessun allenatore —</option>
             {coaches.map((c) => {
@@ -261,24 +281,22 @@ export function SquadBuilder({
 
       {/* ── Error banner ───────────────────────────────────────────────────── */}
       {error && (
-        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-[12px] text-rose-400">
+        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-[13px] font-medium text-rose-500">
           {error}
         </div>
       )}
 
-      {/* ── Tab toggle ─────────────────────────────────────────────────────── */}
+      {/* ── Pool / Rosa segmented control ──────────────────────────────────── */}
       <div className="flex gap-1 rounded-xl border border-hairline bg-glass-1 p-1">
         {(['pool', 'rosa'] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`flex-1 rounded-lg py-2 text-[12px] font-medium transition-colors ${
-              tab === t
-                ? 'bg-indigo-600 text-white'
-                : 'text-ink-3 hover:text-ink-1'
+            className={`flex-1 rounded-lg py-2.5 text-[13px] font-semibold transition-all ${
+              tab === t ? 'bg-glass-3 text-ink-1 shadow-1' : 'text-ink-4 hover:text-ink-2'
             }`}
           >
-            {t === 'pool' ? `Database Giocatori (${filteredPlayers.length})` : `La Mia Rosa (${selected.size}/${poolSize})`}
+            {t === 'pool' ? `Listone · ${filteredPlayers.length}` : `La mia rosa · ${selected.size}/${poolSize}`}
           </button>
         ))}
       </div>
@@ -286,39 +304,54 @@ export function SquadBuilder({
       {tab === 'pool' && (
         <>
           {/* Filters */}
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <input
               type="text"
-              placeholder="Cerca giocatore…"
+              placeholder="Cerca per nome o nazione…"
               value={filterSearch}
               onChange={(e) => setFilterSearch(e.target.value)}
-              className="w-full rounded-lg border border-hairline bg-glass-2 px-3 py-2.5 text-[13px] text-ink-1 placeholder-ink-5 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full rounded-xl border border-hairline-strong bg-glass-2 px-4 py-3 text-[16px] text-ink-1 placeholder-ink-5 focus:outline-none focus:ring-1 focus:ring-indigo"
             />
-            <div className="flex gap-2">
-              <select
-                value={filterTeam}
-                onChange={(e) => setFilterTeam(e.target.value)}
-                className="flex-1 min-w-0 rounded-lg border border-hairline bg-glass-2 px-2 py-2.5 text-[12px] text-ink-1 focus:outline-none"
+            <select
+              value={filterTeam}
+              onChange={(e) => setFilterTeam(e.target.value)}
+              className="w-full min-w-0 rounded-xl border border-hairline-strong bg-glass-2 px-3 py-3 text-[16px] text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo"
+            >
+              <option value="">Tutte le nazioni</option>
+              {teams.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+            {/* Role chips */}
+            <div className="flex gap-1.5">
+              <button
+                onClick={() => setFilterRole('')}
+                className={`flex-1 rounded-lg border py-2 text-[13px] font-semibold transition-colors ${
+                  filterRole === '' ? 'border-transparent bg-accent text-white' : 'border-hairline bg-glass-1 text-ink-3 hover:text-ink-1'
+                }`}
               >
-                <option value="">Tutte le nazioni</option>
-                {teams.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </select>
-              <select
-                value={filterRole}
-                onChange={(e) => setFilterRole(e.target.value)}
-                className="w-20 shrink-0 rounded-lg border border-hairline bg-glass-2 px-2 py-2.5 text-[12px] text-ink-1 focus:outline-none"
-              >
-                <option value="">Ruolo</option>
-                {['P', 'D', 'C', 'A'].map((r) => <option key={r} value={r}>{r}</option>)}
-              </select>
+                Tutti
+              </button>
+              {(['P', 'D', 'C', 'A'] as const).map((r) => {
+                const active = filterRole === r
+                return (
+                  <button
+                    key={r}
+                    onClick={() => setFilterRole(active ? '' : r)}
+                    className={`flex-1 rounded-lg border py-2 text-[13px] font-bold transition-colors ${
+                      active ? `${ROLE_BG[r]} ${ROLE_COLORS[r]}` : `border-hairline bg-glass-1 ${ROLE_COLORS[r]} opacity-70 hover:opacity-100`
+                    }`}
+                  >
+                    {r}
+                  </button>
+                )
+              })}
             </div>
           </div>
 
           {/* Player pool */}
-          <div className="rounded-xl border border-hairline overflow-hidden">
-            <div className="max-h-[65vh] overflow-y-auto divide-y divide-hairline">
+          <div className="overflow-hidden rounded-2xl border border-hairline bg-glass-1">
+            <div className="max-h-[60vh] divide-y divide-hairline overflow-y-auto">
               {filteredPlayers.map((player) => {
                 const price = priceMap.get(player.id) ?? 0
                 const isIn = selected.has(player.id)
@@ -330,28 +363,26 @@ export function SquadBuilder({
                     key={player.id}
                     onClick={() => handleToggle(player)}
                     disabled={isReadOnly || pending || (!isIn && !canAdd)}
-                    className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
+                    className={`flex w-full items-center gap-3 px-3.5 py-3 text-left transition-colors ${
                       isIn
-                        ? 'bg-indigo-500/10 hover:bg-indigo-500/15'
+                        ? 'bg-accent-muted hover:bg-accent-muted'
                         : canAdd
-                        ? 'hover:bg-glass-1'
+                        ? 'hover:bg-glass-2'
                         : 'opacity-40'
                     } ${isReadOnly ? 'cursor-default' : ''}`}
                   >
-                    <span className={`w-5 shrink-0 text-center text-[10px] font-bold ${ROLE_COLORS[player.role] ?? ''}`}>
-                      {player.role}
+                    <RoleTag role={player.role} />
+                    <TeamCrest name={player.fm_national_team.name} logoUrl={player.fm_national_team.logo_url} flagUrl={player.fm_national_team.flag_url} fifaCode={player.fm_national_team.fifa_code} size={22} className="w-6" />
+                    <span className="flex-1 truncate text-[14.5px] font-semibold text-ink-1">{player.name}</span>
+                    <span className="mono shrink-0 text-[13px] font-semibold text-ink-3">
+                      {price > 0 ? `${price}` : '—'}
                     </span>
-                    <TeamCrest name={player.fm_national_team.name} logoUrl={player.fm_national_team.logo_url} flagUrl={player.fm_national_team.flag_url} fifaCode={player.fm_national_team.fifa_code} size={18} className="w-6" />
-                    <span className="flex-1 text-[13px] font-medium text-ink-1 truncate">{player.name}</span>
-                    <span className="text-[11px] tabular-nums text-ink-4 shrink-0">
-                      {price > 0 ? `${price} cr` : '—'}
-                    </span>
-                    <span className={`h-4 w-4 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors ${
-                      isIn ? 'border-indigo-500 bg-indigo-500' : 'border-ink-5'
+                    <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                      isIn ? 'border-accent bg-accent' : 'border-ink-5'
                     }`}>
                       {isIn && (
-                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                          <path d="M1 4l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        <svg width="9" height="9" viewBox="0 0 8 8" fill="none">
+                          <path d="M1 4l2 2 4-4" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       )}
                     </span>
@@ -359,7 +390,7 @@ export function SquadBuilder({
                 )
               })}
               {filteredPlayers.length === 0 && (
-                <div className="px-4 py-8 text-center text-[12px] text-ink-5">Nessun giocatore trovato</div>
+                <div className="px-4 py-10 text-center text-[13px] text-ink-5">Nessun giocatore trovato</div>
               )}
             </div>
           </div>
@@ -367,19 +398,19 @@ export function SquadBuilder({
       )}
 
       {tab === 'rosa' && (
-        <div className="rounded-xl border border-hairline overflow-hidden">
+        <div className="overflow-hidden rounded-2xl border border-hairline bg-glass-1">
           {/* Coach row */}
           {myCoach && (
-            <div className="flex items-center gap-3 px-4 py-2.5 bg-glass-2 border-b border-hairline">
-              <span className="w-5 shrink-0 text-center text-[10px] font-bold text-ink-4">CT</span>
-              <TeamCrest name={myCoach.fm_national_team.name} logoUrl={myCoach.fm_national_team.logo_url} flagUrl={myCoach.fm_national_team.flag_url} fifaCode={myCoach.fm_national_team.fifa_code} size={18} />
-              <span className="flex-1 text-[13px] font-medium text-ink-1">{myCoach.name}</span>
+            <div className="flex items-center gap-3 border-b border-hairline bg-glass-2 px-3.5 py-3">
+              <span className="flex h-6 min-w-[26px] shrink-0 items-center justify-center rounded-md border border-hairline text-[10px] font-bold uppercase text-ink-4">CT</span>
+              <TeamCrest name={myCoach.fm_national_team.name} logoUrl={myCoach.fm_national_team.logo_url} flagUrl={myCoach.fm_national_team.flag_url} fifaCode={myCoach.fm_national_team.fifa_code} size={22} />
+              <span className="flex-1 text-[14.5px] font-semibold text-ink-1">{myCoach.name}</span>
               {TIER_BADGE[coachTiers[myCoach.id] ?? ''] && (
                 <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${TIER_BADGE[coachTiers[myCoach.id] ?? '']!.cls}`}>
                   {TIER_BADGE[coachTiers[myCoach.id] ?? '']!.short}
                 </span>
               )}
-              <span className="text-[11px] text-ink-4">{myCoach.fm_national_team.name}</span>
+              <span className="shrink-0 text-[12px] text-ink-4">{myCoach.fm_national_team.name}</span>
             </div>
           )}
           {/* Players grouped by role */}
@@ -388,28 +419,28 @@ export function SquadBuilder({
             if (rolePlayers.length === 0) return null
             return (
               <div key={role}>
-                <div className={`flex items-center gap-2 px-4 py-1.5 border-b border-hairline ${ROLE_BG[role]}`}>
-                  <span className={`text-[10px] font-bold ${ROLE_COLORS[role]}`}>{role}</span>
-                  <span className="text-[10px] text-ink-4">{rolePlayers.length} giocatori</span>
+                <div className={`flex items-center gap-2 border-b border-hairline px-3.5 py-2 ${ROLE_BG[role]}`}>
+                  <span className={`text-[11px] font-bold ${ROLE_COLORS[role]}`}>{role}</span>
+                  <span className="text-[11px] text-ink-4">{rolePlayers.length} giocatori</span>
                 </div>
                 <div className="divide-y divide-hairline">
                   {rolePlayers.map((player) => {
                     const price = priceMap.get(player.id) ?? 0
                     return (
-                      <div key={player.id} className="flex items-center gap-3 px-4 py-2">
-                        <TeamCrest name={player.fm_national_team.name} logoUrl={player.fm_national_team.logo_url} flagUrl={player.fm_national_team.flag_url} fifaCode={player.fm_national_team.fifa_code} size={18} className="w-6" />
-                        <span className="flex-1 text-[13px] font-medium text-ink-1 truncate">{player.name}</span>
-                        <span className="text-[11px] tabular-nums text-ink-4 shrink-0">
-                          {price > 0 ? `${price} cr` : '—'}
+                      <div key={player.id} className="flex items-center gap-3 px-3.5 py-2.5">
+                        <TeamCrest name={player.fm_national_team.name} logoUrl={player.fm_national_team.logo_url} flagUrl={player.fm_national_team.flag_url} fifaCode={player.fm_national_team.fifa_code} size={22} className="w-6" />
+                        <span className="flex-1 truncate text-[14.5px] font-semibold text-ink-1">{player.name}</span>
+                        <span className="mono shrink-0 text-[13px] font-semibold text-ink-3">
+                          {price > 0 ? `${price}` : '—'}
                         </span>
                         {!isReadOnly && (
                           <button
                             onClick={() => handleToggle(player)}
                             disabled={pending}
-                            className="h-6 w-6 shrink-0 rounded-full border border-rose-500/40 bg-rose-500/10 flex items-center justify-center text-rose-400 hover:bg-rose-500/20 transition-colors"
+                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-rose-500/40 bg-rose-500/10 text-rose-500 transition-colors hover:bg-rose-500/20"
                           >
-                            <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                              <path d="M1 1l6 6M7 1l-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                            <svg width="9" height="9" viewBox="0 0 8 8" fill="none">
+                              <path d="M1 1l6 6M7 1l-6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                             </svg>
                           </button>
                         )}
@@ -421,8 +452,8 @@ export function SquadBuilder({
             )
           })}
           {myPlayers.length === 0 && (
-            <div className="px-4 py-8 text-center text-[12px] text-ink-5">
-              Nessun giocatore selezionato — vai al Pool per scegliere la tua rosa
+            <div className="px-4 py-10 text-center text-[13px] text-ink-5">
+              Nessun giocatore selezionato — vai al <span className="font-semibold text-ink-3">Listone</span> per costruire la rosa
             </div>
           )}
         </div>

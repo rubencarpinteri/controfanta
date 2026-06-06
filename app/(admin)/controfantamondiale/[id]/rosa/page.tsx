@@ -121,33 +121,35 @@ export default async function RosaPage({ params }: { params: Promise<{ id: strin
     if (batch.length < PRICE_PAGE) break
   }
 
+  const phaseStatusLabel =
+    activePhase.status === 'open'
+      ? { text: 'Aperta', cls: 'cf-pill-open' }
+      : activePhase.status === 'locked'
+      ? { text: 'Chiusa', cls: 'cf-pill-locked' }
+      : { text: activePhase.name, cls: '' }
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-[16px] font-semibold text-ink-1">La Mia Rosa</h2>
-          <p className="mt-0.5 text-[11px] text-ink-4">
-            Fase: <span className="text-ink-2">{activePhase.name}</span>
-            {activePhase.status === 'open'
-              ? ' — aperta per la selezione'
-              : activePhase.status === 'locked'
-              ? ' — rosa chiusa'
-              : ''}
+      <header className="pt-1">
+        <div className="mb-1.5 flex items-center justify-between gap-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-4">
+            {activePhase.name} · Mondiale
           </p>
+          <span className={`cf-pill ${phaseStatusLabel.cls}`}>
+            {activePhase.status === 'open' && <span className="dot" />}
+            {phaseStatusLabel.text}
+          </span>
         </div>
-        <div className="text-right">
-          <p className="text-[20px] font-light tabular-nums text-ink-1">
-            {budgetTotal - budgetSpent}
-            <span className="ml-1 text-[11px] text-ink-4">cr rimasti</span>
-          </p>
-          <p className="text-[10px] text-ink-5">
-            {budgetSpent} / {budgetTotal} spesi · {squadPlayerIds.size} / {config.squad.pool_size} giocatori
-          </p>
-        </div>
-      </div>
+        <h1
+          className="font-semibold tracking-tight text-ink-1"
+          style={{ fontSize: 'clamp(26px, 7vw, 32px)', lineHeight: 1.12, letterSpacing: '-0.03em' }}
+        >
+          La mia <span className="serif text-ink-3">rosa</span>
+        </h1>
+      </header>
 
       {isReadOnly && activePhase.status !== 'open' && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-[12px] text-amber-400">
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-[13px] text-amber-600 dark:text-amber-300">
           La rosa è chiusa — puoi solo visualizzarla.
         </div>
       )}
