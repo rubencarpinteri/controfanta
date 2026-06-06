@@ -9,6 +9,7 @@ import {
   upsertSerieAPlayerStats,
 } from '@/lib/sportmonks/db'
 import { checkCronEnv, logCronRun } from '@/lib/sportmonks/cronLog'
+import { writeLiveSnapshots } from '@/lib/fantamondiale/liveSnapshotWriter'
 
 const ENDPOINT = 'sportmonks-ratings-tick'
 
@@ -135,15 +136,31 @@ export async function GET(req: NextRequest) {
     })
   }
 
-  const body = { live: liveByLeague.size, results }
-  const hadError = results.some((r) => r.error)
+  // After stats are upserted, recompute live snapshots for every currently
+  // live round (per lega). Never throws — folds its own errors into summary.
+  let liveSnapshots: Awaited<ReturnType<typeof writeLiveSnapshots>> | undefined
+  try {
+    liveSnapshots = await writeLiveSnapshots(db)
+  } catch (e) {
+    liveSnapshots = {
+      live_rounds: 0,
+      legas_processed: 0,
+      snapshots_written: 0,
+      errors: [e instanceof Error ? e.message : String(e)],
+    }
+  }
+
+  const body = { live: liveByLeague.size, results, liveSnapshots }
+  const hadError = results.some((r) => r.error) || (liveSnapshots?.errors.length ?? 0) > 0
   await logCronRun(db, {
     endpoint: ENDPOINT,
     started_at,
     status: hadError ? 'error' : 'ok',
     http_status: 200,
     summary: body,
-    error: hadError ? results.find((r) => r.error)?.error : null,
+    error: hadError
+      ? (results.find((r) => r.error)?.error ?? liveSnapshots?.errors[0] ?? null)
+      : null,
   })
   return NextResponse.json(body)
 }

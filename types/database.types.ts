@@ -511,6 +511,42 @@ export type Database = {
           },
         ]
       }
+      cron_runs: {
+        Row: {
+          duration_ms: number | null
+          endpoint: string
+          error: string | null
+          finished_at: string | null
+          http_status: number | null
+          id: string
+          started_at: string
+          status: string
+          summary: Json | null
+        }
+        Insert: {
+          duration_ms?: number | null
+          endpoint: string
+          error?: string | null
+          finished_at?: string | null
+          http_status?: number | null
+          id?: string
+          started_at?: string
+          status: string
+          summary?: Json | null
+        }
+        Update: {
+          duration_ms?: number | null
+          endpoint?: string
+          error?: string | null
+          finished_at?: string | null
+          http_status?: number | null
+          id?: string
+          started_at?: string
+          status?: string
+          summary?: Json | null
+        }
+        Relationships: []
+      }
       fantasy_team_transfer_request: {
         Row: {
           created_at: string
@@ -1235,6 +1271,42 @@ export type Database = {
             columns: ["league_id"]
             isOneToOne: false
             referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fm_live_round_snapshot: {
+        Row: {
+          computed_at: string
+          league_competition_id: string
+          scoring_round_id: string
+          snapshot: Json
+        }
+        Insert: {
+          computed_at?: string
+          league_competition_id: string
+          scoring_round_id: string
+          snapshot: Json
+        }
+        Update: {
+          computed_at?: string
+          league_competition_id?: string
+          scoring_round_id?: string
+          snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fm_live_round_snapshot_league_competition_id_fkey"
+            columns: ["league_competition_id"]
+            isOneToOne: false
+            referencedRelation: "fm_league_competition"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fm_live_round_snapshot_scoring_round_id_fkey"
+            columns: ["scoring_round_id"]
+            isOneToOne: false
+            referencedRelation: "fm_scoring_round"
             referencedColumns: ["id"]
           },
         ]
