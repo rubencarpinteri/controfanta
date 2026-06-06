@@ -208,5 +208,12 @@ export type ParsedFixture = {
   length_minutes: number
   home_score: number | null
   away_score: number | null
+  /**
+   * Match outcome from the SportMonks participant winner flag. For a level
+   * knockout tie decided on penalties this names the side that advanced;
+   * otherwise it agrees with the scoreline. Null when undecided (e.g. an
+   * in-progress fixture with no winner flag yet).
+   */
+  result: 'home_win' | 'draw' | 'away_win' | null
   players: ParsedPlayerStat[]
 }

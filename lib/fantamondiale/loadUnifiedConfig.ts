@@ -107,6 +107,7 @@ function parseCompetitionShape(raw: Json | null | undefined): {
   substitution: FMCompetitionConfig['substitution']
   coach_tier_matrix: FMCompetitionConfig['coach_tier_matrix']
   coach_tier_knockout_matrix: FMCompetitionConfig['coach_tier_knockout_matrix']
+  coach_knockout_draw_mode: FMCompetitionConfig['coach_knockout_draw_mode']
   tie_breakers: FMCompetitionConfig['tie_breakers']
 } {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
@@ -116,6 +117,7 @@ function parseCompetitionShape(raw: Json | null | undefined): {
       substitution: DEFAULT_FM_CONFIG.substitution,
       coach_tier_matrix: DEFAULT_FM_CONFIG.coach_tier_matrix,
       coach_tier_knockout_matrix: DEFAULT_FM_CONFIG.coach_tier_knockout_matrix,
+      coach_knockout_draw_mode: DEFAULT_FM_CONFIG.coach_knockout_draw_mode,
       tie_breakers: DEFAULT_FM_CONFIG.tie_breakers,
     }
   }
@@ -141,6 +143,10 @@ function parseCompetitionShape(raw: Json | null | undefined): {
       (r.coach_tier_matrix as FMCompetitionConfig['coach_tier_matrix']) ?? DEFAULT_FM_CONFIG.coach_tier_matrix,
     coach_tier_knockout_matrix:
       (r.coach_tier_knockout_matrix as FMCompetitionConfig['coach_tier_knockout_matrix']) ?? DEFAULT_FM_CONFIG.coach_tier_knockout_matrix,
+    coach_knockout_draw_mode:
+      r.coach_knockout_draw_mode === 'advancer_wins' || r.coach_knockout_draw_mode === 'draw'
+        ? r.coach_knockout_draw_mode
+        : DEFAULT_FM_CONFIG.coach_knockout_draw_mode,
     tie_breakers: Array.isArray(r.tie_breakers)
       ? (r.tie_breakers as FMCompetitionConfig['tie_breakers'])
       : DEFAULT_FM_CONFIG.tie_breakers,
@@ -209,6 +215,7 @@ export function composeFMConfig(
     substitution: shape.substitution,
     coach_tier_matrix: shape.coach_tier_matrix,
     coach_tier_knockout_matrix: shape.coach_tier_knockout_matrix,
+    coach_knockout_draw_mode: shape.coach_knockout_draw_mode,
     tie_breakers: shape.tie_breakers,
 
     engine: {

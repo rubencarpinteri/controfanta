@@ -50,6 +50,13 @@ export type FMEngineCoachInput = {
     away_team_id: string
     home_score: number
     away_score: number
+    /**
+     * Recorded match result (from the SportMonks winner flag at ingest). For a
+     * level knockout tie decided on penalties it names the team that advanced,
+     * which `coach_knockout_draw_mode: 'advancer_wins'` uses to award a win to
+     * the advancer and a loss to the other. Null/unknown falls back to a draw.
+     */
+    result?: 'home_win' | 'draw' | 'away_win' | null
   }
 }
 

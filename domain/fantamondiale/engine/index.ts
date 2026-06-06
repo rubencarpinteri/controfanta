@@ -70,7 +70,7 @@ export async function runRoundEngine(roundId: string, supabase: Supabase): Promi
   // ---- 2. Real matches for the round -----------------------------------
   const { data: matches, error: matchErr } = await supabase
     .from('fm_real_match')
-    .select('id, home_team_id, away_team_id, home_score, away_score')
+    .select('id, home_team_id, away_team_id, home_score, away_score, result')
     .eq('scoring_round_id', roundId)
   if (matchErr) throw new Error(`Matches load failed: ${matchErr.message}`)
   if (!matches || matches.length === 0) throw new Error('No real matches found for this round')
@@ -348,6 +348,7 @@ export async function runRoundEngine(roundId: string, supabase: Supabase): Promi
         away_team_id: match.away_team_id,
         home_score: match.home_score!,
         away_score: match.away_score!,
+        result: match.result,
       },
     }
 

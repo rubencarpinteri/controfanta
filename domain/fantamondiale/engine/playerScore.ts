@@ -112,7 +112,11 @@ export function scorePlayerRaw(
   const isDef = role === 'D'
 
   if (voto_base !== null) {
-    const cleanSheet = computeCleanSheet(input, football.clean_sheet.min_minutes)
+    // Clean sheet. The keeper's bonus has NO minutes gate — a playing keeper
+    // who didn't concede always earns it (voto_base !== null already proves he
+    // played). The defender's bonus stays gated by clean_sheet.min_minutes.
+    const gkCleanSheet = isGk && computeCleanSheet(input, 0)
+    const defCleanSheet = isDef && computeCleanSheet(input, football.clean_sheet.min_minutes)
 
     // Goals — regular vs penalty (penalty bonus = role goal − discount)
     const penaltiesScored = stats.penalties_scored ?? 0
@@ -128,8 +132,8 @@ export function scorePlayerRaw(
 
     football_bonus += stats.assists * football.assist
 
-    if (isGk && cleanSheet) football_bonus += football.clean_sheet.P
-    else if (isDef && cleanSheet) football_bonus += football.clean_sheet.D
+    if (gkCleanSheet) football_bonus += football.clean_sheet.P
+    else if (defCleanSheet) football_bonus += football.clean_sheet.D
 
     if (isGk) {
       football_bonus += stats.penalties_saved * football.penalty_saved

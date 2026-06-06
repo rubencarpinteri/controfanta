@@ -76,6 +76,11 @@ export function FMConfigEditor({
     setSaved(false)
   }
 
+  function updateKnockoutDrawMode(value: FMCompetitionConfig['coach_knockout_draw_mode']) {
+    setCfg((prev) => ({ ...prev, coach_knockout_draw_mode: value }))
+    setSaved(false)
+  }
+
   function updateSubstitution<K extends keyof FMCompetitionConfig['substitution']>(
     key: K, value: FMCompetitionConfig['substitution'][K]
   ) {
@@ -320,6 +325,40 @@ export function FMConfigEditor({
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* ── Knockout draw mode ── */}
+        <div className="space-y-2 pt-2">
+          <p className="text-[12px] font-semibold text-ink-2">Fase a eliminazione — Pareggi</p>
+          <p className="text-[11px] text-ink-4">
+            Come viene assegnato il bonus allenatore quando una gara a eliminazione finisce
+            in parità ed è decisa ai rigori.
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            {([
+              ['draw', 'Il pareggio conta', 'Si usa la colonna “Pareggio” della matrice anche nei rigori.'],
+              ['advancer_wins', 'Vince chi passa', 'Niente pareggio: chi avanza (o vince il titolo) prende la vittoria, l’altro la sconfitta.'],
+            ] as const).map(([mode, label, desc]) => {
+              const active = cfg.coach_knockout_draw_mode === mode
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => updateKnockoutDrawMode(mode)}
+                  className={`flex-1 rounded-lg border px-3 py-2.5 text-left transition-colors ${
+                    active
+                      ? 'border-indigo-500 bg-indigo-500/10'
+                      : 'border-hairline bg-glass-2 hover:border-hairline-strong'
+                  }`}
+                >
+                  <span className={`block text-[12px] font-semibold ${active ? 'text-ink-1' : 'text-ink-2'}`}>
+                    {label}
+                  </span>
+                  <span className="mt-0.5 block text-[11px] text-ink-4">{desc}</span>
+                </button>
+              )
+            })}
+          </div>
         </div>
       </div>
     </div>

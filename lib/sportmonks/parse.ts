@@ -265,6 +265,17 @@ export function parseFixture(fixture: SMFixture): ParsedFixture {
   const homeScore = homeId != null ? teamGoals.get(homeId) ?? 0 : null
   const awayScore = awayId != null ? teamGoals.get(awayId) ?? 0 : null
 
+  // Outcome: prefer the SportMonks winner flag (it names the advancer even when
+  // a knockout tie is decided on penalties). Fall back to the scoreline, which
+  // is all that's available for matches without a winner flag (e.g. group
+  // stage, or before a shootout settles).
+  let result: 'home_win' | 'draw' | 'away_win' | null = null
+  if (home?.meta?.winner === true) result = 'home_win'
+  else if (away?.meta?.winner === true) result = 'away_win'
+  else if (homeScore != null && awayScore != null) {
+    result = homeScore > awayScore ? 'home_win' : homeScore < awayScore ? 'away_win' : 'draw'
+  }
+
   return {
     sportmonks_fixture_id: fixture.id,
     league_id: fixture.league_id,
@@ -283,6 +294,7 @@ export function parseFixture(fixture: SMFixture): ParsedFixture {
     length_minutes: fixture.length,
     home_score: homeScore,
     away_score: awayScore,
+    result,
     players: Array.from(byPlayer.values()),
   }
 }

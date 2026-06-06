@@ -107,6 +107,11 @@ export const DEFAULT_FM_CONFIG: FMCompetitionConfig = {
 
   coach_tier_knockout_matrix: DEFAULT_COACH_KNOCKOUT_MATRIX,
 
+  // Knockout ties decided on penalties score as a draw by default. Admins can
+  // flip a competition to 'advancer_wins' so the team that goes through scores
+  // a win and the eliminated side a loss.
+  coach_knockout_draw_mode: 'draw',
+
   tie_breakers: [
     'br_points',
     'raw_score',

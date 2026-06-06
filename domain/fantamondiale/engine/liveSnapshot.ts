@@ -133,7 +133,7 @@ export async function computeLiveRoundSnapshot(
   // ---- 2. Matches for the round (live-tolerant: scores may be null) ------
   const { data: matches } = await supabase
     .from('fm_real_match')
-    .select('id, home_team_id, away_team_id, home_score, away_score, status')
+    .select('id, home_team_id, away_team_id, home_score, away_score, result, status')
     .eq('scoring_round_id', roundId)
   const matchByTeamId = new Map<string, NonNullable<typeof matches>[number]>()
   for (const m of matches ?? []) {
@@ -264,6 +264,7 @@ export async function computeLiveRoundSnapshot(
           away_team_id: match.away_team_id,
           home_score: match.home_score ?? 0,
           away_score: match.away_score ?? 0,
+          result: match.result,
         },
       },
       config,

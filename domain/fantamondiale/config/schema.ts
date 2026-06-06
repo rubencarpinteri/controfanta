@@ -34,6 +34,17 @@ export type FMBudgetMode = z.infer<typeof fmBudgetModeSchema>
 export const fmCalcOrderSchema = z.enum(['mvp_then_penalty', 'penalty_then_mvp'])
 export type FMCalcOrder = z.infer<typeof fmCalcOrderSchema>
 
+/**
+ * How a level knockout tie (decided on penalties) scores the coach bonus:
+ *   - 'draw':          the tie uses the `draw` column of the knockout matrix.
+ *   - 'advancer_wins': there is no draw — the team that advanced (or won the
+ *                      title) scores as a `win`, the other as a `loss`. The
+ *                      advancer comes from the recorded match result, populated
+ *                      from the SportMonks winner flag at ingest.
+ */
+export const fmKnockoutDrawModeSchema = z.enum(['draw', 'advancer_wins'])
+export type FMKnockoutDrawMode = z.infer<typeof fmKnockoutDrawModeSchema>
+
 export const fmTieBreakerSchema = z.enum([
   'br_points',
   'raw_score',
@@ -265,6 +276,7 @@ export const fmCompetitionConfigSchema = z.object({
   mvp_bonus_brackets: fmBracketsSchema,
   coach_tier_matrix: fmCoachTierMatrixSchema,
   coach_tier_knockout_matrix: fmCoachKnockoutMatrixSchema.default(DEFAULT_COACH_KNOCKOUT_MATRIX),
+  coach_knockout_draw_mode: fmKnockoutDrawModeSchema.default('draw'),
   tie_breakers: z.array(fmTieBreakerSchema).min(1),
   calc_order: fmCalcOrderSchema,
   engine: fmEngineConfigSchema,

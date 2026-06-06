@@ -34,6 +34,21 @@ export function scoreCoach(
 
   if (!result) return null
 
+  // 'advancer_wins' knockout mode: a level tie has no draw. The team that
+  // advanced (penalty-shootout winner, recorded on the match result) scores a
+  // win, the other a loss. Only a true level result is remapped; a decisive
+  // 90/120-min result already carries the right winner. Unknown advancer (e.g.
+  // a live shootout not yet settled) falls back to the draw column.
+  let effectiveResult = result
+  if (
+    isKnockout &&
+    config.coach_knockout_draw_mode === 'advancer_wins' &&
+    result === 'draw' &&
+    (matchContext.result === 'home_win' || matchContext.result === 'away_win')
+  ) {
+    effectiveResult = matchContext.result
+  }
+
   // Knockout rounds (round of 32 onward) score on *favoredness* —
   // own tier relative to the opponent's tier. The group stage, and any
   // knockout match where the opponent tier can't be resolved, fall back
@@ -44,10 +59,10 @@ export function scoreCoach(
       : config.coach_tier_matrix[tier]
 
   let bonus_or_malus: number
-  if (result === 'home_win') {
+  if (effectiveResult === 'home_win') {
     const isHome = nationalTeamId === matchContext.home_team_id
     bonus_or_malus = isHome ? tierRow.win : tierRow.loss
-  } else if (result === 'away_win') {
+  } else if (effectiveResult === 'away_win') {
     const isAway = nationalTeamId === matchContext.away_team_id
     bonus_or_malus = isAway ? tierRow.win : tierRow.loss
   } else {
@@ -59,7 +74,7 @@ export function scoreCoach(
     real_match_id: matchContext.real_match_id,
     coach_id: coachId,
     team_tier: tier,
-    match_result: result,
+    match_result: effectiveResult,
     bonus_or_malus,
     final_score: bonus_or_malus,
     calc_snapshot: config,
