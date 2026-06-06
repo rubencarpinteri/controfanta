@@ -1,6 +1,7 @@
 // ============================================================
 // ControFanta Mondiale — Server-side data access helpers
 // ============================================================
+import { cache } from 'react'
 import { redirect } from 'next/navigation'
 import type { Route } from 'next'
 import { createClient } from '@/lib/supabase/server'
@@ -36,8 +37,12 @@ export interface FMContext {
  * human-readable `slug` (preferred) or its UUID `id` (legacy/fallback). Access
  * is gated to enrolled managers in this Lega's instance (super admins get a
  * free pass).
+ *
+ * Memoized per request via React cache(): an FM page and its layout both call
+ * this with the same ref, so without memoization every navigation pays the
+ * getUser() round-trip plus four table lookups twice.
  */
-export async function requireFMContext(legaCompRef: string): Promise<FMContext> {
+export const requireFMContext = cache(async (legaCompRef: string): Promise<FMContext> => {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -92,7 +97,7 @@ export async function requireFMContext(legaCompRef: string): Promise<FMContext> 
     userId: user.id,
     fantasyTeamId,
   }
-}
+})
 
 // Call at the top of admin page.tsx files to gate non-admins.
 export function assertSuperAdmin(ctx: FMContext) {

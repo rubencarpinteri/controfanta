@@ -45,15 +45,18 @@ function deriveSlope(engine: FMEngineConfig): number {
   return (engine.voto_max - engine.pivot_vote) / denom
 }
 
+/**
+ * A "decisive event" rescues a player who played under the minutes gate: he
+ * still gets a base_score and is NOT substituted. Only positive bonuses count
+ * here — goal, assist, penalty scored, penalty saved. Maluses (yellow/red card,
+ * own goal, penalty missed) deliberately do NOT count: a player booked or sent
+ * off in his first minutes stays s.v. (no rating, no malus) and is subbed out.
+ */
 export function hasDecisiveEvent(stats: FMEnginePlayerInput['stats']): boolean {
   return (
     stats.goals           > 0 ||
     stats.assists         > 0 ||
-    stats.own_goals       > 0 ||
-    stats.yellow_cards    > 0 ||
-    stats.red_cards       > 0 ||
     stats.penalties_saved > 0 ||
-    stats.penalties_missed > 0 ||
     (stats.penalties_scored ?? 0) > 0
   )
 }

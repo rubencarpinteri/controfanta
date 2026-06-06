@@ -1,10 +1,19 @@
 import type { NextConfig } from 'next'
+import { fileURLToPath } from 'node:url'
+import { dirname } from 'node:path'
 
 const nextConfig: NextConfig = {
   // Strict mode for React 19
   reactStrictMode: true,
 
   typedRoutes: true,
+
+  // Pin the workspace root to this project. Without it, a stray
+  // package-lock.json in the home directory makes Next.js infer the home
+  // folder as the root — so dev file-tracing/watching crawls the entire home
+  // tree, causing multi-second on-demand route compiles. This also anchors
+  // outputFileTracingIncludes' `_data/**` glob to the project.
+  outputFileTracingRoot: dirname(fileURLToPath(import.meta.url)),
 
   // SportMonks CDN hosts team crests, country flags and player photos.
   images: {

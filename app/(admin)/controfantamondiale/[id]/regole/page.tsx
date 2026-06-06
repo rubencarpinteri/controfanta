@@ -89,8 +89,10 @@ export default async function RegolePage({ params }: { params: Promise<{ id: str
             </span>
           </div>
           <p className="text-[11px] text-ink-5 leading-relaxed">
-            Un titolare che segna, fa assist o incide comunque (gol, assist, cartellini, rigori…) viene
-            <span className="font-semibold text-ink-3"> sempre contato</span>, anche se gioca pochi minuti: il suo contributo non si perde mai.
+            Solo i bonus <span className="font-semibold text-ink-3">gol, assist, rigore segnato e rigore parato</span> vengono
+            <span className="font-semibold text-ink-3"> sempre contati</span>, anche con pochi minuti giocati.
+            I malus da cartellino (giallo o rosso) <span className="font-semibold text-ink-3">non si applicano</span>:
+            un giocatore sotto la soglia minuti resta senza voto anche se ammonito o espulso.
           </p>
         </div>
       </Section>
