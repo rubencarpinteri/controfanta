@@ -74,8 +74,15 @@ export function NationSelect({ teams, value, onChange, allLabel = 'Tutte le nazi
         </svg>
       </button>
 
-      {open && (
-        <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-30 overflow-hidden rounded-xl border border-hairline bg-glass-3 shadow-2 backdrop-blur-xl">
+      {/* Dropdown panel — animated with opacity + scale + translateY for a smooth pop-in feel */}
+      <div
+        className={`absolute left-0 right-0 top-[calc(100%+6px)] z-30 origin-top transition-all duration-200 ease-out ${
+          open
+            ? 'pointer-events-auto scale-y-100 opacity-100'
+            : 'pointer-events-none scale-y-95 opacity-0'
+        }`}
+      >
+        <div className="overflow-hidden rounded-xl border border-hairline bg-glass-3 shadow-3 backdrop-blur-xl">
           <div className="border-b border-hairline p-2">
             <input
               autoFocus
@@ -116,7 +123,7 @@ export function NationSelect({ teams, value, onChange, allLabel = 'Tutte le nazi
             )}
           </div>
         </div>
-      )}
+      </div>
     </div>
   )
 }
