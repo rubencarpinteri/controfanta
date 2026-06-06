@@ -125,27 +125,27 @@ export default async function FormazionePage({ params }: { params: Promise<{ id:
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-[16px] font-semibold text-ink-1">Formazione</h2>
-          <p className="mt-0.5 text-[11px] text-ink-4">
-            {activeRound.name}
-            {activePhase ? ` — ${activePhase.name}` : ''}
-            {activeRound.status === 'open' ? ' — aperta' : activeRound.status === 'locked' ? ' — chiusa' : ''}
+      <header className="pt-1">
+        <div className="mb-1.5 flex items-center justify-between gap-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-4">
+            {activeRound.name}{activePhase ? ` · ${activePhase.name}` : ''}
           </p>
+          <span className={`cf-pill ${activeRound.status === 'open' ? 'cf-pill-open' : 'cf-pill-locked'}`}>
+            {activeRound.status === 'open' && <span className="dot" />}
+            {activeRound.status === 'open' ? 'Aperta' : 'Chiusa'}
+          </span>
         </div>
-        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
-          activeRound.status === 'open'
-            ? 'text-emerald-400 bg-emerald-400/10'
-            : 'text-amber-400 bg-amber-400/10'
-        }`}>
-          {activeRound.status === 'open' ? 'Aperta' : 'Chiusa'}
-        </span>
-      </div>
+        <h1
+          className="font-semibold tracking-tight text-ink-1"
+          style={{ fontSize: 'clamp(26px, 7vw, 32px)', lineHeight: 1.12, letterSpacing: '-0.03em' }}
+        >
+          La tua <span className="serif text-ink-3">formazione</span>
+        </h1>
+      </header>
 
       {coach && (
-        <div className="flex items-center gap-3 rounded-xl border border-hairline bg-glass-1 px-4 py-3">
-          <span className="w-7 shrink-0 text-center text-[10px] font-bold uppercase tracking-wider text-ink-4">CT</span>
+        <div className="flex items-center gap-3 rounded-2xl border border-hairline bg-glass-1 px-4 py-3 backdrop-blur-xl">
+          <span className="flex h-6 min-w-[26px] shrink-0 items-center justify-center rounded-md border border-hairline text-[10px] font-bold uppercase text-ink-4">CT</span>
           <TeamCrest
             name={coach.team?.name ?? ''}
             logoUrl={coach.team?.logo_url ?? null}
@@ -153,15 +153,15 @@ export default async function FormazionePage({ params }: { params: Promise<{ id:
             fifaCode={coach.team?.fifa_code ?? ''}
             size={22}
           />
-          <span className="flex-1 text-[13px] font-semibold text-ink-1 truncate">{coach.name}</span>
+          <span className="flex-1 truncate text-[14.5px] font-semibold text-ink-1">{coach.name}</span>
           <CoachTierBadge tier={coach.tier} full />
-          <span className="text-[11px] text-ink-4 shrink-0">{coach.team?.name ?? '—'}</span>
+          <span className="shrink-0 text-[12px] text-ink-4">{coach.team?.name ?? '—'}</span>
         </div>
       )}
 
       {squadPlayerIds.length === 0 && fantasyTeamId ? (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-[12px] text-amber-400">
-          Devi prima selezionare la tua rosa per questa fase. Vai alla tab Mia Rosa.
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-[13px] text-amber-600 dark:text-amber-300">
+          Devi prima selezionare la tua rosa per questa fase. Vai alla tab La Mia Rosa.
         </div>
       ) : (
         <LineupPicker

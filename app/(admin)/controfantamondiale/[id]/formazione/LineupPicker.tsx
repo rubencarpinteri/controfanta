@@ -4,11 +4,19 @@ import { useState, useTransition, useMemo } from 'react'
 import { saveLineupAction } from './actions'
 import { TeamCrest } from '@/components/fm/TeamCrest'
 
+// Semantic Mantra role tints (flip with theme) — see globals.css.
 const ROLE_COLORS: Record<string, string> = {
-  P: 'text-amber-400',
-  D: 'text-emerald-400',
-  C: 'text-indigo-400',
-  A: 'text-rose-400',
+  P: 'text-role-por',
+  D: 'text-role-def',
+  C: 'text-role-mid',
+  A: 'text-role-att',
+}
+
+const ROLE_BG: Record<string, string> = {
+  P: 'border-role-por/40 bg-role-por/10',
+  D: 'border-role-def/40 bg-role-def/10',
+  C: 'border-role-mid/40 bg-role-mid/10',
+  A: 'border-role-att/40 bg-role-att/10',
 }
 
 const ROLE_ORDER = ['P', 'D', 'C', 'A'] as const
@@ -191,31 +199,31 @@ export function LineupPicker({
   return (
     <div className="space-y-3">
       {/* Formation selector + save bar — sticky on mobile */}
-      <div className="sticky top-[44px] z-10 -mx-4 px-4 py-2 bg-surface-0/90 backdrop-blur-lg border-b border-hairline sm:static sm:mx-0 sm:px-0 sm:py-0 sm:bg-transparent sm:backdrop-blur-none sm:border-0">
+      <div className="sticky top-[44px] z-10 -mx-4 border-b border-hairline bg-surface-0/90 px-4 py-2 backdrop-blur-lg sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none">
         <div className="flex items-center gap-2">
           <select
             value={formation}
             onChange={(e) => { setFormation(e.target.value); setLineup(new Set()); setSaved(false) }}
             disabled={isReadOnly || pending}
-            className="flex-1 rounded-lg border border-hairline bg-glass-2 px-3 py-2.5 text-[13px] text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="mono flex-1 rounded-xl border border-hairline-strong bg-glass-2 px-3 py-3 text-[16px] font-semibold text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo"
           >
             {allowedFormations.map((f) => (
               <option key={f} value={f}>{f}</option>
             ))}
           </select>
-          <span className={`text-[12px] tabular-nums font-semibold shrink-0 ${isComplete ? 'text-emerald-400' : 'text-ink-4'}`}>
+          <span className={`mono shrink-0 text-[14px] font-bold tabular-nums ${isComplete ? 'text-emerald-500' : 'text-ink-4'}`}>
             {lineupCount}/11
           </span>
           {!isReadOnly && (
             <button
               onClick={handleSave}
               disabled={!canSave || pending}
-              className={`shrink-0 rounded-lg px-4 py-2.5 text-[13px] font-semibold transition-colors ${
+              className={`shrink-0 rounded-xl px-4 py-3 text-[14px] font-semibold transition-all active:translate-y-px ${
                 saved
-                  ? 'bg-emerald-600/80 text-white'
+                  ? 'bg-emerald-600 text-white'
                   : canSave
-                  ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
-                  : 'bg-glass-2 text-ink-4 cursor-not-allowed'
+                  ? 'bg-gradient-to-b from-accent-soft to-accent text-white shadow-1'
+                  : 'cursor-not-allowed bg-glass-2 text-ink-4'
               }`}
             >
               {saved ? 'Salvata ✓' : pending ? '…' : 'Salva'}
@@ -225,39 +233,39 @@ export function LineupPicker({
       </div>
 
       {error && (
-        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-[12px] text-rose-400">
+        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-[13px] font-medium text-rose-500">
           {error}
         </div>
       )}
 
       {/* Bench summary — disclosure + role-minimum status */}
-      <div className="rounded-xl border border-hairline overflow-hidden">
-        <div className="flex items-center gap-2 px-4 py-2 bg-glass-2 border-b border-hairline">
-          <span className="text-[10px] font-bold text-ink-2 uppercase tracking-wider">Panchina</span>
-          <span className="flex-1 text-[10px] text-ink-4">
-            almeno 1 per ruolo · resa pubblica al primo calcio d&apos;inizio
+      <div className="overflow-hidden rounded-2xl border border-hairline bg-glass-1">
+        <div className="flex items-center gap-2 border-b border-hairline bg-glass-2 px-4 py-2.5">
+          <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2">Panchina</span>
+          <span className="flex-1 text-[11px] text-ink-4">
+            almeno 1 per ruolo · pubblica al 1° calcio d&apos;inizio
           </span>
-          <span className={`text-[10px] font-semibold tabular-nums ${benchRoleComplete ? 'text-emerald-400' : 'text-amber-400'}`}>
+          <span className={`text-[11px] font-semibold tabular-nums ${benchRoleComplete ? 'text-emerald-500' : 'text-amber-500'}`}>
             {bench.length} in panchina
           </span>
         </div>
-        <div className="flex flex-wrap gap-1.5 px-4 py-2 border-b border-hairline">
+        <div className="flex flex-wrap gap-1.5 border-b border-hairline px-4 py-2.5">
           {ROLE_ORDER.map((r) => {
             const ok = (benchRoleCounts[r] ?? 0) >= 1
             return (
               <span
                 key={r}
-                className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ${
-                  ok ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'
+                className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[12px] font-semibold tabular-nums ${
+                  ok ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500' : 'border-amber-500/30 bg-amber-500/10 text-amber-500'
                 }`}
               >
-                <span className={ROLE_COLORS[r]}>{r}</span>{benchRoleCounts[r] ?? 0}
+                <span className={`font-bold ${ROLE_COLORS[r]}`}>{r}</span>{benchRoleCounts[r] ?? 0}
               </span>
             )
           })}
         </div>
         {bench.length === 0 ? (
-          <div className="px-4 py-3 text-[11px] text-ink-5">
+          <div className="px-4 py-3.5 text-[12.5px] text-ink-5">
             Nessuna riserva. Aggiungi giocatori dalle sezioni qui sotto (pulsante &quot;Panchina&quot;).
           </div>
         ) : (
@@ -267,34 +275,34 @@ export function LineupPicker({
               if (!p) return null
               return (
                 <li key={id} className="flex items-center gap-3 px-4 py-2.5">
-                  <span className="w-5 text-[12px] font-bold tabular-nums text-ink-4">{i + 1}</span>
-                  <span className={`text-[10px] font-bold ${ROLE_COLORS[p.role]}`}>{p.role}</span>
+                  <span className="mono w-5 text-[13px] font-bold tabular-nums text-ink-4">{i + 1}</span>
+                  <span className={`text-[11px] font-bold ${ROLE_COLORS[p.role]}`}>{p.role}</span>
                   <TeamCrest
                     name={p.fm_national_team.name}
                     logoUrl={p.fm_national_team.logo_url}
                     flagUrl={p.fm_national_team.flag_url}
                     fifaCode={p.fm_national_team.fifa_code}
-                    size={16}
+                    size={18}
                     className="w-5"
                   />
-                  <span className="flex-1 text-[13px] font-medium text-ink-1 truncate">{p.name}</span>
+                  <span className="flex-1 truncate text-[14px] font-semibold text-ink-1">{p.name}</span>
                   {!isReadOnly && (
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex shrink-0 items-center gap-1">
                       <button
                         onClick={() => moveBench(id, -1)}
                         disabled={i === 0}
-                        className="h-6 w-6 rounded border border-hairline text-ink-3 disabled:opacity-30 hover:bg-glass-1"
+                        className="h-7 w-7 rounded-md border border-hairline text-ink-3 hover:bg-glass-2 disabled:opacity-30"
                         aria-label="Su"
                       >↑</button>
                       <button
                         onClick={() => moveBench(id, 1)}
                         disabled={i === bench.length - 1}
-                        className="h-6 w-6 rounded border border-hairline text-ink-3 disabled:opacity-30 hover:bg-glass-1"
+                        className="h-7 w-7 rounded-md border border-hairline text-ink-3 hover:bg-glass-2 disabled:opacity-30"
                         aria-label="Giù"
                       >↓</button>
                       <button
                         onClick={() => p && toggleBench(p)}
-                        className="h-6 w-6 rounded border border-rose-500/30 text-rose-400 hover:bg-rose-500/10"
+                        className="h-7 w-7 rounded-md border border-rose-500/30 text-rose-500 hover:bg-rose-500/10"
                         aria-label="Rimuovi"
                       >×</button>
                     </div>
@@ -313,12 +321,12 @@ export function LineupPicker({
         const roleSelected = lineupByRole[role]?.length ?? 0
 
         return (
-          <div key={role} className="rounded-xl border border-hairline overflow-hidden">
-            <div className="flex items-center gap-2 px-4 py-2 bg-glass-2 border-b border-hairline">
-              <span className={`text-[10px] font-bold ${ROLE_COLORS[role]}`}>{role}</span>
-              <span className="flex-1 text-[10px] text-ink-4">{rolePlayers.length} in rosa</span>
-              <span className={`text-[10px] font-semibold tabular-nums ${
-                roleSelected === roleRequired ? 'text-emerald-400' : 'text-ink-4'
+          <div key={role} className="overflow-hidden rounded-2xl border border-hairline bg-glass-1">
+            <div className={`flex items-center gap-2 border-b border-hairline px-4 py-2 ${ROLE_BG[role]}`}>
+              <span className={`text-[11px] font-bold ${ROLE_COLORS[role]}`}>{role}</span>
+              <span className="flex-1 text-[11px] text-ink-4">{rolePlayers.length} in rosa</span>
+              <span className={`mono text-[12px] font-semibold tabular-nums ${
+                roleSelected === roleRequired ? 'text-emerald-500' : 'text-ink-4'
               }`}>
                 {roleSelected}/{roleRequired}
               </span>
@@ -334,9 +342,9 @@ export function LineupPicker({
                     key={player.id}
                     className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
                       isIn
-                        ? 'bg-indigo-500/10'
+                        ? 'bg-accent-muted'
                         : isBenched
-                        ? 'bg-glass-1'
+                        ? 'bg-glass-2'
                         : ''
                     }`}
                   >
@@ -345,32 +353,32 @@ export function LineupPicker({
                       logoUrl={player.fm_national_team.logo_url}
                       flagUrl={player.fm_national_team.flag_url}
                       fifaCode={player.fm_national_team.fifa_code}
-                      size={18}
+                      size={22}
                       className="w-6"
                     />
-                    <span className="flex-1 text-[13px] font-medium text-ink-1 truncate">{player.name}</span>
-                    <span className="text-[11px] text-ink-4 shrink-0">{player.fm_national_team.fifa_code}</span>
+                    <span className="flex-1 truncate text-[14.5px] font-semibold text-ink-1">{player.name}</span>
+                    <span className="mono shrink-0 text-[12px] text-ink-4">{player.fm_national_team.fifa_code}</span>
                     {!isReadOnly && !isIn && (
                       <button
                         onClick={() => toggleBench(player)}
-                        className={`shrink-0 rounded-md border px-2 py-1 text-[10px] font-semibold transition-colors ${
+                        className={`shrink-0 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold transition-colors ${
                           isBenched
-                            ? 'border-indigo-500/40 bg-indigo-500/10 text-indigo-300'
-                            : 'border-hairline text-ink-4 hover:bg-glass-1'
+                            ? 'border-accent/40 bg-accent-muted text-accent'
+                            : 'border-hairline text-ink-4 hover:bg-glass-2'
                         }`}
                       >
-                        {isBenched ? `Panchina ${bench.indexOf(player.id) + 1}` : 'Panchina'}
+                        {isBenched ? `Panch. ${bench.indexOf(player.id) + 1}` : 'Panchina'}
                       </button>
                     )}
                     <button
                       onClick={() => toggleStarter(player)}
                       disabled={isReadOnly || pending || (!isIn && !canAdd)}
-                      className={`shrink-0 h-7 px-2 rounded-md border text-[10px] font-semibold flex items-center justify-center transition-colors ${
+                      className={`flex h-8 shrink-0 items-center justify-center rounded-md border px-2.5 text-[11px] font-semibold transition-colors ${
                         isIn
-                          ? 'border-indigo-500 bg-indigo-500 text-white'
+                          ? 'border-accent bg-accent text-white'
                           : canAdd
-                          ? 'border-hairline text-ink-3 hover:bg-glass-1'
-                          : 'border-hairline text-ink-5 opacity-40 cursor-not-allowed'
+                          ? 'border-hairline text-ink-3 hover:bg-glass-2'
+                          : 'cursor-not-allowed border-hairline text-ink-5 opacity-40'
                       }`}
                       aria-label={isIn ? 'Rimuovi titolare' : 'Aggiungi titolare'}
                     >
@@ -380,7 +388,7 @@ export function LineupPicker({
                 )
               })}
               {rolePlayers.length === 0 && (
-                <div className="px-4 py-3 text-[11px] text-ink-5">Nessun {role} nella rosa</div>
+                <div className="px-4 py-3.5 text-[12.5px] text-ink-5">Nessun {role} nella rosa</div>
               )}
             </div>
           </div>
