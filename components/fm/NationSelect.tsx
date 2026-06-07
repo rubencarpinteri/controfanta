@@ -92,7 +92,8 @@ export function NationSelect({ teams, value, onChange, allLabel = 'Tutte le nazi
               className="w-full rounded-lg border border-hairline bg-glass-1 px-3 py-2.5 text-[16px] text-ink-1 placeholder-ink-5 focus:outline-none focus:ring-1 focus:ring-indigo"
             />
           </div>
-          <div className="max-h-72 overflow-y-auto py-1">
+          <div className="max-h-72 divide-y divide-hairline overflow-y-auto py-1">
+
             <button
               type="button"
               onClick={() => pick('')}

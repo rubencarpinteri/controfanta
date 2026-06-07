@@ -226,23 +226,24 @@ export function SquadBuilder({
 
   // ── Sticky budget bar — shrinks on scroll ──────────────────────────────
   const budgetRef = useRef<HTMLDivElement>(null)
+  const sentinelRef = useRef<HTMLDivElement>(null)
   const [budgetSticky, setBudgetSticky] = useState(false)
 
   useEffect(() => {
-    const el = budgetRef.current
-    if (!el) return
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
     const observer = new IntersectionObserver(
       (entries) => {
         const entry = entries[0]
         if (!entry) return
-        // When the element is not intersecting (scrolled past), switch to sticky mode
         setBudgetSticky(!entry.isIntersecting)
       },
       { threshold: 0, rootMargin: '-1px 0px 0px 0px' }
     )
-    observer.observe(el)
+    observer.observe(sentinel)
     return () => observer.disconnect()
   }, [])
+
 
   // Big, prominent credit value for a player row.
   const PriceTag = ({ value }: { value: number }) => (
@@ -254,12 +255,16 @@ export function SquadBuilder({
 
   return (
     <div className="mx-auto max-w-xl space-y-3">
+      {/* ── Sentinel for sticky budget (watched by IntersectionObserver) ──── */}
+      <div ref={sentinelRef} className="h-0" />
+
       {/* ── Spacer for sticky budget ─────────────────────────────────────── */}
-      {budgetSticky && <div className="h-0" />}
+      {budgetSticky && <div style={{ height: budgetRef.current?.offsetHeight ?? 0 }} />}
 
       {/* ── Budget hero ────────────────────────────────────────────────────── */}
       <div
         ref={budgetRef}
+
         className={`rounded-2xl border border-hairline bg-glass-2 shadow-1 backdrop-blur-xl transition-all duration-300 ${
           budgetSticky
             ? 'fixed left-1/2 z-40 -translate-x-1/2 px-3 py-2'
