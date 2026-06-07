@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useMemo } from 'react'
+import { useState, useTransition, useMemo, useEffect, useRef } from 'react'
 import { toggleSquadPlayerAction, setSquadCoachAction } from './actions'
 import { TeamCrest } from '@/components/fm/TeamCrest'
 import { NationSelect } from '@/components/fm/NationSelect'
@@ -128,7 +128,14 @@ export function SquadBuilder({
       })
   }, [players, filterTeam, filterRole, filterSearch, sortBy, priceMap])
 
-  const myPlayers = useMemo(() => players.filter((p) => selected.has(p.id)), [players, selected])
+  const myPlayers = useMemo(() => {
+    return players
+      .filter((p) => selected.has(p.id))
+      .sort((a, b) => {
+        const rDiff = (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9)
+        return rDiff !== 0 ? rDiff : a.name.localeCompare(b.name, 'it')
+      })
+  }, [players, selected])
   const myCoach = coaches.find((c) => c.id === coachId) ?? null
 
   const roleCounts = useMemo(() => {
@@ -217,6 +224,26 @@ export function SquadBuilder({
     { v: 'price', label: 'Valore' },
   ]
 
+  // ── Sticky budget bar — shrinks on scroll ──────────────────────────────
+  const budgetRef = useRef<HTMLDivElement>(null)
+  const [budgetSticky, setBudgetSticky] = useState(false)
+
+  useEffect(() => {
+    const el = budgetRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0]
+        if (!entry) return
+        // When the element is not intersecting (scrolled past), switch to sticky mode
+        setBudgetSticky(!entry.isIntersecting)
+      },
+      { threshold: 0, rootMargin: '-1px 0px 0px 0px' }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
   // Big, prominent credit value for a player row.
   const PriceTag = ({ value }: { value: number }) => (
     <span className="shrink-0 whitespace-nowrap text-right">
@@ -227,33 +254,67 @@ export function SquadBuilder({
 
   return (
     <div className="mx-auto max-w-xl space-y-3">
+      {/* ── Spacer for sticky budget ─────────────────────────────────────── */}
+      {budgetSticky && <div className="h-0" />}
+
       {/* ── Budget hero ────────────────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-hairline bg-glass-2 p-4 shadow-1 backdrop-blur-xl">
-        <div className="mb-3 flex items-end justify-between gap-4">
+      <div
+        ref={budgetRef}
+        className={`rounded-2xl border border-hairline bg-glass-2 shadow-1 backdrop-blur-xl transition-all duration-300 ${
+          budgetSticky
+            ? 'fixed left-1/2 z-40 -translate-x-1/2 px-3 py-2'
+            : 'relative px-4 py-4'
+        }`}
+        style={{
+          width: budgetSticky ? 'min(calc(100vw - 2rem), 42rem)' : '',
+          top: budgetSticky ? '0.5rem' : '',
+        }}
+      >
+        <div className={`flex items-end justify-between gap-4 transition-all duration-300 ${
+          budgetSticky ? 'mb-1' : 'mb-3'
+        }`}>
           <div>
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-4">Budget speso</p>
-            <span className="mono text-[26px] font-bold leading-none text-ink-1">{spent}</span>
+            <p className={`mb-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-4 transition-all duration-300 ${
+              budgetSticky ? 'text-[8px]' : ''
+            }`}>Budget speso</p>
+            <span className={`mono font-bold leading-none text-ink-1 transition-all duration-300 ${
+              budgetSticky ? 'text-[18px]' : 'text-[26px]'
+            }`}>{spent}</span>
           </div>
           <div className="text-right">
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-4">Budget rimasto</p>
+            <p className={`mb-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-4 transition-all duration-300 ${
+              budgetSticky ? 'text-[8px]' : ''
+            }`}>Budget rimasto</p>
             <div className="flex items-baseline justify-end gap-1.5">
-              <span className={`mono text-[26px] font-bold leading-none ${remainingText}`}>{remaining}</span>
-              <span className="mono text-[13px] text-ink-4">/ {budgetTotal}</span>
+              <span className={`mono font-bold leading-none ${remainingText} transition-all duration-300 ${
+                budgetSticky ? 'text-[18px]' : 'text-[26px]'
+              }`}>{remaining}</span>
+              <span className={`mono text-ink-4 transition-all duration-300 ${
+                budgetSticky ? 'text-[11px]' : 'text-[13px]'
+              }`}>/ {budgetTotal}</span>
             </div>
           </div>
         </div>
-        <div className="h-[7px] overflow-hidden rounded-full bg-hairline-strong">
+        <div className={`overflow-hidden rounded-full bg-hairline-strong transition-all duration-300 ${
+          budgetSticky ? 'h-[4px]' : 'h-[7px]'
+        }`}>
           <div className={`h-full rounded-full transition-all ${budgetBar}`} style={{ width: `${budgetPct}%` }} />
         </div>
-        <div className="mt-3 grid grid-cols-4 gap-2">
+        <div className={`grid grid-cols-4 gap-2 transition-all duration-300 ${
+          budgetSticky ? 'mt-1.5' : 'mt-3'
+        }`}>
           {(['P', 'D', 'C', 'A'] as const).map((role) => {
             const count = roleCounts[role]
             const quota = roleQuotas[role]
             const full = count >= quota
             return (
-              <div key={role} className="flex flex-col items-center gap-1.5 rounded-xl border border-hairline bg-glass-1 py-2.5">
-                <RoleTag role={role} size="lg" />
-                <p className={`mono text-[16px] font-bold leading-none ${full ? 'text-emerald-500' : 'text-ink-1'}`}>
+              <div key={role} className={`flex flex-col items-center gap-1 rounded-xl border border-hairline bg-glass-1 transition-all duration-300 ${
+                budgetSticky ? 'py-1.5' : 'py-2.5'
+              }`}>
+                <RoleTag role={role} size={budgetSticky ? 'md' : 'lg'} />
+                <p className={`mono font-bold leading-none ${full ? 'text-emerald-500' : 'text-ink-1'} transition-all duration-300 ${
+                  budgetSticky ? 'text-[12px]' : 'text-[16px]'
+                }`}>
                   {count}<span className="text-ink-5">/{quota}</span>
                 </p>
               </div>

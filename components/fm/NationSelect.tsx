@@ -59,7 +59,7 @@ export function NationSelect({ teams, value, onChange, allLabel = 'Tutte le nazi
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2.5 rounded-xl border border-hairline-strong bg-glass-2 px-3 py-3 text-left text-[16px] text-ink-1 transition-colors hover:bg-glass-3 focus:outline-none focus:ring-1 focus:ring-indigo"
+        className="flex w-full items-center gap-2.5 rounded-xl border border-hairline-strong bg-glass-2 px-3 py-3 text-left text-[16px] text-ink-1 transition-colors hover:bg-glass-3 focus:outline-none focus:ring-1 focus:ring-indigo overflow-hidden"
       >
         {selected ? (
           <TeamCrest name={selected.name} logoUrl={selected.logo_url} flagUrl={selected.flag_url} fifaCode={selected.fifa_code} size={20} />
@@ -82,7 +82,7 @@ export function NationSelect({ teams, value, onChange, allLabel = 'Tutte le nazi
             : 'pointer-events-none scale-y-95 opacity-0'
         }`}
       >
-        <div className="overflow-hidden rounded-xl border border-hairline bg-glass-3 shadow-3 backdrop-blur-xl">
+        <div className="overflow-hidden rounded-xl border border-hairline-strong bg-glass-3 shadow-3 backdrop-blur-xl">
           <div className="border-b border-hairline p-2">
             <input
               autoFocus
