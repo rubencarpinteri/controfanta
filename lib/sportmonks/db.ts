@@ -109,16 +109,24 @@ export async function autoCreateFMRoundsAndMatches(
 ): Promise<{ rounds_created: number; matches_created: number }> {
   if (!fixtures.length) return { rounds_created: 0, matches_created: 0 }
 
-  // Pick a target phase: highest display_order, status != 'archived'.
+  // Map each SportMonks stage_id to its fm_phase. This is the single
+  // source of truth for attaching ingested rounds/matches to the correct
+  // tournament phase — replacing the old "highest display_order" heuristic
+  // that dumped every round onto one phase and required manual re-parenting.
+  // Phases without a sportmonks_stage_id (e.g. knockout phases before the
+  // bracket is drawn) simply aren't matched yet; their fixtures are skipped
+  // until the mapping is filled.
   const { data: phases } = await db
     .from('fm_phase')
-    .select('id, display_order, status')
+    .select('id, display_order, status, sportmonks_stage_id')
     .eq('competition_id', competition_id)
     .neq('status', 'completed')
-    .order('display_order', { ascending: false })
-    .limit(1)
-  const phase = phases?.[0]
-  if (!phase) {
+  const stageToPhase = new Map<number, { id: string }>()
+  for (const p of phases ?? []) {
+    if (p.sportmonks_stage_id != null) stageToPhase.set(p.sportmonks_stage_id, { id: p.id })
+  }
+  if (!stageToPhase.size) {
+    console.warn('[autoCreateFMRoundsAndMatches] no phase has sportmonks_stage_id set; nothing to attach')
     return { rounds_created: 0, matches_created: 0 }
   }
 
@@ -155,8 +163,18 @@ export async function autoCreateFMRoundsAndMatches(
 
   let rounds_created = 0
   let matches_created = 0
+  const touchedPhaseIds = new Set<string>()
 
   for (const [roundId, roundFixtures] of byRound) {
+    // Resolve the phase from the round's stage. SM groups fixtures into
+    // stages; we attach the round to the phase mapped to that stage_id.
+    const stageId = roundFixtures.find((f) => f.stage_id != null)?.stage_id ?? null
+    const targetPhase = stageId != null ? stageToPhase.get(stageId) : undefined
+    if (!targetPhase) {
+      console.warn(`[autoCreateFMRoundsAndMatches] round ${roundId} stage ${stageId ?? 'null'} has no mapped phase, skipping`)
+      continue
+    }
+
     const earliestKickoff = roundFixtures
       .map((f) => f.starting_at_timestamp ? new Date(f.starting_at_timestamp * 1000) : new Date(f.starting_at + 'Z'))
       .sort((a, b) => a.getTime() - b.getTime())[0]
@@ -180,7 +198,7 @@ export async function autoCreateFMRoundsAndMatches(
         .from('fm_scoring_round')
         .insert({
           competition_id,
-          phase_id: phase.id,
+          phase_id: targetPhase.id,
           name: roundName,
           display_order: roundId,
           lock_at: lockAt,
@@ -223,10 +241,42 @@ export async function autoCreateFMRoundsAndMatches(
       if (error) throw new Error(`autoCreateFMMatches: insert match ${fx.id}: ${error.message}`)
       matches_created += 1
     }
+
+    touchedPhaseIds.add(targetPhase.id)
   }
 
   if (orphans.length) {
     console.warn(`[autoCreateFMRoundsAndMatches] ${orphans.length} fixtures with no round_id, skipping`)
+  }
+
+  // Derive each touched phase's squad lock / reveal from real fixtures, so
+  // the rosa lock tracks the actual first kickoff of the phase (and
+  // re-tracks automatically if FIFA reschedules). squad_lock_at = earliest
+  // kickoff across all of the phase's matches; reveal_at = +5 min. This is
+  // the single source of truth — no hand-entered timestamps.
+  for (const phaseId of touchedPhaseIds) {
+    const { data: phaseRoundIds } = await db
+      .from('fm_scoring_round')
+      .select('id')
+      .eq('phase_id', phaseId)
+    const roundIds = (phaseRoundIds ?? []).map((r) => r.id)
+    if (!roundIds.length) continue
+    const { data: firstMatch } = await db
+      .from('fm_real_match')
+      .select('kickoff_at')
+      .in('scoring_round_id', roundIds)
+      .order('kickoff_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+    if (firstMatch?.kickoff_at) {
+      const firstKickoff = new Date(firstMatch.kickoff_at)
+      const squadLockAt = firstKickoff.toISOString()
+      const revealAt = new Date(firstKickoff.getTime() + 5 * 60 * 1000).toISOString()
+      await db
+        .from('fm_phase')
+        .update({ squad_lock_at: squadLockAt, reveal_at: revealAt })
+        .eq('id', phaseId)
+    }
   }
 
   return { rounds_created, matches_created }

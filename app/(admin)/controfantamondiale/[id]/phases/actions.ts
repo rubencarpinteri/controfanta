@@ -12,8 +12,11 @@ export async function updatePhaseAction(fd: FormData) {
   const competitionId = fd.get('competition_id') as string
   const name = fd.get('name') as string
   const squad_open_at = fd.get('squad_open_at') as string || null
-  const squad_lock_at = fd.get('squad_lock_at') as string || null
-  const reveal_at = fd.get('reveal_at') as string || null
+  // squad_lock_at / reveal_at are NOT set here — they are derived from the
+  // phase's real SportMonks fixtures by autoCreateFMRoundsAndMatches. The
+  // admin controls them indirectly via sportmonks_stage_id below.
+  const stageRaw = fd.get('sportmonks_stage_id') as string | null
+  const sportmonks_stage_id = stageRaw && stageRaw.trim() !== '' ? Number(stageRaw) : null
   const requires_new_squad = fd.get('requires_new_squad') === 'true'
   const budget_mode = fd.get('budget_mode') as 'fixed' | 'comeback' | 'reward_leaders'
 
@@ -29,7 +32,7 @@ export async function updatePhaseAction(fd: FormData) {
 
   await supabase
     .from('fm_phase')
-    .update({ name, squad_open_at, squad_lock_at, reveal_at, requires_new_squad, budget_mode, budget_config })
+    .update({ name, squad_open_at, sportmonks_stage_id, requires_new_squad, budget_mode, budget_config })
     .eq('id', id)
 
   revalidatePath(`/controfantamondiale/${competitionId}/phases`)

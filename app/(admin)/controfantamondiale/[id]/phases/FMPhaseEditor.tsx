@@ -10,6 +10,17 @@ function toDatetimeLocal(iso: string | null) {
   return iso.slice(0, 16)
 }
 
+function fmtRome(iso: string | null) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleString('it-IT', {
+    timeZone: 'Europe/Rome',
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 function currentBudget(cfg: unknown): number {
   const c = (cfg ?? null) as { budget?: number; budget_by_rank?: number[] } | null
   if (c) {
@@ -70,22 +81,23 @@ export function FMPhaseEditor({ phase, competitionId }: { phase: FMPhase; compet
           />
         </div>
         <div>
-          <label className="block text-[9px] uppercase tracking-wider text-ink-5 mb-1 font-semibold">Lock rosa</label>
+          <label className="block text-[9px] uppercase tracking-wider text-ink-5 mb-1 font-semibold">SportMonks stage ID</label>
           <input
-            type="datetime-local"
-            name="squad_lock_at"
-            defaultValue={toDatetimeLocal(phase.squad_lock_at)}
+            type="number"
+            name="sportmonks_stage_id"
+            defaultValue={phase.sportmonks_stage_id ?? ''}
+            placeholder="es. 77478590"
             className="w-full rounded-lg border border-hairline bg-glass-2 px-2.5 py-1.5 text-[12px] text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
         </div>
-        <div>
-          <label className="block text-[9px] uppercase tracking-wider text-ink-5 mb-1 font-semibold">Reveal</label>
-          <input
-            type="datetime-local"
-            name="reveal_at"
-            defaultValue={toDatetimeLocal(phase.reveal_at)}
-            className="w-full rounded-lg border border-hairline bg-glass-2 px-2.5 py-1.5 text-[12px] text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          />
+        <div className="col-span-2 sm:col-span-1">
+          <label className="block text-[9px] uppercase tracking-wider text-ink-5 mb-1 font-semibold">Lock / Reveal (auto)</label>
+          <p className="rounded-lg border border-hairline bg-glass-1 px-2.5 py-1.5 text-[11px] text-ink-3 leading-tight">
+            {phase.squad_lock_at
+              ? `${fmtRome(phase.squad_lock_at)} → ${fmtRome(phase.reveal_at)}`
+              : 'In attesa dei calendari SportMonks'}
+            <span className="block text-[9px] text-ink-5 mt-0.5">Derivati dal primo calcio d&apos;inizio della fase</span>
+          </p>
         </div>
         <div>
           <label className="block text-[9px] uppercase tracking-wider text-ink-5 mb-1 font-semibold">Budget mode</label>

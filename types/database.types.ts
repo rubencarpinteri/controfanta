@@ -1488,6 +1488,7 @@ export type Database = {
           name: string
           requires_new_squad: boolean
           reveal_at: string | null
+          sportmonks_stage_id: number | null
           squad_lock_at: string | null
           squad_open_at: string | null
           status: Database["public"]["Enums"]["fm_phase_status"]
@@ -1504,6 +1505,7 @@ export type Database = {
           name: string
           requires_new_squad?: boolean
           reveal_at?: string | null
+          sportmonks_stage_id?: number | null
           squad_lock_at?: string | null
           squad_open_at?: string | null
           status?: Database["public"]["Enums"]["fm_phase_status"]
@@ -1520,6 +1522,7 @@ export type Database = {
           name?: string
           requires_new_squad?: boolean
           reveal_at?: string | null
+          sportmonks_stage_id?: number | null
           squad_lock_at?: string | null
           squad_open_at?: string | null
           status?: Database["public"]["Enums"]["fm_phase_status"]
