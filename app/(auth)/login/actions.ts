@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import type { Route } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 
@@ -43,7 +44,7 @@ export async function loginAction(
 
   revalidatePath('/', 'layout')
   const next = parsed.data.next?.startsWith('/') ? parsed.data.next : '/dashboard'
-  redirect(next)
+  redirect(next as Route)
 }
 
 export async function logoutAction(): Promise<void> {
