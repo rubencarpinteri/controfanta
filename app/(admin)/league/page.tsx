@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { LeagueSettingsForm } from './LeagueSettingsForm'
 import { EngineConfigForm } from '../regole-di-gioco/EngineConfigForm'
+import { InviteLinkCard } from './members/InviteLinkCard'
 
 export const metadata = { title: 'Impostazioni Lega' }
 
@@ -35,7 +36,12 @@ export default async function LeagueSettingsPage() {
   const superAdmin = await isSuperAdmin()
   const supabase = await createClient()
 
-  const [{ data: serieAComps }, { data: fmInstances }, { data: engineConfig }] = await Promise.all([
+  const [{ data: leagueInvite }, { data: serieAComps }, { data: fmInstances }, { data: engineConfig }] = await Promise.all([
+    supabase
+      .from('leagues')
+      .select('invite_token')
+      .eq('id', ctx.league.id)
+      .single(),
     supabase
       .from('competitions')
       .select('id, slug, name, type, status, season')
@@ -52,6 +58,8 @@ export default async function LeagueSettingsPage() {
       .eq('league_id', ctx.league.id)
       .maybeSingle(),
   ])
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://controfanta.vercel.app'
+  const joinUrl = leagueInvite?.invite_token ? `${appUrl}/join/${leagueInvite.invite_token}` : null
 
   const fmComps = (fmInstances ?? []).map((row) => {
     const tpl = Array.isArray(row.fm_competition) ? row.fm_competition[0] : row.fm_competition
@@ -71,6 +79,26 @@ export default async function LeagueSettingsPage() {
           Tutto in un posto. Il badge su ogni sezione indica a che livello si applica la modifica.
         </p>
       </div>
+
+      <section className="space-y-3 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-4">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-indigo-300">
+            Invita amici
+          </p>
+          <h2 className="mt-1 text-lg font-bold text-ink-1">
+            Copia il link e mandalo al gruppo
+          </h2>
+          <p className="mt-1 max-w-2xl text-sm text-ink-3">
+            Chi apre il link vede chi lo ha invitato, entra in questa Lega e viene portato
+            subito a creare la Squadra per il ControFanta Mondiale.
+          </p>
+        </div>
+        <InviteLinkCard
+          joinUrl={joinUrl}
+          inviteCode={leagueInvite?.invite_token ?? null}
+          leagueName={ctx.league.name}
+        />
+      </section>
 
       {/* ── Identità lega + Draft Serie A ───────────────────────────────── */}
       <LeagueSettingsForm league={ctx.league} />
