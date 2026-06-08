@@ -180,7 +180,12 @@ export async function autoCreateFMRoundsAndMatches(
       .sort((a, b) => a.getTime() - b.getTime())[0]
     if (!earliestKickoff) continue
     const lockAt = new Date(earliestKickoff.getTime() - 5 * 60 * 1000).toISOString()
-    const roundName = `Round ${roundId}`
+
+    const roundNameFromSM = roundFixtures.find((f) => f.round?.name)?.round?.name
+    const roundName = roundNameFromSM ? `Giornata ${roundNameFromSM}` : `Round ${roundId}`
+    const displayOrder = roundNameFromSM && !isNaN(parseInt(roundNameFromSM, 10))
+      ? parseInt(roundNameFromSM, 10)
+      : roundId
 
     // Upsert by (competition_id, name) — there is no SM round_id column on
     // fm_scoring_round; we encode it in the name. Idempotent because name
@@ -200,7 +205,7 @@ export async function autoCreateFMRoundsAndMatches(
           competition_id,
           phase_id: targetPhase.id,
           name: roundName,
-          display_order: roundId,
+          display_order: displayOrder,
           lock_at: lockAt,
           status: 'draft',
         })

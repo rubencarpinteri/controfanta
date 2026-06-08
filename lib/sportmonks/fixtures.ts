@@ -29,13 +29,31 @@ export async function listFixturesBetween(
   from: Date | string,
   to: Date | string,
 ): Promise<SMFixture[]> {
-  const path = `/fixtures/between/${ymd(from)}/${ymd(to)}`
-  const env = await fetchSportMonks<SMFixture[]>(
-    path,
-    { filters: `fixtureLeagues:${leagueId}`, include: 'participants' },
-    'Fixture',
-  )
-  return env.data ?? []
+  const fixtures: SMFixture[] = []
+  let page = 1
+  const maxPages = 25
+
+  for (let i = 0; i < maxPages; i++) {
+    const path = `/fixtures/between/${ymd(from)}/${ymd(to)}`
+    const env = await fetchSportMonks<SMFixture[]>(
+      path,
+      {
+        filters: `fixtureLeagues:${leagueId}`,
+        include: 'participants;round',
+        page,
+      },
+      'Fixture',
+    )
+    if (env.data && env.data.length > 0) {
+      fixtures.push(...env.data)
+    }
+    if (!env.pagination || !env.pagination.has_more) {
+      break
+    }
+    page += 1
+  }
+
+  return fixtures
 }
 
 /**

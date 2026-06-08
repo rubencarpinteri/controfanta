@@ -58,6 +58,17 @@ export async function GET(req: NextRequest) {
 
   const today = new Date()
   const in14 = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000)
+  const in50 = new Date(today.getTime() + 50 * 24 * 60 * 60 * 1000)
+
+  // Determine the target date window per SportMonks league ID
+  const leagueFetchTo = new Map<number, Date>()
+  for (const ref of refs) {
+    const currentMax = leagueFetchTo.get(ref.sportmonks_league_id)
+    const targetDate = ref.product === 'fm' ? in50 : in14
+    if (!currentMax || targetDate.getTime() > currentMax.getTime()) {
+      leagueFetchTo.set(ref.sportmonks_league_id, targetDate)
+    }
+  }
 
   const results: Array<{
     product: string
@@ -81,7 +92,8 @@ export async function GET(req: NextRequest) {
     try {
       let fixtures = seenLeagues.get(ref.sportmonks_league_id)
       if (!fixtures) {
-        fixtures = await listFixturesBetween(ref.sportmonks_league_id, today, in14)
+        const fetchTo = leagueFetchTo.get(ref.sportmonks_league_id) ?? in14
+        fixtures = await listFixturesBetween(ref.sportmonks_league_id, today, fetchTo)
         seenLeagues.set(ref.sportmonks_league_id, fixtures)
         await upsertFixtureCache(db, fixtures)
       }

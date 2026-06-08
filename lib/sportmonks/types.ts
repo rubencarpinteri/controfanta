@@ -14,12 +14,21 @@ export type SMRateLimit = {
   requested_entity: string
 }
 
+export type SMPagination = {
+  count: number
+  per_page: number
+  has_more: boolean
+  current_page: number
+  next_page: string | null
+}
+
 export type SMEnvelope<T> = {
   data: T
   subscription?: unknown
   rate_limit: SMRateLimit
   timezone?: string
   message?: string
+  pagination?: SMPagination
 }
 
 /** Position IDs returned by SportMonks. */
@@ -143,6 +152,18 @@ export type SMFixture = {
   length: number
   placeholder: boolean
   participants?: SMParticipant[]
+  round?: {
+    id: number
+    sport_id: number
+    league_id: number
+    season_id: number
+    stage_id: number
+    name: string
+    finished: boolean
+    is_current: boolean
+    starting_at: string
+    ending_at: string
+  } | null
   lineups?: SMLineupEntry[]
   events?: SMEvent[]
   statistics?: unknown[]
