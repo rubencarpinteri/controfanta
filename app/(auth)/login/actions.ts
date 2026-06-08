@@ -23,7 +23,7 @@ export async function loginAction(
   const raw = {
     email: formData.get('email'),
     password: formData.get('password'),
-    next: formData.get('next'),
+    next: formData.get('next') ?? undefined,
   }
 
   const parsed = loginSchema.safeParse(raw)
