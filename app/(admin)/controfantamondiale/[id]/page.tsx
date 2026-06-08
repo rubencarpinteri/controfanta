@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import type { Route } from 'next'
 import { RoundCountdown } from './RoundCountdown'
 import { isUuid } from '@/lib/slug'
+import { CreateFMTeamForm } from './CreateFMTeamForm'
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -58,9 +59,34 @@ export default async function FMOverviewPage({ params }: { params: Promise<{ id:
   // getFMFantasyTeams stays Lega-scoped, so it takes the URL id verbatim.
   const ctx = await requireFMContext(id)
 
-  // The Overview is an admin dashboard. Managers (and admins previewing as a
-  // manager) land straight on the merged "Risultati e Classifica" instead.
-  if (!ctx.isSuperAdmin) redirect(`/controfantamondiale/${id}/risultati` as Route)
+  if (!ctx.isSuperAdmin && !ctx.isLeagueAdmin) {
+    if (ctx.fantasyTeamId) redirect(`/controfantamondiale/${id}/rosa` as Route)
+
+    return (
+      <div className="mx-auto max-w-2xl space-y-5 py-6">
+        <div>
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-300">
+            Sei dentro
+          </p>
+          <h1
+            className="mt-1 font-light tracking-tight text-ink-1"
+            style={{ fontSize: 'clamp(24px, 3.4vw, 36px)', lineHeight: 1.1, letterSpacing: '-0.03em' }}
+          >
+            <span className="font-semibold">{ctx.competition.name}</span>{' '}
+            <span className="serif font-normal text-ink-3">{ctx.competition.edition}</span>
+          </h1>
+          <p className="mt-2 text-[13.5px] leading-relaxed text-ink-3">
+            La tua Lega partecipa a questa competizione. Crea la tua squadra e vai
+            direttamente alla costruzione della rosa.
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-hairline bg-glass-1 p-5">
+          <CreateFMTeamForm competitionRef={id} />
+        </div>
+      </div>
+    )
+  }
 
   const [phases, rounds, teams, fantasyTeams, players] = await Promise.all([
     getFMPhases(ctx.competition.id),

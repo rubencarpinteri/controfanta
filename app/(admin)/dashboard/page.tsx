@@ -330,7 +330,7 @@ export default async function DashboardPage() {
 
               // Lega already plays this tournament — link straight to the instance.
               if (legaInstanceId) {
-                const cta = myTeam ? 'Vai →' : enrollmentClosed ? 'Vedi →' : 'Iscriviti →'
+                const cta = myTeam ? 'Vai →' : enrollmentClosed ? 'Vedi →' : 'Crea squadra →'
                 return (
                   <Link key={c.id} href={`/controfantamondiale/${legaInstanceId}` as Route} className={cardCls}>
                     {head}

@@ -97,7 +97,11 @@ export default async function LeagueMembersPage() {
       </div>
 
       {/* Shareable invite link */}
-      <InviteLinkCard joinUrl={joinUrl} leagueName={ctx.league.name} />
+      <InviteLinkCard
+        joinUrl={joinUrl}
+        inviteCode={leagueRow?.invite_token ?? null}
+        leagueName={ctx.league.name}
+      />
 
       {/* Member list */}
       <Card>

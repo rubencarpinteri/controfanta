@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { loginAction, type LoginActionState } from './actions'
 
@@ -27,6 +27,12 @@ const labelClass =
 
 export default function LoginPage() {
   const [state, formAction] = useActionState(loginAction, initialState)
+  const [next, setNext] = useState<string | null>(null)
+
+  useEffect(() => {
+    const value = new URLSearchParams(window.location.search).get('next')
+    setNext(value?.startsWith('/') ? value : null)
+  }, [])
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
@@ -61,6 +67,7 @@ export default function LoginPage() {
         {/* Form card — glass */}
         <div className="glass-strong p-7">
           <form action={formAction} className="space-y-4">
+            {next?.startsWith('/') && <input type="hidden" name="next" value={next} />}
             <div>
               <label htmlFor="email" className={labelClass}>Email</label>
               <input

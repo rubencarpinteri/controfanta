@@ -45,6 +45,14 @@ export function CreateLeagueForm() {
           className={fieldClass}
         />
       </div>
+      <div>
+        <label htmlFor="team_name" className={labelClass}>La tua squadra Mondiale</label>
+        <input
+          id="team_name" name="team_name" required minLength={2} maxLength={60}
+          placeholder="Es. Gli Invincibili"
+          className={fieldClass}
+        />
+      </div>
 
       {state.error && (
         <div className="rounded-lg border border-rose-500/30 bg-rose-500/5 px-3 py-2 text-[12px] text-rose-300">
@@ -55,7 +63,7 @@ export function CreateLeagueForm() {
       <SubmitButton />
 
       <p className="text-center text-[11px] text-ink-5">
-        Diventerai automaticamente admin della lega che crei.
+        La Lega verrà iscritta al ControFanta Mondiale, con la tua squadra e un codice invito già pronti.
       </p>
     </form>
   )

@@ -8,6 +8,7 @@ import { z } from 'zod'
 const loginSchema = z.object({
   email: z.string().email('Email non valida'),
   password: z.string().min(6, 'Password troppo corta'),
+  next: z.string().optional(),
 })
 
 export interface LoginActionState {
@@ -21,6 +22,7 @@ export async function loginAction(
   const raw = {
     email: formData.get('email'),
     password: formData.get('password'),
+    next: formData.get('next'),
   }
 
   const parsed = loginSchema.safeParse(raw)
@@ -40,7 +42,8 @@ export async function loginAction(
   }
 
   revalidatePath('/', 'layout')
-  redirect('/dashboard')
+  const next = parsed.data.next?.startsWith('/') ? parsed.data.next : '/dashboard'
+  redirect(next)
 }
 
 export async function logoutAction(): Promise<void> {

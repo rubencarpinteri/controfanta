@@ -4,27 +4,25 @@ import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import type { Route } from 'next'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 
 // ─── Shared helpers ──────────────────────────────────────────────────────────
 
 async function resolveLeagueByToken(token: string) {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
   const { data } = await supabase
     .from('leagues')
     .select('id, name')
-    .eq('invite_token', token)
+    .eq('invite_token', normalizeInviteCode(token))
     .maybeSingle()
   return data
 }
 
-// Invite link adds the user to the Lega only. Competition enrollment
-// (Serie A campionato/coppa/BR, FM tournaments) is a deliberate choice
-// the joiner makes from the dashboard afterwards.
 async function joinLeagueAsMember(opts: {
   userId: string
   leagueId: string
 }) {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
   const { userId, leagueId } = opts
 
   const { data: existing } = await supabase
@@ -34,12 +32,14 @@ async function joinLeagueAsMember(opts: {
     .eq('user_id', userId)
     .maybeSingle()
 
-  if (existing) return
+  if (!existing) {
+    const { error } = await supabase
+      .from('league_users')
+      .insert({ league_id: leagueId, user_id: userId, role: 'manager' })
+    if (error) throw new Error(`league_users: ${error.message}`)
+  }
 
-  const { error } = await supabase
-    .from('league_users')
-    .insert({ league_id: leagueId, user_id: userId, role: 'manager' })
-  if (error) throw new Error(`league_users: ${error.message}`)
+  return
 }
 
 // ─── Signup + join (unauthenticated user) ────────────────────────────────────
@@ -98,7 +98,7 @@ export async function signUpAndJoinAction(
     password,
     options: {
       data: { username, full_name },
-      emailRedirectTo: `${appUrl}/auth/callback?next=/dashboard`,
+      emailRedirectTo: `${appUrl}/auth/callback?next=/join/${normalizeInviteCode(token)}`,
     },
   })
 
@@ -120,7 +120,7 @@ export async function signUpAndJoinAction(
   }
 
   if (data.session) {
-    redirect('/dashboard' as Route)
+    redirect(await getLeagueMondialeHref(league.id))
   }
 
   return { error: null, awaitingEmail: true }
@@ -138,5 +138,23 @@ export async function acceptJoinAction(token: string) {
 
   await joinLeagueAsMember({ userId: user.id, leagueId: league.id })
 
-  redirect('/dashboard' as Route)
+  redirect(await getLeagueMondialeHref(league.id))
+}
+
+function normalizeInviteCode(token: string): string {
+  return token.trim().toUpperCase()
+}
+
+async function getLeagueMondialeHref(leagueId: string): Promise<Route> {
+  const supabase = createServiceClient()
+  const { data } = await supabase
+    .from('fm_league_competition')
+    .select('id, slug')
+    .eq('league_id', leagueId)
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  return (data ? `/controfantamondiale/${data.slug ?? data.id}` : '/dashboard') as Route
 }

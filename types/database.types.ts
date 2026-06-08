@@ -2566,6 +2566,7 @@ export type Database = {
           display_rounding: Database["public"]["Enums"]["display_rounding"]
           id: string
           invite_token: string | null
+          invite_token_created_by: string | null
           lock_behavior: Database["public"]["Enums"]["lock_behavior"]
           name: string
           scoring_mode: Database["public"]["Enums"]["scoring_mode"]
@@ -2582,6 +2583,7 @@ export type Database = {
           display_rounding?: Database["public"]["Enums"]["display_rounding"]
           id?: string
           invite_token?: string | null
+          invite_token_created_by?: string | null
           lock_behavior?: Database["public"]["Enums"]["lock_behavior"]
           name: string
           scoring_mode?: Database["public"]["Enums"]["scoring_mode"]
@@ -2598,6 +2600,7 @@ export type Database = {
           display_rounding?: Database["public"]["Enums"]["display_rounding"]
           id?: string
           invite_token?: string | null
+          invite_token_created_by?: string | null
           lock_behavior?: Database["public"]["Enums"]["lock_behavior"]
           name?: string
           scoring_mode?: Database["public"]["Enums"]["scoring_mode"]

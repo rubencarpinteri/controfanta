@@ -36,7 +36,7 @@ export function SignupForm({ token }: { token: string }) {
         <p className="text-[14px] font-semibold text-ink-1">Controlla la tua email</p>
         <p className="mt-1 text-[12px] text-ink-3">
           Ti abbiamo inviato un link di conferma. Clicca sul link nell&apos;email per
-          completare l&apos;iscrizione. Sei già registrato alla lega.
+          completare l&apos;iscrizione. Poi tornerai qui per creare la tua squadra.
         </p>
       </div>
     )

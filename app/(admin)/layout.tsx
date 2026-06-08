@@ -38,12 +38,20 @@ export default async function AdminLayout({
             Il tuo account non è ancora associato a una lega. Crea la tua, oppure
             chiedi a un admin di invitarti.
           </p>
-          <a
-            href="/leagues/new"
-            className="mt-4 inline-block rounded-lg bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white hover:bg-indigo-500 transition-colors"
-          >
-            Crea una nuova lega
-          </a>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <a
+              href="/leagues/new"
+              className="inline-block rounded-lg bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white hover:bg-indigo-500 transition-colors"
+            >
+              Crea una nuova lega
+            </a>
+            <a
+              href="/join"
+              className="inline-block rounded-lg border border-hairline bg-glass-1 px-4 py-2 text-[12px] font-semibold text-ink-2 hover:bg-glass-2 transition-colors"
+            >
+              Ho un codice invito
+            </a>
+          </div>
         </div>
       </div>
     )

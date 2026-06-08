@@ -23,7 +23,7 @@ export default async function NewLeaguePage() {
             <span className="serif font-normal text-ink-3">una nuova lega</span>
           </h1>
           <p className="mt-2 text-[12px] text-ink-4">
-            Una lega è un campionato privato con regolamento e classifica propri.
+            Crea il gruppo privato, iscrivi subito la Lega al ControFanta Mondiale e invita gli amici.
           </p>
         </div>
 

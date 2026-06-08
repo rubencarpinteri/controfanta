@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
         type === 'invite'
           ? '/update-password'
           : type === 'signup'
-            ? '/leagues/new'
+            ? next
             : next
       return NextResponse.redirect(new URL(dest, origin))
     }

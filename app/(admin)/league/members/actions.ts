@@ -407,7 +407,9 @@ export async function changeRoleAction(
 // ─── Invite token (shareable join link) ──────────────────────────────────────
 
 function generateInviteToken(): string {
-  return crypto.randomUUID().replace(/-/g, '')
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  const bytes = crypto.getRandomValues(new Uint8Array(6))
+  return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join('')
 }
 
 export async function regenerateInviteTokenAction() {
@@ -417,7 +419,10 @@ export async function regenerateInviteTokenAction() {
   const token = generateInviteToken()
   const { error } = await supabase
     .from('leagues')
-    .update({ invite_token: token })
+    .update({
+      invite_token: token,
+      invite_token_created_by: ctx.userId,
+    })
     .eq('id', ctx.league.id)
 
   if (error) throw new Error(error.message)
@@ -441,7 +446,10 @@ export async function revokeInviteTokenAction() {
 
   const { error } = await supabase
     .from('leagues')
-    .update({ invite_token: null })
+    .update({
+      invite_token: null,
+      invite_token_created_by: null,
+    })
     .eq('id', ctx.league.id)
 
   if (error) throw new Error(error.message)
