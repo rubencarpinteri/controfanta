@@ -4135,6 +4135,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_league: {
+        Args: { p_name: string; p_season_name: string }
+        Returns: string
+      }
       fm_get_user_team_id: {
         Args: { p_league_competition_id: string }
         Returns: string

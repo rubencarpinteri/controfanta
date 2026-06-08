@@ -32,24 +32,18 @@ export async function createLeagueAction(
     return { error: parsed.error.errors[0]?.message ?? 'Dati non validi' }
   }
 
-  const { data: league, error: lError } = await supabase
-    .from('leagues')
-    .insert({ name: parsed.data.name, season_name: parsed.data.season_name })
-    .select('id')
-    .single()
+  // Create the league and assign the creator as league_admin atomically.
+  // A SECURITY DEFINER function is required because the SELECT policy on
+  // leagues checks league membership, which doesn't exist until the
+  // league_users row is inserted — a chicken-and-egg that blocks the
+  // read-back of a plain .insert().select().
+  const { data: leagueId, error } = await supabase.rpc('create_league', {
+    p_name: parsed.data.name,
+    p_season_name: parsed.data.season_name,
+  })
 
-  if (lError || !league) {
-    return { error: `Errore creazione lega: ${lError?.message ?? 'sconosciuto'}` }
-  }
-
-  const { error: luError } = await supabase
-    .from('league_users')
-    .insert({ league_id: league.id, user_id: user.id, role: 'league_admin' })
-
-  if (luError) {
-    // Best-effort cleanup so we don't leak an orphan league
-    await supabase.from('leagues').delete().eq('id', league.id)
-    return { error: `Errore assegnazione admin: ${luError.message}` }
+  if (error || !leagueId) {
+    return { error: `Errore creazione lega: ${error?.message ?? 'sconosciuto'}` }
   }
 
   redirect('/league/members' as Route)
