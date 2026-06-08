@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useMemo, useEffect, useRef } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { toggleSquadPlayerAction, setSquadCoachAction } from './actions'
 import { TeamCrest } from '@/components/fm/TeamCrest'
 import { NationSelect } from '@/components/fm/NationSelect'
@@ -31,6 +31,8 @@ const ROLE_TAG: Record<string, string> = {
   A: 'border-role-att/55 bg-role-att/25 text-role-att',
 }
 
+const ROLE_ORDER: Record<string, number> = { P: 0, D: 1, C: 2, A: 3 }
+
 // Role tag chip — colored pill (border + tinted fill + bold glyph).
 function RoleTag({ role, size = 'md' }: { role: string; size?: 'md' | 'lg' }) {
   const dims = size === 'lg' ? 'h-7 min-w-[30px] text-[13px]' : 'h-6 min-w-[26px] text-[11px]'
@@ -43,12 +45,68 @@ function RoleTag({ role, size = 'md' }: { role: string; size?: 'md' | 'lg' }) {
   )
 }
 
+// Big, prominent credit value for a player row.
+function PriceTag({ value }: { value: number }) {
+  return (
+    <span className="shrink-0 whitespace-nowrap text-right">
+      <span className="mono text-[17px] font-bold tabular-nums text-ink-1">{value > 0 ? value : '—'}</span>
+      {value > 0 && <span className="ml-0.5 text-[10px] font-medium text-ink-5">cr</span>}
+    </span>
+  )
+}
+
 type PlayerWithTeam = FMPlayer & {
   fm_national_team: Pick<FMNationalTeam, 'name' | 'fifa_code' | 'flag_emoji' | 'logo_url' | 'flag_url'>
 }
 type CoachWithTeam = FMCoach & {
   fm_national_team: Pick<FMNationalTeam, 'name' | 'fifa_code' | 'flag_emoji' | 'logo_url' | 'flag_url'>
 }
+
+const PlayerPoolRow = memo(function PlayerPoolRow({
+  player,
+  price,
+  isIn,
+  canAdd,
+  isReadOnly,
+  isPending,
+  onToggle,
+}: {
+  player: PlayerWithTeam
+  price: number
+  isIn: boolean
+  canAdd: boolean
+  isReadOnly: boolean
+  isPending: boolean
+  onToggle: (player: PlayerWithTeam) => void
+}) {
+  return (
+    <button
+      onClick={() => onToggle(player)}
+      disabled={isReadOnly || isPending || (!isIn && !canAdd)}
+      className={`flex w-full items-center gap-3 px-3.5 py-3 text-left transition-colors ${
+        isIn
+          ? 'bg-accent-muted hover:bg-accent-muted'
+          : canAdd
+          ? 'hover:bg-glass-2'
+          : 'opacity-40'
+      } ${isReadOnly ? 'cursor-default' : ''}`}
+    >
+      <RoleTag role={player.role} />
+      <TeamCrest name={player.fm_national_team.name} logoUrl={player.fm_national_team.logo_url} flagUrl={player.fm_national_team.flag_url} fifaCode={player.fm_national_team.fifa_code} size={22} className="w-6" />
+      <span className="min-w-0 flex-1 truncate text-[14.5px] font-semibold text-ink-1">{player.name}</span>
+      <PriceTag value={price} />
+      <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+        isIn ? 'border-accent bg-accent' : 'border-ink-5'
+      }`}>
+        {isIn && (
+          <svg width="9" height="9" viewBox="0 0 8 8" fill="none">
+            <path d="M1 4l2 2 4-4" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+      </span>
+    </button>
+  )
+})
 
 // Frozen competition-level coach tiers (see Allenatori admin page).
 const TIER_BADGE: Record<string, { short: string; cls: string }> = {
@@ -95,7 +153,8 @@ export function SquadBuilder({
   const [selected, setSelected] = useState<Set<string>>(initialSelected)
   const [coachId, setCoachId] = useState<string | null>(initialCoach)
   const [spent, setSpent] = useState(initialSpent)
-  const [pending, startTransition] = useTransition()
+  const [, startTransition] = useTransition()
+  const [pendingPlayerIds, setPendingPlayerIds] = useState<Set<string>>(() => new Set())
   const [error, setError] = useState<string | null>(null)
   const [filterTeam, setFilterTeam] = useState('')
   const [filterRole, setFilterRole] = useState('')
@@ -103,8 +162,6 @@ export function SquadBuilder({
   const [tab, setTab] = useState<'pool' | 'rosa'>('pool')
   // Listone ordering: by role then name (default), or by price descending.
   const [sortBy, setSortBy] = useState<'role' | 'price'>('role')
-
-  const ROLE_ORDER: Record<string, number> = { P: 0, D: 1, C: 2, A: 3 }
 
   const filteredPlayers = useMemo(() => {
     return players
@@ -144,8 +201,9 @@ export function SquadBuilder({
     return counts
   }, [myPlayers])
 
-  function handleToggle(player: PlayerWithTeam) {
+  const handleToggle = useCallback((player: PlayerWithTeam) => {
     if (isReadOnly) return
+    if (pendingPlayerIds.has(player.id)) return
     const price = priceMap.get(player.id) ?? 0
     const isIn = selected.has(player.id)
 
@@ -175,6 +233,7 @@ export function SquadBuilder({
       setSpent((s) => s + price)
     }
     setSelected(next)
+    setPendingPlayerIds((prev) => new Set(prev).add(player.id))
 
     const fd = new FormData()
     fd.set('competition_id', competitionId)
@@ -186,14 +245,38 @@ export function SquadBuilder({
       try {
         await toggleSquadPlayerAction(fd)
       } catch (e) {
-        // Revert optimistic update
-        const revert = new Set(selected)
-        setSelected(revert)
-        setSpent(initialSpent)
+        setSelected((current) => {
+          const reverted = new Set(current)
+          if (isIn) {
+            reverted.add(player.id)
+          } else {
+            reverted.delete(player.id)
+          }
+          return reverted
+        })
+        setSpent((current) => current + (isIn ? price : -price))
         setError(e instanceof Error ? e.message : 'Errore')
+      } finally {
+        setPendingPlayerIds((prev) => {
+          const nextPending = new Set(prev)
+          nextPending.delete(player.id)
+          return nextPending
+        })
       }
     })
-  }
+  }, [
+    budgetTotal,
+    competitionId,
+    isReadOnly,
+    pendingPlayerIds,
+    phase.id,
+    poolSize,
+    priceMap,
+    roleCounts,
+    roleQuotas,
+    selected,
+    spent,
+  ])
 
   function handleCoachChange(newCoachId: string | null) {
     if (isReadOnly) return
@@ -243,15 +326,6 @@ export function SquadBuilder({
     observer.observe(sentinel)
     return () => observer.disconnect()
   }, [])
-
-
-  // Big, prominent credit value for a player row.
-  const PriceTag = ({ value }: { value: number }) => (
-    <span className="shrink-0 whitespace-nowrap text-right">
-      <span className="mono text-[17px] font-bold tabular-nums text-ink-1">{value > 0 ? value : '—'}</span>
-      {value > 0 && <span className="ml-0.5 text-[10px] font-medium text-ink-5">cr</span>}
-    </span>
-  )
 
   return (
     <div className="mx-auto max-w-xl space-y-3">
@@ -415,32 +489,16 @@ export function SquadBuilder({
               const roleFull = roleCounts[role] >= roleQuotas[role]
               const canAdd = !isIn && selected.size < poolSize && !roleFull && spent + price <= budgetTotal
               return (
-                <button
+                <PlayerPoolRow
                   key={player.id}
-                  onClick={() => handleToggle(player)}
-                  disabled={isReadOnly || pending || (!isIn && !canAdd)}
-                  className={`flex w-full items-center gap-3 px-3.5 py-3 text-left transition-colors ${
-                    isIn
-                      ? 'bg-accent-muted hover:bg-accent-muted'
-                      : canAdd
-                      ? 'hover:bg-glass-2'
-                      : 'opacity-40'
-                  } ${isReadOnly ? 'cursor-default' : ''}`}
-                >
-                  <RoleTag role={player.role} />
-                  <TeamCrest name={player.fm_national_team.name} logoUrl={player.fm_national_team.logo_url} flagUrl={player.fm_national_team.flag_url} fifaCode={player.fm_national_team.fifa_code} size={22} className="w-6" />
-                  <span className="min-w-0 flex-1 truncate text-[14.5px] font-semibold text-ink-1">{player.name}</span>
-                  <PriceTag value={price} />
-                  <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-                    isIn ? 'border-accent bg-accent' : 'border-ink-5'
-                  }`}>
-                    {isIn && (
-                      <svg width="9" height="9" viewBox="0 0 8 8" fill="none">
-                        <path d="M1 4l2 2 4-4" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                  </span>
-                </button>
+                  player={player}
+                  price={price}
+                  isIn={isIn}
+                  canAdd={canAdd}
+                  isReadOnly={isReadOnly}
+                  isPending={pendingPlayerIds.has(player.id)}
+                  onToggle={handleToggle}
+                />
               )
             })}
             {filteredPlayers.length === 0 && (
@@ -473,7 +531,7 @@ export function SquadBuilder({
                         {!isReadOnly && (
                           <button
                             onClick={() => handleToggle(player)}
-                            disabled={pending}
+                            disabled={pendingPlayerIds.has(player.id)}
                             className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-rose-500/40 bg-rose-500/10 text-rose-500 transition-colors hover:bg-rose-500/20"
                           >
                             <svg width="9" height="9" viewBox="0 0 8 8" fill="none">
@@ -541,7 +599,6 @@ export function SquadBuilder({
           <select
             value={coachId ?? ''}
             onChange={(e) => handleCoachChange(e.target.value || null)}
-            disabled={pending}
             className="w-full rounded-xl border border-hairline-strong bg-glass-2 px-3 py-3 text-[16px] text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo"
           >
             <option value="">— Nessun allenatore —</option>
