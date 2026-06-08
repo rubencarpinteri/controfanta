@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { regenerateInviteTokenAction, revokeInviteTokenAction } from './actions'
+import { useState } from 'react'
+import { useTransition } from 'react'
+import { regenerateInviteTokenAction } from './actions'
 
 interface Props {
   joinUrl: string | null
@@ -61,34 +62,21 @@ export function InviteLinkCard({ joinUrl, leagueName }: Props) {
           </p>
         </div>
       ) : (
-        <p className="mt-3 text-[12px] text-ink-5">
-          Nessun link attivo. Genera un nuovo link qui sotto.
-        </p>
-      )}
-
-      <div className="mt-3 flex flex-wrap gap-2">
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => startTransition(() => regenerateInviteTokenAction())}
-          className="rounded-lg border border-hairline bg-glass-2 px-3 py-1.5 text-[12px] font-medium text-ink-1 hover:bg-glass-3 transition-colors disabled:opacity-50"
-        >
-          {joinUrl ? 'Cambia link' : 'Genera link'}
-        </button>
-        {joinUrl && (
+        <div className="mt-3 space-y-3">
+          <p className="text-[12px] text-ink-5">
+            Nessun link attivo.
+          </p>
           <button
             type="button"
             disabled={pending}
-            onClick={() => {
-              if (!confirm('Revocare il link? Smetterà di funzionare per i nuovi inviti.')) return
-              startTransition(() => revokeInviteTokenAction())
-            }}
-            className="rounded-lg border border-hairline bg-glass-2 px-3 py-1.5 text-[12px] font-medium text-rose-400 hover:bg-rose-400/10 hover:border-rose-400/40 transition-colors disabled:opacity-50"
+            onClick={() => startTransition(() => regenerateInviteTokenAction())}
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white hover:bg-indigo-500 transition-colors disabled:opacity-50"
           >
-            Revoca
+            Genera link invito
           </button>
-        )}
-      </div>
+        </div>
+      )}
+
     </div>
   )
 }
