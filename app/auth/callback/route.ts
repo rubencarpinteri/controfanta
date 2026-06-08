@@ -13,7 +13,12 @@ import type { NextRequest } from 'next/server'
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const token_hash = searchParams.get('token_hash')
-  const type = searchParams.get('type') as 'invite' | 'recovery' | 'email' | null
+  const type = searchParams.get('type') as
+    | 'invite'
+    | 'recovery'
+    | 'email'
+    | 'signup'
+    | null
   const next = searchParams.get('next') ?? '/dashboard'
 
   if (token_hash && type) {
@@ -22,7 +27,13 @@ export async function GET(request: NextRequest) {
     if (!error) {
       // Invite: send to set-password page so user can choose a password.
       // Recovery: same destination.
-      const dest = type === 'invite' ? '/update-password' : (next)
+      // Signup/email confirmation: land on their first league-creation step.
+      const dest =
+        type === 'invite'
+          ? '/update-password'
+          : type === 'signup'
+            ? '/leagues/new'
+            : next
       return NextResponse.redirect(new URL(dest, origin))
     }
   }

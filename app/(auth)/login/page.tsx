@@ -96,13 +96,22 @@ export default function LoginPage() {
             <SubmitButton />
           </form>
 
-          <div className="mt-4 text-center">
+          <div className="mt-4 flex flex-col items-center gap-2 text-center">
             <a
               href="/reset-password"
               className="text-[11.5px] text-ink-4 transition-colors hover:text-indigo-300"
             >
               Password dimenticata?
             </a>
+            <div>
+              <span className="text-[11.5px] text-ink-4">Non hai un account? </span>
+              <a
+                href="/signup"
+                className="text-[11.5px] text-indigo-300 transition-colors hover:text-indigo-200"
+              >
+                Registrati
+              </a>
+            </div>
           </div>
         </div>
       </div>
