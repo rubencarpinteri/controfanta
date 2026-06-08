@@ -1,5 +1,6 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { loadFMUnifiedConfigForLega } from '@/lib/fantamondiale/loadUnifiedConfig'
 import { resolvePhaseBudget } from '@/lib/fantamondiale/budget'
@@ -162,6 +163,8 @@ export async function toggleSquadPlayerAction(fd: FormData) {
       .insert({ phase_squad_id: squadId, player_id: playerId, purchase_price: playerPrice })
     await recalcBudgetSpent(supabase, squadId)
   }
+
+  revalidatePath(`/controfantamondiale/${competitionId}/rosa`)
 }
 
 export async function setSquadCoachAction(fd: FormData) {
@@ -191,4 +194,6 @@ export async function setSquadCoachAction(fd: FormData) {
   const budgetTotal = resolvePhaseBudget(phaseSettings?.budget_config ?? {}, config.squad.budget_default)
   const squadId = await ensureSquad(phaseId, fantasyTeamId, budgetTotal)
   await supabase.from('fm_phase_squad').update({ coach_id: coachId }).eq('id', squadId)
+
+  revalidatePath(`/controfantamondiale/${competitionId}/rosa`)
 }

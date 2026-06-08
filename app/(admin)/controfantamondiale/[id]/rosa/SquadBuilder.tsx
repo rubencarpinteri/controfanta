@@ -155,6 +155,7 @@ export function SquadBuilder({
   const [spent, setSpent] = useState(initialSpent)
   const [, startTransition] = useTransition()
   const [pendingPlayerIds, setPendingPlayerIds] = useState<Set<string>>(() => new Set())
+  const [coachPending, setCoachPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [filterTeam, setFilterTeam] = useState('')
   const [filterRole, setFilterRole] = useState('')
@@ -162,6 +163,12 @@ export function SquadBuilder({
   const [tab, setTab] = useState<'pool' | 'rosa'>('pool')
   // Listone ordering: by role then name (default), or by price descending.
   const [sortBy, setSortBy] = useState<'role' | 'price'>('role')
+
+  useEffect(() => {
+    setSelected(initialSelected)
+    setCoachId(initialCoach)
+    setSpent(initialSpent)
+  }, [initialSelected, initialCoach, initialSpent])
 
   const filteredPlayers = useMemo(() => {
     return players
@@ -281,6 +288,7 @@ export function SquadBuilder({
   function handleCoachChange(newCoachId: string | null) {
     if (isReadOnly) return
     setCoachId(newCoachId)
+    setCoachPending(true)
     const fd = new FormData()
     fd.set('competition_id', competitionId)
     fd.set('phase_id', phase.id)
@@ -291,6 +299,8 @@ export function SquadBuilder({
       } catch (e) {
         setCoachId(coachId)
         setError(e instanceof Error ? e.message : 'Errore allenatore')
+      } finally {
+        setCoachPending(false)
       }
     })
   }
@@ -301,6 +311,7 @@ export function SquadBuilder({
     remaining < 20 ? 'bg-rose-500' : remaining < 50 ? 'bg-amber-500' : 'bg-gradient-to-r from-accent-soft to-accent'
   const remainingText =
     remaining < 20 ? 'text-rose-500' : remaining < 50 ? 'text-amber-500' : 'text-emerald-500'
+  const isSaving = pendingPlayerIds.size > 0 || coachPending
 
   const SORTS: { v: 'role' | 'price'; label: string }[] = [
     { v: 'role', label: 'Ruolo' },
@@ -400,6 +411,13 @@ export function SquadBuilder({
             )
           })}
         </div>
+        {!isReadOnly && (
+          <p className={`mt-2 text-center text-[11px] font-medium transition-colors ${
+            isSaving ? 'text-amber-500' : 'text-emerald-500'
+          }`}>
+            {isSaving ? 'Salvataggio in corso...' : 'Rosa salvata automaticamente'}
+          </p>
+        )}
       </div>
 
       {/* ── Error banner ───────────────────────────────────────────────────── */}
