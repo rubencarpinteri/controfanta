@@ -25,8 +25,16 @@ export function NationSelect({ teams, value, onChange, allLabel = 'Tutte le nazi
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const rootRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const selected = teams.find((t) => t.id === value) ?? null
+
+  // Focus the search field when the panel opens. The panel is always mounted
+  // (animated via opacity), so we can't rely on autoFocus — it would steal
+  // focus on page load. Focus explicitly on open instead.
+  useEffect(() => {
+    if (open) inputRef.current?.focus()
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -85,7 +93,7 @@ export function NationSelect({ teams, value, onChange, allLabel = 'Tutte le nazi
         <div className="overflow-hidden rounded-xl border border-hairline-strong bg-glass-3 shadow-3 backdrop-blur-xl">
           <div className="border-b border-hairline p-2">
             <input
-              autoFocus
+              ref={inputRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Cerca nazione…"
