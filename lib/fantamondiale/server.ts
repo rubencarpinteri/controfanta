@@ -259,7 +259,7 @@ export async function getFMTeams(competitionId: string): Promise<FMNationalTeam[
 
 export async function getFMPlayers(
   competitionId: string,
-  opts?: { teamId?: string; role?: string }
+  opts?: { teamId?: string; role?: string; activeOnly?: boolean }
 ): Promise<(FMPlayer & { fm_national_team: Pick<FMNationalTeam, 'name' | 'fifa_code' | 'flag_emoji' | 'logo_url' | 'flag_url'> })[]> {
   const supabase = await createClient()
   // PostgREST caps each response at 1000 rows (db-max-rows). The full WC
@@ -274,6 +274,10 @@ export async function getFMPlayers(
       .eq('competition_id', competitionId)
     if (opts?.teamId) q = q.eq('national_team_id', opts.teamId)
     if (opts?.role) q = q.eq('role', opts.role as 'P' | 'D' | 'C' | 'A')
+    // Listone surfaces pass activeOnly so players trimmed from a squad
+    // (injured / final-cut) drop out of the draftable pool. Admin pages
+    // omit it to keep managing inactive rows.
+    if (opts?.activeOnly) q = q.eq('is_active', true)
     const { data, error } = await q
       .order('name', { ascending: true })
       .range(from, from + PAGE - 1)

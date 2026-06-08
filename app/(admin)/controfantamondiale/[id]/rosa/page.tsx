@@ -97,7 +97,7 @@ export default async function RosaPage({ params }: { params: Promise<{ id: strin
 
   const [teams, players, coaches] = await Promise.all([
     getFMTeams(ctx.competition.id),
-    getFMPlayers(ctx.competition.id),
+    getFMPlayers(ctx.competition.id, { activeOnly: true }),
     getFMCoaches(ctx.competition.id),
   ])
 
