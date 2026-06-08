@@ -267,7 +267,7 @@ export function SquadBuilder({
 
         className={`rounded-2xl border border-hairline bg-glass-2 shadow-1 backdrop-blur-xl transition-all duration-300 ${
           budgetSticky
-            ? 'fixed left-1/2 z-40 -translate-x-1/2 px-3 py-2'
+            ? 'fixed left-1/2 z-40 -translate-x-1/2 px-3 py-2 md:left-[calc(50%+7.5rem)]'
             : 'relative px-4 py-4'
         }`}
         style={{
