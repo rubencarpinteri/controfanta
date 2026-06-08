@@ -87,7 +87,9 @@ export const requireFMContext = cache(async (legaCompRef: string): Promise<FMCon
   const isLeagueAdmin = membership?.role === 'league_admin'
 
   // Non-admin viewers must be enrolled to access the competition pages.
-  if (!isSuperAdmin && !team) redirect('/dashboard' as Route)
+  // League admins are allowed in without a personal squad so they can manage
+  // their Lega's fantasy surfaces (Setup, Fasi, Prezzi) right after enrolling.
+  if (!isSuperAdmin && !isLeagueAdmin && !team) redirect('/dashboard' as Route)
 
   const fantasyTeamId: string | null = team?.id ?? null
 

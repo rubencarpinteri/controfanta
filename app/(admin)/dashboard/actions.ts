@@ -32,48 +32,33 @@ export async function optLegaIntoFMCompetitionAction(
     throw new Error('Le iscrizioni a questa competizione sono chiuse.')
   }
 
-  // Idempotent: if the Lega is already opted in, navigate to the existing instance.
-  const { data: existing } = await supabase
-    .from('fm_league_competition')
-    .select('id, slug')
-    .eq('league_id', ctx.league.id)
-    .eq('fm_competition_id', fmCompetitionId)
-    .maybeSingle()
+  // Enroll the Lega via a SECURITY DEFINER function. The slug must be globally
+  // unique, but RLS hides other leagues' rows from a client query — so building
+  // the slug client-side produced duplicates and a 500. The function generates
+  // the slug seeing all rows and inserts atomically (idempotent: returns the
+  // existing instance id if already enrolled).
+  const baseSlug = slugify(`${comp.name}-${comp.edition}`)
+  const { data: legaCompId, error } = await supabase.rpc('opt_lega_into_fm', {
+    p_league_id: ctx.league.id,
+    p_fm_competition_id: fmCompetitionId,
+    p_base_slug: baseSlug,
+  })
 
-  if (existing) {
-    revalidatePath('/dashboard')
-    redirect(`/controfantamondiale/${existing.slug ?? existing.id}` as Route)
+  if (error || !legaCompId) {
+    throw new Error(error?.message ?? 'Impossibile iscrivere la Lega.')
   }
 
-  // Human-readable URL slug, globally unique (append -2, -3 … on clash).
-  const baseSlug = slugify(`${comp.name}-${comp.edition}`)
-  const { data: slugRows } = await supabase
+  // Resolve the slug for the redirect (readable: the Lega's own instance).
+  const { data: row } = await supabase
     .from('fm_league_competition')
     .select('slug')
-    .like('slug', `${baseSlug}%`)
-  const taken = new Set((slugRows ?? []).map((r) => r.slug))
-  let slug = baseSlug
-  for (let n = 2; taken.has(slug); n++) slug = `${baseSlug}-${n}`
-
-  const { data: inserted, error } = await supabase
-    .from('fm_league_competition')
-    .insert({
-      league_id: ctx.league.id,
-      fm_competition_id: fmCompetitionId,
-      slug,
-      created_by: ctx.userId,
-    })
-    .select('id, slug')
-    .single()
-
-  if (error || !inserted) {
-    throw new Error(error?.message ?? "Impossibile iscrivere la Lega.")
-  }
+    .eq('id', legaCompId)
+    .maybeSingle()
 
   // Clone the editable fantasy layer (cadence/budget, prices, config) so this
   // Lega's admin starts from the global defaults and can diverge freely.
-  await seedLegaFantasyLayer(supabase, inserted.id, fmCompetitionId)
+  await seedLegaFantasyLayer(supabase, legaCompId, fmCompetitionId)
 
   revalidatePath('/dashboard')
-  redirect(`/controfantamondiale/${inserted.slug ?? inserted.id}` as Route)
+  redirect(`/controfantamondiale/${row?.slug ?? legaCompId}` as Route)
 }

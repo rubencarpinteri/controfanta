@@ -4139,6 +4139,14 @@ export type Database = {
         Args: { p_name: string; p_season_name: string }
         Returns: string
       }
+      opt_lega_into_fm: {
+        Args: {
+          p_league_id: string
+          p_fm_competition_id: string
+          p_base_slug: string
+        }
+        Returns: string
+      }
       fm_get_user_team_id: {
         Args: { p_league_competition_id: string }
         Returns: string
