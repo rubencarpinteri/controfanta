@@ -1,4 +1,4 @@
-import { requireFMContext, assertSuperAdmin, getFMPhases, getFMTeams, getFMPlayers } from '@/lib/fantamondiale/server'
+import { requireFMContext, assertLeagueAdmin, getFMPhases, getFMTeams, getFMPlayers } from '@/lib/fantamondiale/server'
 import { createClient } from '@/lib/supabase/server'
 import { bulkImportPricesAction, copyPhasePricesAction } from './actions'
 import { PriceGrid } from './PriceGrid'
@@ -6,7 +6,7 @@ import { PriceGrid } from './PriceGrid'
 export default async function PricesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const ctx = await requireFMContext(id)
-  assertSuperAdmin(ctx)
+  assertLeagueAdmin(ctx)
 
   const [phases, teams, players] = await Promise.all([
     getFMPhases(ctx.competition.id),
@@ -23,8 +23,9 @@ export default async function PricesPage({ params }: { params: Promise<{ id: str
   const priceMap = new Map<string, number>()
   for (let from = 0; ; from += PRICE_PAGE) {
     const { data: priceRows } = await supabase
-      .from('fm_phase_player_price')
+      .from('fm_league_phase_player_price')
       .select('phase_id, player_id, price, source')
+      .eq('league_competition_id', ctx.legaCompetition.id)
       .in('phase_id', phaseIds)
       .range(from, from + PRICE_PAGE - 1)
     const batch = priceRows ?? []

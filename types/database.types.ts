@@ -1275,6 +1275,145 @@ export type Database = {
           },
         ]
       }
+      fm_league_competition_config: {
+        Row: {
+          config: Json
+          league_competition_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          config?: Json
+          league_competition_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          config?: Json
+          league_competition_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fm_league_competition_config_league_competition_id_fkey"
+            columns: ["league_competition_id"]
+            isOneToOne: true
+            referencedRelation: "fm_league_competition"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fm_league_competition_config_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fm_league_phase: {
+        Row: {
+          budget_config: Json
+          budget_mode: Database["public"]["Enums"]["fm_budget_mode"]
+          created_at: string
+          id: string
+          league_competition_id: string
+          phase_id: string
+          requires_new_squad: boolean
+          updated_at: string
+        }
+        Insert: {
+          budget_config?: Json
+          budget_mode?: Database["public"]["Enums"]["fm_budget_mode"]
+          created_at?: string
+          id?: string
+          league_competition_id: string
+          phase_id: string
+          requires_new_squad?: boolean
+          updated_at?: string
+        }
+        Update: {
+          budget_config?: Json
+          budget_mode?: Database["public"]["Enums"]["fm_budget_mode"]
+          created_at?: string
+          id?: string
+          league_competition_id?: string
+          phase_id?: string
+          requires_new_squad?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fm_league_phase_league_competition_id_fkey"
+            columns: ["league_competition_id"]
+            isOneToOne: false
+            referencedRelation: "fm_league_competition"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fm_league_phase_phase_id_fkey"
+            columns: ["phase_id"]
+            isOneToOne: false
+            referencedRelation: "fm_phase"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fm_league_phase_player_price: {
+        Row: {
+          created_at: string
+          id: string
+          league_competition_id: string
+          phase_id: string
+          player_id: string
+          price: number
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          league_competition_id: string
+          phase_id: string
+          player_id: string
+          price: number
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          league_competition_id?: string
+          phase_id?: string
+          player_id?: string
+          price?: number
+          source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fm_league_phase_player_price_league_competition_id_fkey"
+            columns: ["league_competition_id"]
+            isOneToOne: false
+            referencedRelation: "fm_league_competition"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fm_league_phase_player_price_phase_id_fkey"
+            columns: ["phase_id"]
+            isOneToOne: false
+            referencedRelation: "fm_phase"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fm_league_phase_player_price_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "fm_player"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fm_live_round_snapshot: {
         Row: {
           computed_at: string
@@ -4442,3 +4581,8 @@ export type FMMatchResult = Database["public"]["Enums"]["fm_match_result"]
 export type FMCalcOrderEnum = Database["public"]["Enums"]["fm_calc_order"]
 export type FMAuditAction = Database["public"]["Enums"]["fm_audit_action"]
 export type FMCompetitionCoachTier = Database["public"]["Tables"]["fm_competition_coach_tier"]["Row"]
+
+// Per-league fantasy layer aliases
+export type FMLeaguePhase = Database["public"]["Tables"]["fm_league_phase"]["Row"]
+export type FMLeaguePhasePlayerPrice = Database["public"]["Tables"]["fm_league_phase_player_price"]["Row"]
+export type FMLeagueCompetitionConfig = Database["public"]["Tables"]["fm_league_competition_config"]["Row"]

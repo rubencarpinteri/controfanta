@@ -6,6 +6,7 @@ import type { Route } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { requireLeagueContext, isSuperAdmin } from '@/lib/league'
 import { slugify } from '@/lib/slug'
+import { seedLegaFantasyLayer } from '@/lib/fantamondiale/seedLegaFantasyLayer'
 
 /**
  * Opt the current Lega into a global FM tournament (WC/Euros/Nations/CL).
@@ -68,6 +69,10 @@ export async function optLegaIntoFMCompetitionAction(
   if (error || !inserted) {
     throw new Error(error?.message ?? "Impossibile iscrivere la Lega.")
   }
+
+  // Clone the editable fantasy layer (cadence/budget, prices, config) so this
+  // Lega's admin starts from the global defaults and can diverge freely.
+  await seedLegaFantasyLayer(supabase, inserted.id, fmCompetitionId)
 
   revalidatePath('/dashboard')
   redirect(`/controfantamondiale/${inserted.slug ?? inserted.id}` as Route)

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
-import { requireSuperAdmin } from '@/lib/league'
+import { requireFMContext, assertLeagueAdmin } from '@/lib/fantamondiale/server'
 import {
   fmCompetitionConfigSchema,
   fmSquadConfigSchema,
@@ -28,10 +28,11 @@ const fmShapeSchema = z.object({
 })
 
 export async function saveConfigAction(fd: FormData) {
-  await requireSuperAdmin()
+  const ref = fd.get('competition_id') as string
+  const ctx = await requireFMContext(ref)
+  assertLeagueAdmin(ctx)
   const supabase = await createClient()
 
-  const competitionId = fd.get('competition_id') as string
   const rawJson = fd.get('config_json') as string
 
   let parsed: unknown
@@ -57,12 +58,13 @@ export async function saveConfigAction(fd: FormData) {
     tie_breakers: validated.data.tie_breakers,
   })
 
-  // Read whatever the row currently holds so we preserve unknown keys and
-  // schema_version, then merge in the new FM-shape values.
+  // Read whatever this Lega's row currently holds so we preserve unknown keys
+  // and schema_version, then merge in the new FM-shape values. Fantasy config is
+  // per-league (fm_league_competition_config), keyed by the Lega instance id.
   const { data: existing } = await supabase
-    .from('fm_competition_config')
+    .from('fm_league_competition_config')
     .select('config')
-    .eq('competition_id', competitionId)
+    .eq('league_competition_id', ctx.legaCompetition.id)
     .maybeSingle()
 
   const merged: Json = {
@@ -76,12 +78,12 @@ export async function saveConfigAction(fd: FormData) {
   }
 
   await supabase
-    .from('fm_competition_config')
+    .from('fm_league_competition_config')
     .upsert(
-      { competition_id: competitionId, config: merged },
-      { onConflict: 'competition_id' }
+      { league_competition_id: ctx.legaCompetition.id, config: merged, updated_by: ctx.userId },
+      { onConflict: 'league_competition_id' }
     )
 
-  revalidatePath(`/controfantamondiale/${competitionId}/config`)
-  revalidatePath(`/controfantamondiale/${competitionId}/regole`)
+  revalidatePath(`/controfantamondiale/${ref}/config`)
+  revalidatePath(`/controfantamondiale/${ref}/regole`)
 }

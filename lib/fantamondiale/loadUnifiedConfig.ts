@@ -181,6 +181,57 @@ export async function loadFMUnifiedConfig(
 }
 
 /**
+ * Lega-scoped variant: composes the config for one Lega's FM instance.
+ *
+ * Reads the Lega-owned fantasy shape from `fm_league_competition_config`
+ * (fall back to the global `fm_competition_config` blob), and the scoring rules
+ * from THAT Lega's `league_engine_config` row (fall back to the sole row). Use
+ * this everywhere a Lega context exists so prices/rules reflect the right
+ * league, not an arbitrary `.limit(1)` pick.
+ */
+export async function loadFMUnifiedConfigForLega(
+  supabase: Supabase,
+  legaCompId: string
+): Promise<FMCompetitionConfig> {
+  const { data: lega } = await supabase
+    .from('fm_league_competition')
+    .select('league_id, fm_competition_id')
+    .eq('id', legaCompId)
+    .maybeSingle()
+
+  const [{ data: engineRow }, { data: legaCfg }, { data: globalCfg }] = await Promise.all([
+    supabase
+      .from('league_engine_config')
+      .select('*')
+      .eq('league_id', lega?.league_id ?? '')
+      .maybeSingle(),
+    supabase
+      .from('fm_league_competition_config')
+      .select('config')
+      .eq('league_competition_id', legaCompId)
+      .maybeSingle(),
+    lega
+      ? supabase
+          .from('fm_competition_config')
+          .select('config')
+          .eq('competition_id', lega.fm_competition_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ])
+
+  // Fall back to the sole engine row if this Lega has no engine config yet
+  // (preserves the previous single-league behavior).
+  let engine = engineRow
+  if (!engine) {
+    const { data } = await supabase.from('league_engine_config').select('*').limit(1).maybeSingle()
+    engine = data ?? null
+  }
+
+  const shapeJson = legaCfg?.config ?? globalCfg?.config ?? null
+  return composeFMConfig(engine ?? null, shapeJson)
+}
+
+/**
  * Pure composer — exposed for the FM "Regole di gioco" preview and tests.
  */
 export function composeFMConfig(

@@ -26,6 +26,12 @@ export interface FMContext {
   competition: FMCompetition
   config: FMCompetitionConfigRow | null
   isSuperAdmin: boolean
+  /**
+   * True when the user is a `league_admin` of the Lega that owns this FM
+   * instance (independent of super-admin). Drives league-admin-editable
+   * fantasy surfaces (prices, redraft cadence, fantasy config).
+   */
+  isLeagueAdmin: boolean
   userId: string
   fantasyTeamId: string | null
 }
@@ -69,6 +75,17 @@ export const requireFMContext = cache(async (legaCompRef: string): Promise<FMCon
     .eq('manager_id', user.id)
     .maybeSingle()
 
+  // League-admin of the Lega that owns this instance — gates the league-admin-
+  // editable fantasy surfaces. Independent of super-admin and of the previewing
+  // flag (a previewing super-admin who is also the real league_admin keeps it).
+  const { data: membership } = await supabase
+    .from('league_users')
+    .select('role')
+    .eq('league_id', legaComp.league_id)
+    .eq('user_id', user.id)
+    .maybeSingle()
+  const isLeagueAdmin = membership?.role === 'league_admin'
+
   // Non-admin viewers must be enrolled to access the competition pages.
   if (!isSuperAdmin && !team) redirect('/dashboard' as Route)
 
@@ -83,17 +100,32 @@ export const requireFMContext = cache(async (legaCompRef: string): Promise<FMCon
 
   if (!competition) redirect('/dashboard' as Route)
 
-  const { data: config } = await supabase
-    .from('fm_competition_config')
-    .select('*')
-    .eq('competition_id', competition.id)
-    .single()
+  // Fantasy config: prefer this Lega's own per-league config; fall back to the
+  // global template row for the `config` blob so leagues enrolled before the
+  // per-league layer (or any missing key) keep working.
+  const [{ data: globalConfig }, { data: legaConfig }] = await Promise.all([
+    supabase
+      .from('fm_competition_config')
+      .select('*')
+      .eq('competition_id', competition.id)
+      .single(),
+    supabase
+      .from('fm_league_competition_config')
+      .select('config')
+      .eq('league_competition_id', legaComp.id)
+      .maybeSingle(),
+  ])
+
+  const config: FMCompetitionConfigRow | null = globalConfig
+    ? { ...globalConfig, config: legaConfig?.config ?? globalConfig.config }
+    : null
 
   return {
     legaCompetition: legaComp,
     competition,
-    config: config ?? null,
+    config,
     isSuperAdmin,
+    isLeagueAdmin,
     userId: user.id,
     fantasyTeamId,
   }
@@ -102,6 +134,83 @@ export const requireFMContext = cache(async (legaCompRef: string): Promise<FMCon
 // Call at the top of admin page.tsx files to gate non-admins.
 export function assertSuperAdmin(ctx: FMContext) {
   if (!ctx.isSuperAdmin) redirect('/dashboard' as Route)
+}
+
+// Gate league-admin-editable fantasy surfaces (prices, redraft cadence, fantasy
+// config). Allows the owning Lega's league_admin OR a super-admin.
+export function assertLeagueAdmin(ctx: FMContext) {
+  if (!ctx.isSuperAdmin && !ctx.isLeagueAdmin) redirect('/dashboard' as Route)
+}
+
+// ── Per-league fantasy layer helpers ───────────────────────────────────────
+// These read the Lega-owned fantasy layer (redraft cadence, budget, prices)
+// keyed by fm_league_competition.id, falling back to the global template so a
+// Lega missing a per-league row still resolves sane values.
+
+type Supabase = Awaited<ReturnType<typeof createClient>>
+
+export interface LegaPhaseSettings {
+  requires_new_squad: boolean
+  budget_mode: FMPhase['budget_mode']
+  budget_config: FMPhase['budget_config']
+}
+
+/** Per-league redraft cadence + budget for one phase (fallback: global fm_phase). */
+export async function getLegaPhaseSettings(
+  supabase: Supabase,
+  legaCompId: string,
+  phaseId: string
+): Promise<LegaPhaseSettings | null> {
+  const { data: lp } = await supabase
+    .from('fm_league_phase')
+    .select('requires_new_squad, budget_mode, budget_config')
+    .eq('league_competition_id', legaCompId)
+    .eq('phase_id', phaseId)
+    .maybeSingle()
+  if (lp) return lp
+  const { data: p } = await supabase
+    .from('fm_phase')
+    .select('requires_new_squad, budget_mode, budget_config')
+    .eq('id', phaseId)
+    .maybeSingle()
+  return p ?? null
+}
+
+/** Per-league price for one player in one phase (fallback: global price, else 0). */
+export async function getLegaPlayerPrice(
+  supabase: Supabase,
+  legaCompId: string,
+  phaseId: string,
+  playerId: string
+): Promise<number> {
+  const { data: lp } = await supabase
+    .from('fm_league_phase_player_price')
+    .select('price')
+    .eq('league_competition_id', legaCompId)
+    .eq('phase_id', phaseId)
+    .eq('player_id', playerId)
+    .maybeSingle()
+  if (lp) return lp.price
+  const { data: gp } = await supabase
+    .from('fm_phase_player_price')
+    .select('price')
+    .eq('phase_id', phaseId)
+    .eq('player_id', playerId)
+    .maybeSingle()
+  return gp?.price ?? 0
+}
+
+/** Resolve a URL segment (slug or UUID) to the fm_league_competition primary key. */
+export async function resolveLegaCompId(
+  supabase: Supabase,
+  legaCompRef: string
+): Promise<string | null> {
+  const { data } = await supabase
+    .from('fm_league_competition')
+    .select('id')
+    .eq(isUuid(legaCompRef) ? 'id' : 'slug', legaCompRef)
+    .maybeSingle()
+  return data?.id ?? null
 }
 
 // Lists every global tournament template (super-admin-facing).

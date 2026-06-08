@@ -1,12 +1,12 @@
-import { requireFMContext, assertSuperAdmin, getFMFantasyTeams } from '@/lib/fantamondiale/server'
+import { requireFMContext, assertLeagueAdmin, getFMFantasyTeams } from '@/lib/fantamondiale/server'
 import { createClient } from '@/lib/supabase/server'
 import { addMemberAction, removeMemberAction } from './actions'
 
 export default async function MembersPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const _ctx = await requireFMContext(id)
-  assertSuperAdmin(_ctx)
-  const fantasyTeams = await getFMFantasyTeams(id)
+  assertLeagueAdmin(_ctx)
+  const fantasyTeams = await getFMFantasyTeams(_ctx.legaCompetition.id)
 
   const supabase = await createClient()
   const { data: profiles } = await supabase

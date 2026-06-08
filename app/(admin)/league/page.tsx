@@ -1,4 +1,4 @@
-import { requireLeagueAdmin } from '@/lib/league'
+import { requireLeagueAdmin, isSuperAdmin } from '@/lib/league'
 import { createClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { LeagueSettingsForm } from './LeagueSettingsForm'
@@ -32,6 +32,7 @@ function ScopePill({ color, children }: { color: 'green' | 'indigo'; children: R
 
 export default async function LeagueSettingsPage() {
   const ctx = await requireLeagueAdmin()
+  const superAdmin = await isSuperAdmin()
   const supabase = await createClient()
 
   const [{ data: serieAComps }, { data: fmInstances }, { data: engineConfig }] = await Promise.all([
@@ -74,17 +75,21 @@ export default async function LeagueSettingsPage() {
       {/* ── Identità lega + Draft Serie A ───────────────────────────────── */}
       <LeagueSettingsForm league={ctx.league} />
 
-      {/* ── Motore di calcolo ────────────────────────────────────────────── */}
-      <Card>
-        <CardHeader
-          title="Motore di calcolo"
-          description="Pivot, bonus/malus, popolarità, MVP, soglie gol e punti W/D/L."
-          action={<ScopePill color="green">Tutta la lega</ScopePill>}
-        />
-        <CardContent>
-          <EngineConfigForm current={engineConfig ?? null} />
-        </CardContent>
-      </Card>
+      {/* ── Motore di calcolo (piattaforma) ──────────────────────────────── */}
+      {/* Raw scoring math is platform-global so the same match yields the same
+          player points in every lega — super-admin only. */}
+      {superAdmin && (
+        <Card>
+          <CardHeader
+            title="Motore di calcolo"
+            description="Pivot, bonus/malus, popolarità, MVP, soglie gol e punti W/D/L."
+            action={<ScopePill color="indigo">Piattaforma</ScopePill>}
+          />
+          <CardContent>
+            <EngineConfigForm current={engineConfig ?? null} />
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── Regole speciali ──────────────────────────────────────────────── */}
       <Card>
@@ -172,20 +177,19 @@ export default async function LeagueSettingsPage() {
         </CardContent>
       </Card>
 
-      {/* ── Gestione operativa ───────────────────────────────────────────── */}
+      {/* ── Gestione operativa (lega) ────────────────────────────────────── */}
       <Card>
         <CardHeader
           title="Gestione"
-          description="Membri, ruoli ambigui, rose Serie A, formazioni, monitoring cron."
+          description="Membri, ruoli ambigui, rose Serie A, formazioni."
         />
         <CardContent>
           <nav className="space-y-1">
             {[
-              { href: '/league/members',    label: 'Membri e inviti',         sub: 'Invita manager, cambia ruoli, gestisci le squadre' },
-              { href: '/league/role-rules', label: 'Regole ruoli ambigui',    sub: 'Configura E → DEF o MID e altri ruoli ambigui (Serie A)' },
-              { href: '/formations',        label: 'Formazioni valide',       sub: 'Gestisci formazioni e slot Mantra (Serie A)' },
-              { href: '/roster',            label: 'Gestione rose',           sub: 'Visualizza e modifica le rose Serie A' },
-              { href: '/league/cron-status',label: 'Stato cron SportMonks',  sub: 'Ultimo tick, errori 24h, cronologia run' },
+              { href: '/league/members',    label: 'Membri e inviti',      sub: 'Invita manager, cambia ruoli, gestisci le squadre' },
+              { href: '/league/role-rules', label: 'Regole ruoli ambigui', sub: 'Configura E → DEF o MID e altri ruoli ambigui (Serie A)' },
+              { href: '/formations',        label: 'Formazioni valide',    sub: 'Gestisci formazioni e slot Mantra (Serie A)' },
+              { href: '/roster',            label: 'Gestione rose',        sub: 'Visualizza e modifica le rose Serie A' },
             ].map(({ href, label, sub }) => (
               <a
                 key={href}
@@ -202,6 +206,38 @@ export default async function LeagueSettingsPage() {
           </nav>
         </CardContent>
       </Card>
+
+      {/* ── Piattaforma (super-admin) ────────────────────────────────────── */}
+      {/* Site-structure surfaces shared across every lega — never shown to a
+          plain lega admin. */}
+      {superAdmin && (
+        <Card>
+          <CardHeader
+            title="Piattaforma"
+            description="Infrastruttura condivisa da tutte le leghe."
+            action={<ScopePill color="indigo">Piattaforma</ScopePill>}
+          />
+          <CardContent>
+            <nav className="space-y-1">
+              {[
+                { href: '/league/cron-status', label: 'Stato cron SportMonks', sub: 'Ultimo tick, errori 24h, cronologia run' },
+              ].map(({ href, label, sub }) => (
+                <a
+                  key={href}
+                  href={href}
+                  className="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-glass-1"
+                >
+                  <div>
+                    <p className="font-medium text-ink-1">{label}</p>
+                    <p className="text-xs text-ink-3">{sub}</p>
+                  </div>
+                  <span className="text-ink-4">→</span>
+                </a>
+              ))}
+            </nav>
+          </CardContent>
+        </Card>
+      )}
 
       <p className="text-[11px] text-ink-4">
         Lega: <span className="font-mono text-ink-3">{ctx.league.name}</span>

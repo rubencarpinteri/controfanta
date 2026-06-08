@@ -1,6 +1,7 @@
-import { requireFMContext, assertSuperAdmin, getFMPhases, getFMRounds } from '@/lib/fantamondiale/server'
+import { requireFMContext, assertLeagueAdmin, getFMPhases, getFMRounds } from '@/lib/fantamondiale/server'
+import { createClient } from '@/lib/supabase/server'
 import { setPhaseStatusAction } from './actions'
-import { FMPhaseEditor } from './FMPhaseEditor'
+import { FMPhaseEditor, type LegaPhaseSettings } from './FMPhaseEditor'
 import type { FMPhase } from '@/types/database.types'
 
 // Admin can move a phase freely between states (no one-way ladder): a phase
@@ -36,8 +37,25 @@ function fmt(dt: string | null) {
 export default async function PhasesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const ctx = await requireFMContext(id)
-  assertSuperAdmin(ctx)
+  assertLeagueAdmin(ctx)
+  const supabase = await createClient()
   const [phases, rounds] = await Promise.all([getFMPhases(ctx.competition.id), getFMRounds(ctx.competition.id)])
+
+  // This Lega's redraft cadence + budget overrides (fm_league_phase), falling
+  // back to the global phase defaults where a per-league row is missing.
+  const { data: legaPhaseRows } = await supabase
+    .from('fm_league_phase')
+    .select('phase_id, requires_new_squad, budget_mode, budget_config')
+    .eq('league_competition_id', ctx.legaCompetition.id)
+  const legaByPhase = new Map((legaPhaseRows ?? []).map((r) => [r.phase_id, r]))
+  const settingsFor = (phase: FMPhase): LegaPhaseSettings => {
+    const lp = legaByPhase.get(phase.id)
+    return {
+      requires_new_squad: lp?.requires_new_squad ?? phase.requires_new_squad,
+      budget_mode: lp?.budget_mode ?? phase.budget_mode,
+      budget_config: lp?.budget_config ?? phase.budget_config,
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -72,18 +90,21 @@ export default async function PhasesPage({ params }: { params: Promise<{ id: str
               <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${PHASE_STATUS_BADGE[phase.status] ?? ''}`}>
                 {phase.status}
               </span>
-              <div className="flex items-center gap-1.5">
-                {actions.map((a) => (
-                  <form key={a.status} action={setPhaseStatusAction.bind(null, phase.id, id, a.status)}>
-                    <button
-                      type="submit"
-                      className={`rounded-lg px-3 py-1.5 text-[11px] font-semibold text-white transition-colors ${a.cls}`}
-                    >
-                      {a.label}
-                    </button>
-                  </form>
-                ))}
-              </div>
+              {/* Phase status follows the real tournament — platform-only. */}
+              {ctx.isSuperAdmin && (
+                <div className="flex items-center gap-1.5">
+                  {actions.map((a) => (
+                    <form key={a.status} action={setPhaseStatusAction.bind(null, phase.id, id, a.status)}>
+                      <button
+                        type="submit"
+                        className={`rounded-lg px-3 py-1.5 text-[11px] font-semibold text-white transition-colors ${a.cls}`}
+                      >
+                        {a.label}
+                      </button>
+                    </form>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* ── Dates + settings grid ── */}
@@ -102,7 +123,7 @@ export default async function PhasesPage({ params }: { params: Promise<{ id: str
               </div>
               <div>
                 <p className="text-ink-5 uppercase tracking-wider text-[9px] font-semibold mb-0.5">Budget</p>
-                <p className="text-ink-2">{BUDGET_MODE_LABELS[phase.budget_mode] ?? phase.budget_mode}</p>
+                <p className="text-ink-2">{BUDGET_MODE_LABELS[settingsFor(phase).budget_mode] ?? settingsFor(phase).budget_mode}</p>
               </div>
             </div>
 
@@ -122,7 +143,12 @@ export default async function PhasesPage({ params }: { params: Promise<{ id: str
 
             {/* ── Inline edit form ── */}
             <div className="border-t border-hairline px-4 py-3">
-              <FMPhaseEditor phase={phase} competitionId={id} />
+              <FMPhaseEditor
+                phase={phase}
+                competitionId={id}
+                legaSettings={settingsFor(phase)}
+                isSuperAdmin={ctx.isSuperAdmin}
+              />
             </div>
           </div>
         )

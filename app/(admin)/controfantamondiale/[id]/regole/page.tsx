@@ -1,6 +1,6 @@
 import { requireFMContext } from '@/lib/fantamondiale/server'
 import { createClient } from '@/lib/supabase/server'
-import { loadFMUnifiedConfig } from '@/lib/fantamondiale/loadUnifiedConfig'
+import { loadFMUnifiedConfigForLega } from '@/lib/fantamondiale/loadUnifiedConfig'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -15,10 +15,10 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default async function RegolePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  await requireFMContext(id)
+  const ctx = await requireFMContext(id)
 
   const supabase = await createClient()
-  const config = await loadFMUnifiedConfig(supabase, id)
+  const config = await loadFMUnifiedConfigForLega(supabase, ctx.legaCompetition.id)
 
   return (
     <div className="space-y-5">

@@ -25,7 +25,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database.types'
 import { fmCompetitionConfigSchema } from '@/domain/fantamondiale/config/schema'
-import { loadFMUnifiedConfig } from '@/lib/fantamondiale/loadUnifiedConfig'
+import { loadFMUnifiedConfigForLega } from '@/lib/fantamondiale/loadUnifiedConfig'
 import { scorePlayerRaw, finalizePlayerForLega, hasDecisiveEvent } from './playerScore'
 import { scoreCoach } from './coachScore'
 import { applySubstitutions, type FMRole, type SubStarter, type SubBench } from './substitution'
@@ -118,7 +118,9 @@ export async function computeLiveRoundSnapshot(
     .maybeSingle()
   if (!round) return null
 
-  const composed = await loadFMUnifiedConfig(supabase, round.competition_id)
+  // This snapshot is for one Lega — use its own fantasy config so the live
+  // popularity/MVP overlay matches what the final engine will compute.
+  const composed = await loadFMUnifiedConfigForLega(supabase, legaCompId)
   const config = fmCompetitionConfigSchema.parse(composed)
   const sub = config.substitution
 

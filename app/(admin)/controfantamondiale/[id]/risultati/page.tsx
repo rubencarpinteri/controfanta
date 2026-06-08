@@ -4,7 +4,7 @@ import { requireFMContext, getFMRounds } from '@/lib/fantamondiale/server'
 import { createClient } from '@/lib/supabase/server'
 import { finalizePlayerForLega } from '@/domain/fantamondiale/engine/playerScore'
 import { fmCompetitionConfigSchema } from '@/domain/fantamondiale/config/schema'
-import { loadFMUnifiedConfig } from '@/lib/fantamondiale/loadUnifiedConfig'
+import { loadFMUnifiedConfigForLega } from '@/lib/fantamondiale/loadUnifiedConfig'
 import { TeamCrest } from '@/components/fm/TeamCrest'
 
 const ROLE_LABEL: Record<string, string> = { P: 'POR', D: 'DIF', C: 'CEN', A: 'ATT' }
@@ -208,7 +208,7 @@ export default async function RisultatiPage({
         // values (voto_base, football_bonus/malus, raw_subtotal, is_mvp);
         // per-Lega popularity penalty + MVP bonus are derived on the fly
         // using fm_round_player_ownership for THIS Lega instance.
-        const composed = await loadFMUnifiedConfig(supabase, ctx.competition.id)
+        const composed = await loadFMUnifiedConfigForLega(supabase, ctx.legaCompetition.id)
         const config = fmCompetitionConfigSchema.parse(composed)
 
         const [playersRes, scoresRes, ownershipRes] = await Promise.all([

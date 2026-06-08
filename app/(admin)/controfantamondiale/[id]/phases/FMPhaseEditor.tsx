@@ -2,8 +2,15 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { updatePhaseAction } from './actions'
+import { updatePhaseAction, updateLegaPhaseAction } from './actions'
 import type { FMPhase } from '@/types/database.types'
+
+/** This Lega's redraft cadence + budget for the phase (overrides the global default). */
+export interface LegaPhaseSettings {
+  requires_new_squad: boolean
+  budget_mode: FMPhase['budget_mode']
+  budget_config: FMPhase['budget_config']
+}
 
 function toDatetimeLocal(iso: string | null) {
   if (!iso) return ''
@@ -30,7 +37,17 @@ function currentBudget(cfg: unknown): number {
   return 100
 }
 
-export function FMPhaseEditor({ phase, competitionId }: { phase: FMPhase; competitionId: string }) {
+export function FMPhaseEditor({
+  phase,
+  competitionId,
+  legaSettings,
+  isSuperAdmin,
+}: {
+  phase: FMPhase
+  competitionId: string
+  legaSettings: LegaPhaseSettings
+  isSuperAdmin: boolean
+}) {
   const [open, setOpen] = useState(false)
   const [pending, setPending] = useState(false)
   const router = useRouter()
@@ -41,15 +58,25 @@ export function FMPhaseEditor({ phase, competitionId }: { phase: FMPhase; compet
         onClick={() => setOpen(true)}
         className="text-[10px] text-ink-5 hover:text-indigo-400 transition-colors"
       >
-        ✏️ Modifica date e impostazioni
+        ✏️ Modifica cadenza rosa e budget
       </button>
     )
   }
 
-  async function handleSubmit(fd: FormData) {
+  async function submitGlobal(fd: FormData) {
     setPending(true)
     try {
       await updatePhaseAction(fd)
+      router.refresh()
+    } finally {
+      setPending(false)
+    }
+  }
+
+  async function submitLega(fd: FormData) {
+    setPending(true)
+    try {
+      await updateLegaPhaseAction(fd)
       setOpen(false)
       router.refresh()
     } finally {
@@ -58,99 +85,123 @@ export function FMPhaseEditor({ phase, competitionId }: { phase: FMPhase; compet
   }
 
   return (
-    <form action={handleSubmit} className="space-y-3">
-      <input type="hidden" name="id" value={phase.id} />
-      <input type="hidden" name="competition_id" value={competitionId} />
+    <div className="space-y-4">
+      {/* ── Per-league: redraft cadence + budget (league_admin) ── */}
+      <form action={submitLega} className="space-y-3">
+        <input type="hidden" name="phase_id" value={phase.id} />
+        <input type="hidden" name="competition_id" value={competitionId} />
+        <p className="text-[9px] uppercase tracking-wider text-emerald-400 font-semibold">
+          La tua lega · cadenza rosa e budget
+        </p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div>
+            <label className="block text-[9px] uppercase tracking-wider text-ink-5 mb-1 font-semibold">Budget mode</label>
+            <select
+              name="budget_mode"
+              defaultValue={legaSettings.budget_mode}
+              className="w-full rounded-lg border border-hairline bg-glass-2 px-2.5 py-1.5 text-[12px] text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            >
+              <option value="fixed">Budget fisso</option>
+              <option value="comeback">Comeback</option>
+              <option value="reward_leaders">Premia i primi</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-[9px] uppercase tracking-wider text-ink-5 mb-1 font-semibold">Budget (cr)</label>
+            <input
+              type="number"
+              name="budget"
+              min={50}
+              max={10000}
+              defaultValue={currentBudget(legaSettings.budget_config)}
+              className="w-full rounded-lg border border-hairline bg-glass-2 px-2.5 py-1.5 text-[12px] text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="block text-[9px] uppercase tracking-wider text-ink-5 mb-1 font-semibold">Nuova rosa richiesta?</label>
+            <select
+              name="requires_new_squad"
+              defaultValue={legaSettings.requires_new_squad ? 'true' : 'false'}
+              className="w-full rounded-lg border border-hairline bg-glass-2 px-2.5 py-1.5 text-[12px] text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            >
+              <option value="true">Sì — nuova rosa</option>
+              <option value="false">No — continua rosa precedente</option>
+            </select>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="submit"
+            disabled={pending}
+            className="rounded-lg bg-indigo-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-indigo-500 transition-colors disabled:opacity-50"
+          >
+            {pending ? 'Salvo…' : 'Salva'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="text-[11px] text-ink-5 hover:text-ink-3 transition-colors"
+          >
+            Annulla
+          </button>
+        </div>
+      </form>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <div className="col-span-2 sm:col-span-1">
-          <label className="block text-[9px] uppercase tracking-wider text-ink-5 mb-1 font-semibold">Nome</label>
-          <input
-            name="name"
-            defaultValue={phase.name}
-            className="w-full rounded-lg border border-hairline bg-glass-2 px-2.5 py-1.5 text-[12px] text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          />
-        </div>
-        <div>
-          <label className="block text-[9px] uppercase tracking-wider text-ink-5 mb-1 font-semibold">Apertura rosa</label>
-          <input
-            type="datetime-local"
-            name="squad_open_at"
-            defaultValue={toDatetimeLocal(phase.squad_open_at)}
-            className="w-full rounded-lg border border-hairline bg-glass-2 px-2.5 py-1.5 text-[12px] text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          />
-        </div>
-        <div>
-          <label className="block text-[9px] uppercase tracking-wider text-ink-5 mb-1 font-semibold">SportMonks stage ID</label>
-          <input
-            type="number"
-            name="sportmonks_stage_id"
-            defaultValue={phase.sportmonks_stage_id ?? ''}
-            placeholder="es. 77478590"
-            className="w-full rounded-lg border border-hairline bg-glass-2 px-2.5 py-1.5 text-[12px] text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          />
-        </div>
-        <div className="col-span-2 sm:col-span-1">
-          <label className="block text-[9px] uppercase tracking-wider text-ink-5 mb-1 font-semibold">Lock / Reveal (auto)</label>
-          <p className="rounded-lg border border-hairline bg-glass-1 px-2.5 py-1.5 text-[11px] text-ink-3 leading-tight">
-            {phase.squad_lock_at
-              ? `${fmtRome(phase.squad_lock_at)} → ${fmtRome(phase.reveal_at)}`
-              : 'In attesa dei calendari SportMonks'}
-            <span className="block text-[9px] text-ink-5 mt-0.5">Derivati dal primo calcio d&apos;inizio della fase</span>
+      {/* ── Global timing/stage (super-admin only) ── */}
+      {isSuperAdmin && (
+        <form action={submitGlobal} className="space-y-3 border-t border-hairline pt-3">
+          <input type="hidden" name="id" value={phase.id} />
+          <input type="hidden" name="competition_id" value={competitionId} />
+          <p className="text-[9px] uppercase tracking-wider text-indigo-300 font-semibold">
+            Piattaforma · calendario reale (tutte le leghe)
           </p>
-        </div>
-        <div>
-          <label className="block text-[9px] uppercase tracking-wider text-ink-5 mb-1 font-semibold">Budget mode</label>
-          <select
-            name="budget_mode"
-            defaultValue={phase.budget_mode}
-            className="w-full rounded-lg border border-hairline bg-glass-2 px-2.5 py-1.5 text-[12px] text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="col-span-2 sm:col-span-1">
+              <label className="block text-[9px] uppercase tracking-wider text-ink-5 mb-1 font-semibold">Nome</label>
+              <input
+                name="name"
+                defaultValue={phase.name}
+                className="w-full rounded-lg border border-hairline bg-glass-2 px-2.5 py-1.5 text-[12px] text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="block text-[9px] uppercase tracking-wider text-ink-5 mb-1 font-semibold">Apertura rosa</label>
+              <input
+                type="datetime-local"
+                name="squad_open_at"
+                defaultValue={toDatetimeLocal(phase.squad_open_at)}
+                className="w-full rounded-lg border border-hairline bg-glass-2 px-2.5 py-1.5 text-[12px] text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="block text-[9px] uppercase tracking-wider text-ink-5 mb-1 font-semibold">SportMonks stage ID</label>
+              <input
+                type="number"
+                name="sportmonks_stage_id"
+                defaultValue={phase.sportmonks_stage_id ?? ''}
+                placeholder="es. 77478590"
+                className="w-full rounded-lg border border-hairline bg-glass-2 px-2.5 py-1.5 text-[12px] text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className="block text-[9px] uppercase tracking-wider text-ink-5 mb-1 font-semibold">Lock / Reveal (auto)</label>
+              <p className="rounded-lg border border-hairline bg-glass-1 px-2.5 py-1.5 text-[11px] text-ink-3 leading-tight">
+                {phase.squad_lock_at
+                  ? `${fmtRome(phase.squad_lock_at)} → ${fmtRome(phase.reveal_at)}`
+                  : 'In attesa dei calendari SportMonks'}
+                <span className="block text-[9px] text-ink-5 mt-0.5">Derivati dal primo calcio d&apos;inizio della fase</span>
+              </p>
+            </div>
+          </div>
+          <button
+            type="submit"
+            disabled={pending}
+            className="rounded-lg border border-hairline bg-glass-2 px-3 py-1.5 text-[12px] font-semibold text-ink-2 hover:bg-glass-3 transition-colors disabled:opacity-50"
           >
-            <option value="fixed">Budget fisso</option>
-            <option value="comeback">Comeback</option>
-            <option value="reward_leaders">Premia i primi</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-[9px] uppercase tracking-wider text-ink-5 mb-1 font-semibold">Budget (cr)</label>
-          <input
-            type="number"
-            name="budget"
-            min={50}
-            max={10000}
-            defaultValue={currentBudget(phase.budget_config)}
-            className="w-full rounded-lg border border-hairline bg-glass-2 px-2.5 py-1.5 text-[12px] text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          />
-        </div>
-        <div>
-          <label className="block text-[9px] uppercase tracking-wider text-ink-5 mb-1 font-semibold">Nuova rosa richiesta?</label>
-          <select
-            name="requires_new_squad"
-            defaultValue={phase.requires_new_squad ? 'true' : 'false'}
-            className="w-full rounded-lg border border-hairline bg-glass-2 px-2.5 py-1.5 text-[12px] text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          >
-            <option value="true">Sì — nuova rosa</option>
-            <option value="false">No — continua rosa precedente</option>
-          </select>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded-lg bg-indigo-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-indigo-500 transition-colors disabled:opacity-50"
-        >
-          {pending ? 'Salvo…' : 'Salva'}
-        </button>
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          className="text-[11px] text-ink-5 hover:text-ink-3 transition-colors"
-        >
-          Annulla
-        </button>
-      </div>
-    </form>
+            {pending ? 'Salvo…' : 'Salva calendario'}
+          </button>
+        </form>
+      )}
+    </div>
   )
 }

@@ -1,6 +1,7 @@
 import { requireFMContext, getFMPhases, getFMTeams, getFMPlayers, getFMCoaches } from '@/lib/fantamondiale/server'
 import { createClient } from '@/lib/supabase/server'
-import { loadFMUnifiedConfig } from '@/lib/fantamondiale/loadUnifiedConfig'
+import { loadFMUnifiedConfigForLega } from '@/lib/fantamondiale/loadUnifiedConfig'
+import { getLegaPhaseSettings } from '@/lib/fantamondiale/server'
 import { resolvePhaseBudget } from '@/lib/fantamondiale/budget'
 import { SquadBuilder } from './SquadBuilder'
 
@@ -53,10 +54,15 @@ export default async function RosaPage({ params }: { params: Promise<{ id: strin
     )
   }
 
-  const config = await loadFMUnifiedConfig(supabase, ctx.competition.id)
-  // Budget is per-phase: it grows as the tournament narrows (fewer, pricier
-  // surviving nations) to keep the same squad-building tension every round.
-  const budgetTotal = resolvePhaseBudget(activePhase.budget_config, config.squad.budget_default)
+  const config = await loadFMUnifiedConfigForLega(supabase, ctx.legaCompetition.id)
+  // Budget is per-phase AND per-Lega: each league sets its own budget/redraft
+  // cadence. It grows as the tournament narrows to keep the same squad-building
+  // tension every round.
+  const phaseSettings = await getLegaPhaseSettings(supabase, ctx.legaCompetition.id, activePhase.id)
+  const budgetTotal = resolvePhaseBudget(
+    phaseSettings?.budget_config ?? activePhase.budget_config,
+    config.squad.budget_default,
+  )
 
   // Load fantasy team for this user in the active phase
   const fantasyTeamId = ctx.fantasyTeamId
@@ -112,8 +118,9 @@ export default async function RosaPage({ params }: { params: Promise<{ id: strin
   const priceMap = new Map<string, number>()
   for (let from = 0; ; from += PRICE_PAGE) {
     const { data: priceRows } = await supabase
-      .from('fm_phase_player_price')
+      .from('fm_league_phase_player_price')
       .select('player_id, price')
+      .eq('league_competition_id', ctx.legaCompetition.id)
       .eq('phase_id', activePhase.id)
       .range(from, from + PRICE_PAGE - 1)
     const batch = priceRows ?? []

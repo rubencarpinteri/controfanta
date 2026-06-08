@@ -2,8 +2,13 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { loadFMUnifiedConfig } from '@/lib/fantamondiale/loadUnifiedConfig'
+import { loadFMUnifiedConfigForLega } from '@/lib/fantamondiale/loadUnifiedConfig'
 import { resolvePhaseBudget } from '@/lib/fantamondiale/budget'
+import {
+  resolveLegaCompId,
+  getLegaPhaseSettings,
+  getLegaPlayerPrice,
+} from '@/lib/fantamondiale/server'
 import type { FMPlayerRole } from '@/domain/fantamondiale/config/schema'
 import { isUuid } from '@/lib/slug'
 
@@ -79,26 +84,26 @@ export async function toggleSquadPlayerAction(fd: FormData) {
   const phaseId = fd.get('phase_id') as string
   const playerId = fd.get('player_id') as string
 
+  const legaCompId = await resolveLegaCompId(supabase, competitionId)
+  if (!legaCompId) throw new Error('Competizione non trovata')
+
   const fantasyTeamId = await getTeamId(competitionId, user.id)
   if (!fantasyTeamId) throw new Error('Non sei iscritto a questa competizione')
 
+  // Phase status stays global (driven by real fixtures); budget + price come
+  // from this Lega's own fantasy layer.
   const { data: phase } = await supabase
     .from('fm_phase')
-    .select('status, budget_config')
+    .select('status')
     .eq('id', phaseId)
     .single()
   if (!phase || phase.status !== 'open') throw new Error('La fase non è aperta per la selezione della rosa')
 
   // Price and budget are authoritative server-side — never trust the client.
-  const config = await loadFMUnifiedConfig(supabase, competitionId)
-  const budgetTotal = resolvePhaseBudget(phase.budget_config, config.squad.budget_default)
-  const { data: priceRow } = await supabase
-    .from('fm_phase_player_price')
-    .select('price')
-    .eq('phase_id', phaseId)
-    .eq('player_id', playerId)
-    .maybeSingle()
-  const playerPrice = priceRow?.price ?? 0
+  const config = await loadFMUnifiedConfigForLega(supabase, legaCompId)
+  const phaseSettings = await getLegaPhaseSettings(supabase, legaCompId, phaseId)
+  const budgetTotal = resolvePhaseBudget(phaseSettings?.budget_config ?? {}, config.squad.budget_default)
+  const playerPrice = await getLegaPlayerPrice(supabase, legaCompId, phaseId, playerId)
 
   const squadId = await ensureSquad(phaseId, fantasyTeamId, budgetTotal)
 
@@ -171,18 +176,22 @@ export async function setSquadCoachAction(fd: FormData) {
   const phaseId = fd.get('phase_id') as string
   const coachId = (fd.get('coach_id') as string) || null
 
+  const legaCompId = await resolveLegaCompId(supabase, competitionId)
+  if (!legaCompId) throw new Error('Competizione non trovata')
+
   const fantasyTeamId = await getTeamId(competitionId, user.id)
   if (!fantasyTeamId) throw new Error('Non sei iscritto a questa competizione')
 
   const { data: phase } = await supabase
     .from('fm_phase')
-    .select('status, competition_id, budget_config')
+    .select('status')
     .eq('id', phaseId)
     .single()
   if (!phase || phase.status !== 'open') throw new Error('La fase non è aperta per la selezione della rosa')
 
-  const config = await loadFMUnifiedConfig(supabase, phase.competition_id)
-  const budgetTotal = resolvePhaseBudget(phase.budget_config, config.squad.budget_default)
+  const config = await loadFMUnifiedConfigForLega(supabase, legaCompId)
+  const phaseSettings = await getLegaPhaseSettings(supabase, legaCompId, phaseId)
+  const budgetTotal = resolvePhaseBudget(phaseSettings?.budget_config ?? {}, config.squad.budget_default)
   const squadId = await ensureSquad(phaseId, fantasyTeamId, budgetTotal)
   await supabase.from('fm_phase_squad').update({ coach_id: coachId }).eq('id', squadId)
 

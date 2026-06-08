@@ -18,7 +18,9 @@ export default async function FMCompetitionLayout({
   //   * admin + iscritto → both stacked, so a super-admin who also
   //     plays can build their squad without losing access to admin tools.
   const showUserTabs = ctx.fantasyTeamId !== null
-  const showAdminTabs = ctx.isSuperAdmin
+  // League admins manage their Lega's fantasy surfaces; super admins also get
+  // the platform/pool tabs (filtered inside FMTabNav).
+  const showAdminTabs = ctx.isSuperAdmin || ctx.isLeagueAdmin
 
   return (
     <div className="space-y-0">
@@ -49,7 +51,7 @@ export default async function FMCompetitionLayout({
               Admin
             </p>
           )}
-          <FMTabNav id={id} />
+          <FMTabNav id={id} isSuperAdmin={ctx.isSuperAdmin} />
         </>
       )}
 

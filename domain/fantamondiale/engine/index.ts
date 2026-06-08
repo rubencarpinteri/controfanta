@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, Json } from '@/types/database.types'
 import { fmCompetitionConfigSchema } from '@/domain/fantamondiale/config/schema'
-import { loadFMUnifiedConfig } from '@/lib/fantamondiale/loadUnifiedConfig'
+import { loadFMUnifiedConfig, loadFMUnifiedConfigForLega } from '@/lib/fantamondiale/loadUnifiedConfig'
 import { scorePlayerRaw, finalizePlayerForLega, hasDecisiveEvent } from './playerScore'
 import {
   applySubstitutions,
@@ -426,6 +426,14 @@ export async function runRoundEngine(roundId: string, supabase: Supabase): Promi
 
     legaInstancesProcessed += 1
 
+    // This Lega's own fantasy config drives the overlay (popularity penalty, MVP
+    // bonus, BR thresholds/points, tie-breakers). Raw player/coach match scores
+    // above stay on the shared global `config` so the same match yields the same
+    // raw points everywhere; only the per-Lega overlay varies.
+    const legaConfig = fmCompetitionConfigSchema.parse(
+      await loadFMUnifiedConfigForLega(supabase, legaCompId)
+    )
+
     // 4a. Ownership snapshot within this Lega.
     // Counts only players who ACTUALLY PLAYED (fielded = starters who played
     // + bench subs who came on). A benched player who never enters does not
@@ -479,7 +487,7 @@ export async function runRoundEngine(roundId: string, supabase: Supabase): Promi
             fantasyTeamId: teamId,
             playerFinalScores: [],
             coachFinalScore: 0,
-            config,
+            config: legaConfig,
           })
         )
         continue
@@ -499,7 +507,7 @@ export async function runRoundEngine(roundId: string, supabase: Supabase): Promi
         const { final_score } = finalizePlayerForLega(
           { raw_subtotal: raw.raw_subtotal, is_mvp: raw.is_mvp },
           own,
-          config,
+          legaConfig,
         )
         return [final_score]
       })
@@ -510,7 +518,7 @@ export async function runRoundEngine(roundId: string, supabase: Supabase): Promi
           fantasyTeamId: teamId,
           playerFinalScores,
           coachFinalScore,
-          config,
+          config: legaConfig,
         })
       )
     }
@@ -538,7 +546,7 @@ export async function runRoundEngine(roundId: string, supabase: Supabase): Promi
     }
 
     // 4c. Battle Royale within this Lega only.
-    const matchups = computeBattleRoyale(teamScores, roundId, legaCompId, config)
+    const matchups = computeBattleRoyale(teamScores, roundId, legaCompId, legaConfig)
 
     const matchupRows = matchups.map((m) => ({
       league_competition_id: m.league_competition_id,

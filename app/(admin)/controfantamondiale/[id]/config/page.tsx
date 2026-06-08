@@ -1,15 +1,15 @@
-import { requireFMContext, assertSuperAdmin } from '@/lib/fantamondiale/server'
+import { requireFMContext, assertLeagueAdmin } from '@/lib/fantamondiale/server'
 import { createClient } from '@/lib/supabase/server'
-import { loadFMUnifiedConfig } from '@/lib/fantamondiale/loadUnifiedConfig'
+import { loadFMUnifiedConfigForLega } from '@/lib/fantamondiale/loadUnifiedConfig'
 import { FMConfigEditor } from './FMConfigEditor'
 
 export default async function ConfigPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const ctx = await requireFMContext(id)
-  assertSuperAdmin(ctx)
+  assertLeagueAdmin(ctx)
 
   const supabase = await createClient()
-  const config = await loadFMUnifiedConfig(supabase, id)
+  const config = await loadFMUnifiedConfigForLega(supabase, ctx.legaCompetition.id)
 
   return (
     <div className="space-y-5">
