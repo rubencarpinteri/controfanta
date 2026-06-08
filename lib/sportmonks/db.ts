@@ -179,7 +179,7 @@ export async function autoCreateFMRoundsAndMatches(
       .map((f) => f.starting_at_timestamp ? new Date(f.starting_at_timestamp * 1000) : new Date(f.starting_at + 'Z'))
       .sort((a, b) => a.getTime() - b.getTime())[0]
     if (!earliestKickoff) continue
-    const lockAt = new Date(earliestKickoff.getTime() - 5 * 60 * 1000).toISOString()
+    const lockAt = new Date(earliestKickoff.getTime() - 1 * 60 * 1000).toISOString()
 
     const roundNameFromSM = roundFixtures.find((f) => f.round?.name)?.round?.name
     const roundName = roundNameFromSM ? `Giornata ${roundNameFromSM}` : `Round ${roundId}`
