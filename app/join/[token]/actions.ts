@@ -13,7 +13,7 @@ async function resolveLeagueByToken(token: string) {
   const { data } = await supabase
     .from('leagues')
     .select('id, name')
-    .eq('invite_token', normalizeInviteCode(token))
+    .ilike('invite_token', normalizeInviteCode(token))
     .maybeSingle()
   return data
 }

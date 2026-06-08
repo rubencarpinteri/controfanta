@@ -20,7 +20,7 @@ export default async function JoinPage({
   const { data: league } = await service
     .from('leagues')
     .select('id, name, season_name, invite_token_created_by')
-    .eq('invite_token', token)
+    .ilike('invite_token', token)
     .maybeSingle()
 
   const {

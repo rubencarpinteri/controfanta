@@ -1,7 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import { useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { regenerateInviteTokenAction } from './actions'
 
 interface Props {
@@ -69,7 +68,9 @@ export function InviteLinkCard({ joinUrl, leagueName }: Props) {
           <button
             type="button"
             disabled={pending}
-            onClick={() => startTransition(() => regenerateInviteTokenAction())}
+            onClick={() => startTransition(() => {
+              void regenerateInviteTokenAction().then(() => window.location.reload())
+            })}
             className="rounded-lg bg-indigo-600 px-4 py-2 text-[12px] font-semibold text-white hover:bg-indigo-500 transition-colors disabled:opacity-50"
           >
             Genera link invito

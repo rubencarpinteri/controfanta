@@ -437,6 +437,7 @@ export async function regenerateInviteTokenAction() {
     afterJson: { action: 'invite_token_regenerated' },
   })
 
+  revalidatePath('/league')
   revalidatePath('/league/members')
 }
 
@@ -464,5 +465,6 @@ export async function revokeInviteTokenAction() {
     afterJson: { action: 'invite_token_revoked' },
   })
 
+  revalidatePath('/league')
   revalidatePath('/league/members')
 }
