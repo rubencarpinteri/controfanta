@@ -95,7 +95,6 @@ export default async function LeagueSettingsPage() {
         </div>
         <InviteLinkCard
           joinUrl={joinUrl}
-          inviteCode={leagueInvite?.invite_token ?? null}
           leagueName={ctx.league.name}
         />
       </section>
