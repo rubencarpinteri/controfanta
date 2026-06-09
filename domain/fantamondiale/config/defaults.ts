@@ -86,7 +86,7 @@ export const DEFAULT_FM_CONFIG: FMCompetitionConfig = {
     assist: 1.0,
     clean_sheet: { P: 0.8, D: 0.5, min_minutes: 60 },
     penalty_saved: 2.0,
-    penalty_missed: -1.5,
+    penalty_missed: -3.0,
     yellow_card: -0.3,
     red_card: -1.5,
     own_goal: -1.5,
@@ -135,4 +135,6 @@ export const DEFAULT_FM_CONFIG: FMCompetitionConfig = {
     draw_points: 1,
     loss_points: 0,
   },
+
+  immunita_enabled: true,
 }

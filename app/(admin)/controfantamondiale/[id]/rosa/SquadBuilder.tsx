@@ -4,6 +4,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, useTransition 
 import { toggleSquadPlayerAction, setSquadCoachAction } from './actions'
 import { TeamCrest } from '@/components/fm/TeamCrest'
 import { NationSelect } from '@/components/fm/NationSelect'
+import { CoachSelect } from '@/components/fm/CoachSelect'
 import type { FMPhase, FMNationalTeam, FMPlayer, FMCoach } from '@/types/database.types'
 import type { FMRoleQuota, FMPlayerRole } from '@/domain/fantamondiale/config/schema'
 
@@ -305,6 +306,14 @@ export function SquadBuilder({
     })
   }
 
+  // ── Rosa completeness — a team only plays with a full squad + a coach ──────
+  const missingByRole = (['P', 'D', 'C', 'A'] as const)
+    .map((r) => ({ role: r, missing: roleQuotas[r] - roleCounts[r] }))
+    .filter((x) => x.missing > 0)
+  const playersComplete = selected.size >= poolSize && missingByRole.length === 0
+  const coachComplete = coachId != null
+  const rosaComplete = playersComplete && coachComplete
+
   const remaining = budgetTotal - spent
   const budgetPct = Math.min(100, (spent / budgetTotal) * 100)
   const budgetBar =
@@ -402,7 +411,7 @@ export function SquadBuilder({
                 budgetSticky ? 'py-1.5' : 'py-2.5'
               }`}>
                 <RoleTag role={role} size={budgetSticky ? 'md' : 'lg'} />
-                <p className={`mono font-bold leading-none ${full ? 'text-emerald-500' : 'text-ink-1'} transition-all duration-300 ${
+                <p className={`mono font-bold leading-none ${full ? 'text-emerald-500' : 'text-rose-500'} transition-all duration-300 ${
                   budgetSticky ? 'text-[12px]' : 'text-[16px]'
                 }`}>
                   {count}<span className="text-ink-5">/{quota}</span>
@@ -413,9 +422,9 @@ export function SquadBuilder({
         </div>
         {!isReadOnly && (
           <p className={`mt-2 text-center text-[11px] font-medium transition-colors ${
-            isSaving ? 'text-amber-500' : 'text-emerald-500'
+            isSaving ? 'text-amber-500' : rosaComplete ? 'text-emerald-500' : 'text-ink-4'
           }`}>
-            {isSaving ? 'Salvataggio in corso...' : 'Rosa salvata automaticamente'}
+            {isSaving ? 'Salvataggio in corso...' : rosaComplete ? 'Rosa completa · salvata automaticamente' : 'Salvataggio automatico attivo'}
           </p>
         )}
       </div>
@@ -424,6 +433,18 @@ export function SquadBuilder({
       {error && (
         <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-[13px] font-medium text-rose-500">
           {error}
+        </div>
+      )}
+
+      {/* ── Rosa incompleta warning — gates schieramento formazione ─────────── */}
+      {!isReadOnly && !rosaComplete && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-[13px] leading-relaxed text-amber-600 dark:text-amber-300">
+          <span className="font-semibold">Rosa incompleta.</span> Per schierare la formazione servono{' '}
+          <span className="font-semibold">{poolSize} giocatori</span> e <span className="font-semibold">1 allenatore</span>.
+          {missingByRole.length > 0 && (
+            <> Mancano: {missingByRole.map((x) => `${x.missing} ${x.role}`).join(' · ')}.</>
+          )}
+          {!coachComplete && <> Scegli un allenatore.</>}
         </div>
       )}
 
@@ -614,21 +635,22 @@ export function SquadBuilder({
             )}
           </div>
         ) : (
-          <select
-            value={coachId ?? ''}
-            onChange={(e) => handleCoachChange(e.target.value || null)}
-            className="w-full rounded-xl border border-hairline-strong bg-glass-2 px-3 py-3 text-[16px] text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo"
-          >
-            <option value="">— Nessun allenatore —</option>
-            {coaches.map((c) => {
-              const tier = TIER_BADGE[coachTiers[c.id] ?? '']
-              return (
-                <option key={c.id} value={c.id}>
-                  {tier ? `[${tier.short}] ` : ''}{c.name} ({c.fm_national_team.name})
-                </option>
-              )
-            })}
-          </select>
+          <CoachSelect
+            coaches={coaches.map((c) => ({
+              id: c.id,
+              name: c.name,
+              team: {
+                name: c.fm_national_team.name,
+                fifa_code: c.fm_national_team.fifa_code,
+                logo_url: c.fm_national_team.logo_url,
+                flag_url: c.fm_national_team.flag_url,
+              },
+              tier: coachTiers[c.id] ?? null,
+            }))}
+            value={coachId}
+            onChange={handleCoachChange}
+            disabled={coachPending}
+          />
         )}
       </div>
     </div>

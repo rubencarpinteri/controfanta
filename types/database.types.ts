@@ -2367,6 +2367,7 @@ export type Database = {
           goals_conceded_gk: number
           hat_trick_bonus: number
           id: string
+          immunita_enabled: boolean
           league_id: string
           mvp_bonus_brackets: Json
           own_goal: number
@@ -2400,6 +2401,7 @@ export type Database = {
           goals_conceded_gk?: number
           hat_trick_bonus?: number
           id?: string
+          immunita_enabled?: boolean
           league_id: string
           mvp_bonus_brackets?: Json
           own_goal?: number
@@ -2433,6 +2435,7 @@ export type Database = {
           goals_conceded_gk?: number
           hat_trick_bonus?: number
           id?: string
+          immunita_enabled?: boolean
           league_id?: string
           mvp_bonus_brackets?: Json
           own_goal?: number

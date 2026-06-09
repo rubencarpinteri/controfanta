@@ -281,6 +281,13 @@ export const fmCompetitionConfigSchema = z.object({
   calc_order: fmCalcOrderSchema,
   engine: fmEngineConfigSchema,
   battle_royale: fmBattleRoyaleSchema,
+  /**
+   * Immunità: when true, a player fielded by exactly ONE team in a lega for a
+   * scoring round has his yellow/red card malus waived. League-level game rule
+   * (stored on league_engine_config), so it is composed in, not part of the
+   * per-competition shape. Defaults true to preserve "sempre attiva" behaviour.
+   */
+  immunita_enabled: z.boolean().default(true),
 })
 export type FMCompetitionConfig = z.infer<typeof fmCompetitionConfigSchema>
 

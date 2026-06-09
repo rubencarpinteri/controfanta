@@ -178,3 +178,34 @@ export async function saveEngineConfigAction(
 
   return { error: null, success: true }
 }
+
+// ── Immunità on/off (league-level special rule) ──────────────────────────────
+// Stored on league_engine_config so it composes into both the Serie A engine
+// and the FantaMondiale engine. League-admin scope.
+export async function setImmunitaEnabledAction(
+  enabled: boolean,
+): Promise<{ success: boolean; error: string | null }> {
+  const ctx = await requireLeagueAdmin()
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('league_engine_config')
+    .upsert(
+      { league_id: ctx.league.id, immunita_enabled: enabled, updated_at: new Date().toISOString() },
+      { onConflict: 'league_id' },
+    )
+  if (error) return { success: false, error: error.message }
+
+  await writeAuditLog({
+    supabase,
+    leagueId: ctx.league.id,
+    actorUserId: ctx.userId,
+    actionType: 'league_settings_change',
+    entityType: 'league_engine_config',
+    entityId: ctx.league.id,
+    afterJson: { immunita_enabled: enabled } as unknown as Json,
+  })
+
+  revalidatePath('/league')
+  return { success: true, error: null }
+}

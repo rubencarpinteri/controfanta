@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { LeagueSettingsForm } from './LeagueSettingsForm'
 import { EngineConfigForm } from '../regole-di-gioco/EngineConfigForm'
 import { InviteLinkCard } from './members/InviteLinkCard'
+import { ImmunitaToggle } from './ImmunitaToggle'
 
 export const metadata = { title: 'Impostazioni Lega' }
 
@@ -122,7 +123,7 @@ export default async function LeagueSettingsPage() {
       <Card>
         <CardHeader
           title="Regole speciali"
-          description="Dinamiche di gioco votate dalla lega. Non configurabili — sempre attive."
+          description="Dinamiche di gioco della lega. L'immunità è attivabile o disattivabile."
           action={<ScopePill color="green">Tutta la lega</ScopePill>}
         />
         <CardContent>
@@ -133,12 +134,10 @@ export default async function LeagueSettingsPage() {
                 <p className="mt-1 text-[12px] text-ink-3 leading-relaxed max-w-prose">
                   Se un giocatore è presente in <strong className="text-ink-2">una sola formazione effettiva</strong> della lega durante una giornata
                   (titolare che ha giocato, oppure riserva entrata in campo), il malus per cartellino giallo e rosso viene annullato.
-                  Il cartellino appare nel dettaglio del punteggio come <span className="font-mono text-[11px]">Giallo (Immunità)</span> a 0 punti.
+                  Il cartellino appare nel dettaglio del punteggio come <span className="font-mono text-[11px]">Giallo (Immunità)</span> o <span className="font-mono text-[11px]">Rosso (Immunità)</span> a 0 punti — l&apos;immunità copre entrambi.
                 </p>
               </div>
-              <span className="shrink-0 rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-emerald-500/10 text-emerald-400">
-                Attiva
-              </span>
+              <ImmunitaToggle initialEnabled={engineConfig?.immunita_enabled ?? true} />
             </div>
           </div>
         </CardContent>

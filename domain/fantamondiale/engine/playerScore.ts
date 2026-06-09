@@ -81,9 +81,13 @@ function computeCleanSheet(input: FMEnginePlayerInput, minMinutes: number): bool
 export function scorePlayerRaw(
   input: FMEnginePlayerInput,
   config: FMCompetitionConfig,
+  opts?: { immunitaGranted?: boolean },
 ): FMPlayerMatchScoreResult {
   const { engine, football } = config
   const { stats, role } = input
+  // Immunità waives the yellow/red card malus only (own goal and missed
+  // penalty still count). Applied per-lega by the round engine.
+  const immunitaGranted = opts?.immunitaGranted ?? false
 
   // ---- voto_base (pivot formula + minutes gate) --------------------------
   let voto_base: number | null = null
@@ -139,9 +143,12 @@ export function scorePlayerRaw(
       football_bonus += stats.penalties_saved * football.penalty_saved
     }
 
-    // Maluses (config values are negative; we accumulate absolute amounts)
-    football_malus += Math.abs(stats.yellow_cards * football.yellow_card)
-    football_malus += Math.abs(stats.red_cards * football.red_card)
+    // Maluses (config values are negative; we accumulate absolute amounts).
+    // Immunità zeroes BOTH card maluses (giallo + rosso).
+    if (!immunitaGranted) {
+      football_malus += Math.abs(stats.yellow_cards * football.yellow_card)
+      football_malus += Math.abs(stats.red_cards * football.red_card)
+    }
     football_malus += Math.abs(stats.own_goals * football.own_goal)
     football_malus += Math.abs(stats.penalties_missed * football.penalty_missed)
 

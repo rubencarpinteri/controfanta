@@ -12,13 +12,15 @@ const ROLE_COLORS: Record<string, string> = {
   A: 'text-role-att',
 }
 
-const ROLE_BG: Record<string, string> = {
-  P: 'border-role-por/40 bg-role-por/10',
-  D: 'border-role-def/40 bg-role-def/10',
-  C: 'border-role-mid/40 bg-role-mid/10',
-  A: 'border-role-att/40 bg-role-att/10',
+// CSS-var equivalents for inline styling (pitch dots, accents).
+const ROLE_VAR: Record<string, string> = {
+  P: 'var(--color-role-por)',
+  D: 'var(--color-role-def)',
+  C: 'var(--color-role-mid)',
+  A: 'var(--color-role-att)',
 }
 
+const ROLE_LABEL: Record<string, string> = { P: 'POR', D: 'DIF', C: 'CEN', A: 'ATT' }
 const ROLE_ORDER = ['P', 'D', 'C', 'A'] as const
 
 // Parse formation string like "4-3-3" into role counts { P:1, D:4, C:3, A:3 }
@@ -32,11 +34,52 @@ function parseFormation(f: string) {
   }
 }
 
+interface Slot {
+  id: string
+  role: 'P' | 'D' | 'C' | 'A'
+  index: number
+}
+
+// Build the ordered starter slots for a formation: GK first, then D, C, A.
+function buildSlots(formation: string): Slot[] {
+  const counts = parseFormation(formation)
+  const slots: Slot[] = []
+  for (const role of ROLE_ORDER) {
+    const n = counts[role] ?? 0
+    for (let i = 0; i < n; i++) slots.push({ id: `${role}${i}`, role, index: i })
+  }
+  return slots
+}
+
+function surname(name: string) {
+  const parts = name.trim().split(' ')
+  return parts.length > 1 ? parts[parts.length - 1]! : name
+}
+
 interface Player {
   id: string
   name: string
   role: string
+  national_team_id: string
   fm_national_team: { name: string; fifa_code: string; flag_emoji: string | null; logo_url: string | null; flag_url: string | null }
+}
+
+export interface NextMatch {
+  opponent: string
+  fifaCode: string
+  logoUrl: string | null
+  flagUrl: string | null
+  home: boolean
+  kickoff: string
+}
+
+// "ven 14 giu · 21:00" — compact Italian kickoff label.
+function formatKickoff(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const day = d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' })
+  const time = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+  return `${day} · ${time}`
 }
 
 interface Props {
@@ -50,6 +93,7 @@ interface Props {
   lineupId: string | null
   allowedFormations: string[]
   isReadOnly: boolean
+  nextMatchByTeam: Record<string, NextMatch>
 }
 
 export function LineupPicker({
@@ -62,20 +106,8 @@ export function LineupPicker({
   initialFormation,
   allowedFormations,
   isReadOnly,
+  nextMatchByTeam,
 }: Props) {
-  const [formation, setFormation] = useState(
-    initialFormation && allowedFormations.includes(initialFormation)
-      ? initialFormation
-      : allowedFormations[0] ?? '4-3-3'
-  )
-  const [lineup, setLineup] = useState<Set<string>>(initialLineup)
-  const [bench, setBench] = useState<string[]>(initialBenchIds)
-  const [pending, startTransition] = useTransition()
-  const [error, setError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
-
-  const required = useMemo(() => parseFormation(formation), [formation])
-
   const playerById = useMemo(() => {
     const m = new Map<string, Player>()
     for (const p of players) m.set(p.id, p)
@@ -84,21 +116,45 @@ export function LineupPicker({
 
   const byRole = useMemo(() => {
     const groups: Record<string, Player[]> = { P: [], D: [], C: [], A: [] }
-    for (const p of players) {
-      ;(groups[p.role] ?? (groups['A'] = [])).push(p)
-    }
+    for (const p of players) (groups[p.role] ?? (groups['A'] ??= [])).push(p)
     return groups
   }, [players])
 
-  const lineupByRole = useMemo(() => {
-    const groups: Record<string, Player[]> = { P: [], D: [], C: [], A: [] }
-    for (const p of players) {
-      if (lineup.has(p.id)) (groups[p.role] ?? (groups['A'] = [])).push(p)
-    }
-    return groups
-  }, [players, lineup])
+  const startFormation =
+    initialFormation && allowedFormations.includes(initialFormation)
+      ? initialFormation
+      : allowedFormations[0] ?? '4-3-3'
 
+  // Seed the slot→player assignment from the persisted starter set, filling
+  // each role's slots in squad order.
+  const seedAssign = useMemo(() => {
+    const slots = buildSlots(startFormation)
+    const pool: Record<string, string[]> = { P: [], D: [], C: [], A: [] }
+    for (const p of players) if (initialLineup.has(p.id)) pool[p.role]?.push(p.id)
+    const a: Record<string, string> = {}
+    for (const s of slots) {
+      const next = pool[s.role]?.shift()
+      if (next) a[s.id] = next
+    }
+    return a
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const [formation, setFormation] = useState(startFormation)
+  const [assign, setAssign] = useState<Record<string, string>>(seedAssign)
+  const [bench, setBench] = useState<string[]>(initialBenchIds)
+  const [view, setView] = useState<'pitch' | 'list'>('pitch')
+  const [picker, setPicker] = useState<{ slot: Slot } | { bench: true } | null>(null)
+  const [search, setSearch] = useState('')
+  const [pending, startTransition] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
+
+  const slots = useMemo(() => buildSlots(formation), [formation])
+  const starterIds = useMemo(() => Object.values(assign).filter(Boolean), [assign])
+  const starterSet = useMemo(() => new Set(starterIds), [starterIds])
   const benchSet = useMemo(() => new Set(bench), [bench])
+  const filled = starterIds.length
 
   const benchRoleCounts = useMemo(() => {
     const counts: Record<string, number> = { P: 0, D: 0, C: 0, A: 0 }
@@ -110,43 +166,65 @@ export function LineupPicker({
   }, [bench, playerById])
 
   const benchRoleComplete = ROLE_ORDER.every((r) => (benchRoleCounts[r] ?? 0) >= 1)
+  const isComplete = filled === 11
+  const canSave = isComplete && benchRoleComplete
 
-  function toggleStarter(player: Player) {
-    if (isReadOnly) return
-    const isIn = lineup.has(player.id)
-    const role = player.role as 'P' | 'D' | 'C' | 'A'
-    const roleCount = lineupByRole[role]?.length ?? 0
-    const roleRequired = required[role] ?? 0
-
-    if (!isIn) {
-      if (lineup.size >= 11) {
-        setError('Hai già 11 titolari')
-        return
-      }
-      if (roleCount >= roleRequired) {
-        setError(`Hai già ${roleRequired} ${role} nella formazione ${formation}`)
-        return
-      }
+  // Rows for the pitch, attack rendered on top → GK at bottom.
+  const pitchRows = useMemo(() => {
+    const gk = slots.filter((s) => s.role === 'P')
+    const rows: Slot[][] = []
+    for (const role of ['A', 'C', 'D'] as const) {
+      const r = slots.filter((s) => s.role === role)
+      if (r.length) rows.push(r)
     }
-    setError(null)
+    return { rows, gk }
+  }, [slots])
+
+  function changeFormation(f: string) {
+    setFormation(f)
+    setAssign({})
     setSaved(false)
-    const next = new Set(lineup)
-    if (isIn) {
-      next.delete(player.id)
-    } else {
-      next.add(player.id)
-      // A starter can't simultaneously sit on the bench.
-      if (benchSet.has(player.id)) setBench((b) => b.filter((id) => id !== player.id))
-    }
-    setLineup(next)
+    setError(null)
   }
 
-  function toggleBench(player: Player) {
-    if (isReadOnly) return
-    if (lineup.has(player.id)) return // starters can't be benched
-    setError(null)
+  function assignToSlot(slotId: string, playerId: string) {
     setSaved(false)
-    setBench((b) => (b.includes(player.id) ? b.filter((id) => id !== player.id) : [...b, player.id]))
+    setError(null)
+    setAssign((prev) => {
+      const next = { ...prev }
+      // a player can occupy only one slot
+      for (const [sid, pid] of Object.entries(next)) if (pid === playerId) delete next[sid]
+      next[slotId] = playerId
+      return next
+    })
+    // a starter can't simultaneously sit on the bench
+    if (benchSet.has(playerId)) setBench((b) => b.filter((id) => id !== playerId))
+    setPicker(null)
+    setSearch('')
+  }
+
+  function clearSlot(slotId: string) {
+    if (isReadOnly) return
+    setSaved(false)
+    setAssign((prev) => {
+      const n = { ...prev }
+      delete n[slotId]
+      return n
+    })
+  }
+
+  function addToBench(playerId: string) {
+    setSaved(false)
+    setError(null)
+    setBench((b) => (b.includes(playerId) ? b : [...b, playerId]))
+    setPicker(null)
+    setSearch('')
+  }
+
+  function removeBench(id: string) {
+    if (isReadOnly) return
+    setSaved(false)
+    setBench((b) => b.filter((x) => x !== id))
   }
 
   function moveBench(id: string, dir: -1 | 1) {
@@ -164,7 +242,6 @@ export function LineupPicker({
 
   function handleSave() {
     if (!fantasyTeamId) return
-    const starterIds = Array.from(lineup)
     if (starterIds.length !== 11) {
       setError(`Seleziona esattamente 11 titolari (selezionati: ${starterIds.length})`)
       return
@@ -192,43 +269,37 @@ export function LineupPicker({
     })
   }
 
-  const lineupCount = lineup.size
-  const isComplete = lineupCount === 11
-  const canSave = isComplete && benchRoleComplete
-
   return (
     <div className="space-y-3">
-      {/* Formation selector + save bar — sticky on mobile */}
-      <div className="sticky top-[44px] z-10 -mx-4 border-b border-hairline bg-surface-0/90 px-4 py-2 backdrop-blur-lg sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none">
+      {/* View toggle + formation picker */}
+      <div className="flex items-center justify-between gap-2.5">
+        <Segmented
+          value={view}
+          onChange={setView}
+          options={[
+            { v: 'pitch', label: 'Campo' },
+            { v: 'list', label: 'Lista' },
+          ]}
+        />
         <div className="flex items-center gap-2">
-          <select
-            value={formation}
-            onChange={(e) => { setFormation(e.target.value); setLineup(new Set()); setSaved(false) }}
-            disabled={isReadOnly || pending}
-            className="mono flex-1 rounded-xl border border-hairline-strong bg-glass-2 px-3 py-3 text-[16px] font-semibold text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo"
-          >
-            {allowedFormations.map((f) => (
-              <option key={f} value={f}>{f}</option>
-            ))}
-          </select>
-          <span className={`mono shrink-0 text-[14px] font-bold tabular-nums ${isComplete ? 'text-emerald-500' : 'text-ink-4'}`}>
-            {lineupCount}/11
+          <span className={`mono text-[14px] font-bold tabular-nums ${isComplete ? 'text-emerald-500' : 'text-ink-4'}`}>
+            {filled}/11
           </span>
-          {!isReadOnly && (
-            <button
-              onClick={handleSave}
-              disabled={!canSave || pending}
-              className={`shrink-0 rounded-xl px-4 py-3 text-[14px] font-semibold transition-all active:translate-y-px ${
-                saved
-                  ? 'bg-emerald-600 text-white'
-                  : canSave
-                  ? 'bg-gradient-to-b from-accent-soft to-accent text-white shadow-1'
-                  : 'cursor-not-allowed bg-glass-2 text-ink-4'
-              }`}
+          <div className="relative inline-flex items-center">
+            <select
+              value={formation}
+              onChange={(e) => changeFormation(e.target.value)}
+              disabled={isReadOnly || pending}
+              className="mono cursor-pointer appearance-none rounded-xl border border-hairline-strong bg-glass-2 py-2 pl-3.5 pr-7 text-[13px] font-semibold text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo disabled:opacity-60"
             >
-              {saved ? 'Salvata ✓' : pending ? '…' : 'Salva'}
-            </button>
-          )}
+              {allowedFormations.map((f) => (
+                <option key={f} value={f}>{f}</option>
+              ))}
+            </select>
+            <svg width="12" height="12" viewBox="0 0 12 12" className="pointer-events-none absolute right-2.5">
+              <path d="M2 4l4 4 4-4" stroke="var(--ink-4)" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
         </div>
       </div>
 
@@ -238,12 +309,35 @@ export function LineupPicker({
         </div>
       )}
 
-      {/* Bench summary — disclosure + role-minimum status */}
+      {/* Pitch / List */}
+      {view === 'pitch' ? (
+        <Pitch
+          rows={pitchRows.rows}
+          gk={pitchRows.gk}
+          assign={assign}
+          playerById={playerById}
+          activeSlotId={picker && 'slot' in picker ? picker.slot.id : null}
+          onSlot={(slot) => !isReadOnly && setPicker({ slot })}
+          onClear={clearSlot}
+          isReadOnly={isReadOnly}
+        />
+      ) : (
+        <ListView
+          slots={slots}
+          assign={assign}
+          playerById={playerById}
+          onSlot={(slot) => !isReadOnly && setPicker({ slot })}
+          onClear={clearSlot}
+          isReadOnly={isReadOnly}
+        />
+      )}
+
+      {/* Bench */}
       <div className="overflow-hidden rounded-2xl border border-hairline bg-glass-1">
         <div className="flex items-center gap-2 border-b border-hairline bg-glass-2 px-4 py-2.5">
           <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2">Panchina</span>
-          <span className="flex-1 text-[11px] text-ink-4">
-            almeno 1 per ruolo · pubblica al 1° calcio d&apos;inizio
+          <span className="flex-1 truncate text-[11px] text-ink-4">
+            ordine sostituzione · almeno 1 per ruolo
           </span>
           <span className={`text-[11px] font-semibold tabular-nums ${benchRoleComplete ? 'text-emerald-500' : 'text-amber-500'}`}>
             {bench.length} in panchina
@@ -265,9 +359,13 @@ export function LineupPicker({
           })}
         </div>
         {bench.length === 0 ? (
-          <div className="px-4 py-3.5 text-[12.5px] text-ink-5">
-            Nessuna riserva. Aggiungi giocatori dalle sezioni qui sotto (pulsante &quot;Panchina&quot;).
-          </div>
+          <button
+            disabled={isReadOnly}
+            onClick={() => setPicker({ bench: true })}
+            className="w-full px-4 py-3.5 text-left text-[12.5px] text-ink-5 hover:bg-glass-2 disabled:cursor-not-allowed"
+          >
+            Tocca per aggiungere una riserva.
+          </button>
         ) : (
           <ol className="divide-y divide-hairline">
             {bench.map((id, i) => {
@@ -288,112 +386,384 @@ export function LineupPicker({
                   <span className="flex-1 truncate text-[14px] font-semibold text-ink-1">{p.name}</span>
                   {!isReadOnly && (
                     <div className="flex shrink-0 items-center gap-1">
-                      <button
-                        onClick={() => moveBench(id, -1)}
-                        disabled={i === 0}
-                        className="h-7 w-7 rounded-md border border-hairline text-ink-3 hover:bg-glass-2 disabled:opacity-30"
-                        aria-label="Su"
-                      >↑</button>
-                      <button
-                        onClick={() => moveBench(id, 1)}
-                        disabled={i === bench.length - 1}
-                        className="h-7 w-7 rounded-md border border-hairline text-ink-3 hover:bg-glass-2 disabled:opacity-30"
-                        aria-label="Giù"
-                      >↓</button>
-                      <button
-                        onClick={() => p && toggleBench(p)}
-                        className="h-7 w-7 rounded-md border border-rose-500/30 text-rose-500 hover:bg-rose-500/10"
-                        aria-label="Rimuovi"
-                      >×</button>
+                      <button onClick={() => moveBench(id, -1)} disabled={i === 0} className="h-7 w-7 rounded-md border border-hairline text-ink-3 hover:bg-glass-2 disabled:opacity-30" aria-label="Su">↑</button>
+                      <button onClick={() => moveBench(id, 1)} disabled={i === bench.length - 1} className="h-7 w-7 rounded-md border border-hairline text-ink-3 hover:bg-glass-2 disabled:opacity-30" aria-label="Giù">↓</button>
+                      <button onClick={() => removeBench(id)} className="h-7 w-7 rounded-md border border-rose-500/30 text-rose-500 hover:bg-rose-500/10" aria-label="Rimuovi">×</button>
                     </div>
                   )}
                 </li>
               )
             })}
+            {!isReadOnly && (
+              <li>
+                <button
+                  onClick={() => setPicker({ bench: true })}
+                  className="flex w-full items-center gap-2 px-4 py-2.5 text-[12.5px] font-semibold text-accent hover:bg-glass-2"
+                >
+                  <span className="text-[16px] leading-none">+</span> Aggiungi riserva
+                </button>
+              </li>
+            )}
           </ol>
         )}
       </div>
 
-      {/* Role sections */}
-      {ROLE_ORDER.map((role) => {
-        const rolePlayers = byRole[role] ?? []
-        const roleRequired = required[role] ?? 0
-        const roleSelected = lineupByRole[role]?.length ?? 0
+      {/* Save */}
+      {!isReadOnly && (
+        <button
+          onClick={handleSave}
+          disabled={!canSave || pending}
+          className={`w-full rounded-xl px-4 py-3.5 text-[15px] font-semibold transition-all active:translate-y-px ${
+            saved
+              ? 'bg-emerald-600 text-white'
+              : canSave
+              ? 'bg-gradient-to-b from-accent-soft to-accent text-white shadow-1'
+              : 'cursor-not-allowed bg-glass-2 text-ink-4'
+          }`}
+        >
+          {saved ? 'Formazione schierata ✓' : pending ? '…' : !isComplete ? `Mancano ${11 - filled} titolari` : !benchRoleComplete ? 'Completa la panchina' : 'Schiera questa Formazione'}
+        </button>
+      )}
 
+      {/* Player picker bottom sheet */}
+      {picker && (
+        <PickerSheet
+          title={'slot' in picker ? `Scegli: ${ROLE_LABEL[picker.slot.role]}` : 'Aggiungi riserva'}
+          players={
+            'slot' in picker
+              ? (byRole[picker.slot.role] ?? [])
+              : players.filter((p) => !starterSet.has(p.id))
+          }
+          search={search}
+          setSearch={setSearch}
+          starterSet={starterSet}
+          benchSet={benchSet}
+          currentInSlot={'slot' in picker ? assign[picker.slot.id] ?? null : null}
+          mode={'slot' in picker ? 'starter' : 'bench'}
+          nextMatchByTeam={nextMatchByTeam}
+          onPick={(pid) => ('slot' in picker ? assignToSlot(picker.slot.id, pid) : addToBench(pid))}
+          onClose={() => { setPicker(null); setSearch('') }}
+        />
+      )}
+    </div>
+  )
+}
+
+/* ---------- Segmented control ---------- */
+function Segmented<T extends string>({
+  value,
+  onChange,
+  options,
+}: {
+  value: T
+  onChange: (v: T) => void
+  options: { v: T; label: string }[]
+}) {
+  return (
+    <div className="inline-flex rounded-xl border border-hairline bg-glass-1 p-[3px]">
+      {options.map((o) => {
+        const active = o.v === value
         return (
-          <div key={role} className="overflow-hidden rounded-2xl border border-hairline bg-glass-1">
-            <div className={`flex items-center gap-2 border-b border-hairline px-4 py-2 ${ROLE_BG[role]}`}>
-              <span className={`text-[11px] font-bold ${ROLE_COLORS[role]}`}>{role}</span>
-              <span className="flex-1 text-[11px] text-ink-4">{rolePlayers.length} in rosa</span>
-              <span className={`mono text-[12px] font-semibold tabular-nums ${
-                roleSelected === roleRequired ? 'text-emerald-500' : 'text-ink-4'
-              }`}>
-                {roleSelected}/{roleRequired}
-              </span>
-            </div>
-            <div className="divide-y divide-hairline">
-              {rolePlayers.map((player) => {
-                const isIn = lineup.has(player.id)
-                const isBenched = benchSet.has(player.id)
-                const roleCount = lineupByRole[role]?.length ?? 0
-                const canAdd = !isIn && lineup.size < 11 && roleCount < roleRequired
-                return (
-                  <div
-                    key={player.id}
-                    className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
-                      isIn
-                        ? 'bg-accent-muted'
-                        : isBenched
-                        ? 'bg-glass-2'
-                        : ''
-                    }`}
-                  >
-                    <TeamCrest
-                      name={player.fm_national_team.name}
-                      logoUrl={player.fm_national_team.logo_url}
-                      flagUrl={player.fm_national_team.flag_url}
-                      fifaCode={player.fm_national_team.fifa_code}
-                      size={22}
-                      className="w-6"
-                    />
-                    <span className="flex-1 truncate text-[14.5px] font-semibold text-ink-1">{player.name}</span>
-                    <span className="mono shrink-0 text-[12px] text-ink-4">{player.fm_national_team.fifa_code}</span>
-                    {!isReadOnly && !isIn && (
-                      <button
-                        onClick={() => toggleBench(player)}
-                        className={`shrink-0 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold transition-colors ${
-                          isBenched
-                            ? 'border-accent/40 bg-accent-muted text-accent'
-                            : 'border-hairline text-ink-4 hover:bg-glass-2'
-                        }`}
-                      >
-                        {isBenched ? `Panch. ${bench.indexOf(player.id) + 1}` : 'Panchina'}
-                      </button>
-                    )}
-                    <button
-                      onClick={() => toggleStarter(player)}
-                      disabled={isReadOnly || pending || (!isIn && !canAdd)}
-                      className={`flex h-8 shrink-0 items-center justify-center rounded-md border px-2.5 text-[11px] font-semibold transition-colors ${
-                        isIn
-                          ? 'border-accent bg-accent text-white'
-                          : canAdd
-                          ? 'border-hairline text-ink-3 hover:bg-glass-2'
-                          : 'cursor-not-allowed border-hairline text-ink-5 opacity-40'
-                      }`}
-                      aria-label={isIn ? 'Rimuovi titolare' : 'Aggiungi titolare'}
-                    >
-                      {isIn ? 'Titolare ✓' : 'Titolare'}
-                    </button>
-                  </div>
-                )
-              })}
-              {rolePlayers.length === 0 && (
-                <div className="px-4 py-3.5 text-[12.5px] text-ink-5">Nessun {role} nella rosa</div>
-              )}
-            </div>
-          </div>
+          <button
+            key={o.v}
+            onClick={() => onChange(o.v)}
+            className={`rounded-lg px-4 py-1.5 text-[13px] font-semibold transition-all ${
+              active ? 'bg-glass-3 text-ink-1 shadow-1' : 'text-ink-4'
+            }`}
+          >
+            {o.label}
+          </button>
         )
       })}
+    </div>
+  )
+}
+
+/* ---------- Pitch ---------- */
+function Pitch({
+  rows,
+  gk,
+  assign,
+  playerById,
+  activeSlotId,
+  onSlot,
+  onClear,
+  isReadOnly,
+}: {
+  rows: Slot[][]
+  gk: Slot[]
+  assign: Record<string, string>
+  playerById: Map<string, Player>
+  activeSlotId: string | null
+  onSlot: (slot: Slot) => void
+  onClear: (slotId: string) => void
+  isReadOnly: boolean
+}) {
+  return (
+    <div
+      className="relative flex flex-col gap-3.5 overflow-hidden rounded-3xl border border-hairline px-2.5 py-5 shadow-1"
+      style={{ background: 'linear-gradient(170deg, #3a8f57, #2f7a49)' }}
+    >
+      {/* mowing stripes */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-50"
+        style={{ background: 'repeating-linear-gradient(180deg, transparent 0 38px, rgba(255,255,255,0.08) 38px 76px)' }}
+      />
+      {/* field lines */}
+      <div className="pointer-events-none absolute left-4 right-4 top-1/2 h-px" style={{ background: 'rgba(255,255,255,0.35)' }} />
+      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[70px] w-[70px] -translate-x-1/2 -translate-y-1/2 rounded-full border" style={{ borderColor: 'rgba(255,255,255,0.35)' }} />
+      <div className="pointer-events-none absolute left-1/2 top-2 h-[30px] w-[90px] -translate-x-1/2 rounded-b-[10px] border border-t-0" style={{ borderColor: 'rgba(255,255,255,0.35)' }} />
+      <div className="pointer-events-none absolute bottom-2 left-1/2 h-[30px] w-[90px] -translate-x-1/2 rounded-t-[10px] border border-b-0" style={{ borderColor: 'rgba(255,255,255,0.35)' }} />
+
+      {rows.map((row, i) => (
+        <div key={i} className="relative z-[1] flex flex-wrap justify-center gap-2">
+          {row.map((slot) => (
+            <PitchSlot
+              key={slot.id}
+              slot={slot}
+              player={assign[slot.id] ? playerById.get(assign[slot.id]!) ?? null : null}
+              active={activeSlotId === slot.id}
+              onClick={() => onSlot(slot)}
+              onClear={() => onClear(slot.id)}
+              isReadOnly={isReadOnly}
+            />
+          ))}
+        </div>
+      ))}
+      <div className="relative z-[1] flex justify-center">
+        {gk.map((slot) => (
+          <PitchSlot
+            key={slot.id}
+            slot={slot}
+            player={assign[slot.id] ? playerById.get(assign[slot.id]!) ?? null : null}
+            active={activeSlotId === slot.id}
+            onClick={() => onSlot(slot)}
+            onClear={() => onClear(slot.id)}
+            isReadOnly={isReadOnly}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function PitchSlot({
+  slot,
+  player,
+  active,
+  onClick,
+  onClear,
+  isReadOnly,
+}: {
+  slot: Slot
+  player: Player | null
+  active: boolean
+  onClick: () => void
+  onClear: () => void
+  isReadOnly: boolean
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="relative flex w-16 flex-col items-center gap-[3px] rounded-2xl px-1 pb-[7px] pt-2 text-center transition-transform"
+      style={{
+        background: player ? 'var(--glass-3)' : 'rgba(255,255,255,0.14)',
+        border: active ? '1.5px solid var(--color-accent)' : player ? '1px solid var(--hairline)' : '1px dashed rgba(255,255,255,0.5)',
+        boxShadow: player ? 'var(--shadow-1, 0 1px 3px rgba(0,0,0,0.12))' : 'none',
+        transform: active ? 'scale(1.06)' : 'none',
+      }}
+    >
+      {player ? (
+        <>
+          <div className="relative">
+            <TeamCrest
+              name={player.fm_national_team.name}
+              logoUrl={player.fm_national_team.logo_url}
+              flagUrl={player.fm_national_team.flag_url}
+              fifaCode={player.fm_national_team.fifa_code}
+              size={28}
+            />
+            <span
+              className="absolute -bottom-[3px] -right-[5px] h-[9px] w-[9px] rounded-full"
+              style={{ background: ROLE_VAR[slot.role], border: '1.5px solid var(--glass-3)' }}
+            />
+          </div>
+          <span className="max-w-[60px] truncate text-[11.5px] font-bold leading-[1.05] text-ink-1">{surname(player.name)}</span>
+          <span className="mono text-[10px] font-semibold text-ink-4">{player.fm_national_team.fifa_code}</span>
+          {!isReadOnly && (
+            <span
+              onClick={(e) => { e.stopPropagation(); onClear() }}
+              className="absolute -right-[7px] -top-[7px] grid h-[19px] w-[19px] place-items-center rounded-full text-[11px] text-white"
+              style={{ background: 'var(--color-danger)', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }}
+            >×</span>
+          )}
+        </>
+      ) : (
+        <>
+          <span className="text-[9px] font-extrabold tracking-wider text-white" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.25)' }}>{ROLE_LABEL[slot.role]}</span>
+          <span className="text-[22px] leading-[0.9] text-white/85" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.2)' }}>+</span>
+        </>
+      )}
+    </button>
+  )
+}
+
+/* ---------- List view ---------- */
+function ListView({
+  slots,
+  assign,
+  playerById,
+  onSlot,
+  onClear,
+  isReadOnly,
+}: {
+  slots: Slot[]
+  assign: Record<string, string>
+  playerById: Map<string, Player>
+  onSlot: (slot: Slot) => void
+  onClear: (slotId: string) => void
+  isReadOnly: boolean
+}) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-hairline bg-glass-1">
+      {slots.map((slot, i) => {
+        const p = assign[slot.id] ? playerById.get(assign[slot.id]!) ?? null : null
+        return (
+          <button
+            key={slot.id}
+            onClick={() => onSlot(slot)}
+            className={`flex w-full items-center gap-3 px-4 py-3 text-left ${i < slots.length - 1 ? 'border-b border-hairline' : ''}`}
+          >
+            <span className={`w-9 text-[11px] font-bold ${ROLE_COLORS[slot.role]}`}>{ROLE_LABEL[slot.role]}</span>
+            {p ? (
+              <>
+                <TeamCrest
+                  name={p.fm_national_team.name}
+                  logoUrl={p.fm_national_team.logo_url}
+                  flagUrl={p.fm_national_team.flag_url}
+                  fifaCode={p.fm_national_team.fifa_code}
+                  size={24}
+                />
+                <span className="flex-1 truncate text-[14.5px] font-semibold text-ink-1">{p.name}</span>
+                <span className="mono text-[12px] text-ink-4">{p.fm_national_team.fifa_code}</span>
+                {!isReadOnly && (
+                  <span onClick={(e) => { e.stopPropagation(); onClear(slot.id) }} className="px-1 text-[18px] text-ink-5">×</span>
+                )}
+              </>
+            ) : (
+              <>
+                <span className="flex-1 text-[13.5px] text-ink-4">Tocca per scegliere</span>
+                <span className="text-[20px] text-accent">+</span>
+              </>
+            )}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/* ---------- Player picker bottom sheet ---------- */
+function PickerSheet({
+  title,
+  players,
+  search,
+  setSearch,
+  starterSet,
+  benchSet,
+  currentInSlot,
+  mode,
+  nextMatchByTeam,
+  onPick,
+  onClose,
+}: {
+  title: string
+  players: Player[]
+  search: string
+  setSearch: (s: string) => void
+  starterSet: Set<string>
+  benchSet: Set<string>
+  currentInSlot: string | null
+  mode: 'starter' | 'bench'
+  nextMatchByTeam: Record<string, NextMatch>
+  onPick: (playerId: string) => void
+  onClose: () => void
+}) {
+  const list = players.filter((p) => {
+    const q = search.trim().toLowerCase()
+    if (!q) return true
+    return p.name.toLowerCase().includes(q) || p.fm_national_team.name.toLowerCase().includes(q)
+  })
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col justify-end">
+      <div onClick={onClose} className="absolute inset-0 bg-black/45 backdrop-blur-[3px]" />
+      <div
+        className="relative flex max-h-[80%] flex-col overflow-hidden rounded-t-[28px] border border-b-0 border-hairline bg-glass-3 backdrop-blur-2xl"
+        style={{ boxShadow: '0 -20px 60px -20px rgba(0,0,0,0.4)' }}
+      >
+        <div className="flex-shrink-0 px-4 pb-2 pt-2.5">
+          <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-hairline-strong" />
+          <div className="mb-2.5 flex items-center justify-between">
+            <h3 className="text-[17px] font-semibold text-ink-1">{title}</h3>
+            <span className="text-[12px] text-ink-4">{list.length} disponibili</span>
+          </div>
+          <input
+            autoFocus
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Cerca per nome o nazionale…"
+            className="w-full rounded-xl border border-hairline-strong bg-glass-1 px-3.5 py-2.5 text-[14px] text-ink-1 outline-none"
+          />
+        </div>
+        <div className="flex-1 overflow-y-auto px-3 pb-7 pt-1">
+          {list.length === 0 && <p className="py-10 text-center text-[14px] text-ink-4">Nessun giocatore</p>}
+          {list.map((p) => {
+            const isCurrent = currentInSlot === p.id
+            const inUse =
+              !isCurrent && (mode === 'starter' ? starterSet.has(p.id) : benchSet.has(p.id) || starterSet.has(p.id))
+            return (
+              <button
+                key={p.id}
+                disabled={inUse}
+                onClick={() => onPick(p.id)}
+                className={`mb-1 flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left ${
+                  inUse ? 'cursor-not-allowed border-transparent opacity-40' : 'border-hairline bg-glass-1'
+                } ${isCurrent ? 'ring-1 ring-accent' : ''}`}
+              >
+                <TeamCrest
+                  name={p.fm_national_team.name}
+                  logoUrl={p.fm_national_team.logo_url}
+                  flagUrl={p.fm_national_team.flag_url}
+                  fifaCode={p.fm_national_team.fifa_code}
+                  size={32}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[14px] font-semibold text-ink-1">{p.name}</div>
+                  <div className="mt-0.5 flex items-center gap-2">
+                    <span className={`text-[11px] font-bold ${ROLE_COLORS[p.role]}`}>{ROLE_LABEL[p.role]}</span>
+                    <span className="text-[11.5px] text-ink-4">{p.fm_national_team.name}</span>
+                  </div>
+                  {(() => {
+                    const nm = nextMatchByTeam[p.national_team_id]
+                    if (!nm) return null
+                    return (
+                      <div className="mt-1 flex items-center gap-1.5 text-[11px] text-ink-5">
+                        <span className="font-semibold text-ink-4">{nm.home ? 'vs' : '@'}</span>
+                        <TeamCrest name={nm.opponent} logoUrl={nm.logoUrl} flagUrl={nm.flagUrl} fifaCode={nm.fifaCode} size={13} />
+                        <span className="truncate font-medium text-ink-3">{nm.opponent}</span>
+                        {formatKickoff(nm.kickoff) && <span className="shrink-0 text-ink-5">· {formatKickoff(nm.kickoff)}</span>}
+                      </div>
+                    )
+                  })()}
+                </div>
+                {inUse && <span className="text-[11px] font-semibold text-ink-5">in uso</span>}
+                {isCurrent && <span className="text-[13px] text-accent">✓</span>}
+              </button>
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 }

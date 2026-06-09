@@ -317,5 +317,7 @@ export function composeFMConfig(
       draw_points: points.draw,
       loss_points: points.loss,
     },
+
+    immunita_enabled: engineRow.immunita_enabled ?? base.immunita_enabled,
   }
 }

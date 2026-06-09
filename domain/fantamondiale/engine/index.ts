@@ -162,6 +162,44 @@ export async function runRoundEngine(roundId: string, supabase: Supabase): Promi
   // of which Lega the player is rostered in.
   const rawByKey = new Map<string, FMPlayerMatchScoreResult>()
 
+  type StatRow = NonNullable<typeof allStats>[number]
+  type MatchRow = (typeof matches)[number]
+  // Build the engine input for one (player, match) — reused for the raw pass
+  // and for the per-lega immunity recompute below.
+  const buildInput = (
+    playerId: string,
+    role: FMEnginePlayerInput['role'],
+    nationalTeamId: string,
+    match: MatchRow,
+    stats: StatRow,
+  ): FMEnginePlayerInput => ({
+    playerId,
+    role,
+    nationalTeamId,
+    stats: {
+      minutes_played: stats.minutes_played,
+      rating: stats.rating != null ? Number(stats.rating) : null,
+      goals: stats.goals,
+      penalties_scored: stats.penalties_scored ?? 0,
+      assists: stats.assists,
+      yellow_cards: stats.yellow_cards,
+      red_cards: stats.red_cards,
+      penalties_saved: stats.penalties_saved,
+      penalties_missed: stats.penalties_missed,
+      own_goals: stats.own_goals,
+      goals_conceded: stats.goals_conceded,
+      is_mvp: stats.is_mvp,
+    },
+    matchContext: {
+      real_match_id: match.id,
+      scoring_round_id: roundId,
+      home_team_id: match.home_team_id,
+      away_team_id: match.away_team_id,
+      home_score: match.home_score!,
+      away_score: match.away_score!,
+    },
+  })
+
   for (const lineup of lineups) {
     for (const lp of lineup.fm_matchday_lineup_player) {
       // Raw score every lineup player (starter or bench) — a bench player
@@ -178,35 +216,10 @@ export async function runRoundEngine(roundId: string, supabase: Supabase): Promi
       const stats = statsByKey.get(scoreKey)
       if (!stats) continue
 
-      const input: FMEnginePlayerInput = {
-        playerId: lp.player_id,
-        role: player.role as FMEnginePlayerInput['role'],
-        nationalTeamId: player.national_team_id,
-        stats: {
-          minutes_played: stats.minutes_played,
-          rating: stats.rating != null ? Number(stats.rating) : null,
-          goals: stats.goals,
-          penalties_scored: stats.penalties_scored ?? 0,
-          assists: stats.assists,
-          yellow_cards: stats.yellow_cards,
-          red_cards: stats.red_cards,
-          penalties_saved: stats.penalties_saved,
-          penalties_missed: stats.penalties_missed,
-          own_goals: stats.own_goals,
-          goals_conceded: stats.goals_conceded,
-          is_mvp: stats.is_mvp,
-        },
-        matchContext: {
-          real_match_id: match.id,
-          scoring_round_id: roundId,
-          home_team_id: match.home_team_id,
-          away_team_id: match.away_team_id,
-          home_score: match.home_score!,
-          away_score: match.away_score!,
-        },
-      }
-
-      rawByKey.set(scoreKey, scorePlayerRaw(input, config))
+      rawByKey.set(
+        scoreKey,
+        scorePlayerRaw(buildInput(lp.player_id, player.role as FMEnginePlayerInput['role'], player.national_team_id, match, stats), config),
+      )
     }
   }
 
@@ -503,9 +516,26 @@ export async function runRoundEngine(roundId: string, supabase: Supabase): Promi
         if (!match) return []
         const raw = rawByKey.get(`${fp.player_id}:${match.id}`)
         if (!raw) return []
+
+        // Immunità: a player fielded by exactly ONE team in this lega has his
+        // card malus waived. Ownership is per-lega, so this is resolved here
+        // (not in the global raw pass). Recompute his raw only when he was
+        // actually booked — otherwise the global raw already matches.
+        let rawSubtotal = raw.raw_subtotal
+        if (config.immunita_enabled && (ownershipCounts.get(fp.player_id) ?? 0) === 1) {
+          const stats = statsByKey.get(`${fp.player_id}:${match.id}`)
+          if (stats && (stats.yellow_cards > 0 || stats.red_cards > 0)) {
+            rawSubtotal = scorePlayerRaw(
+              buildInput(fp.player_id, player.role as FMEnginePlayerInput['role'], player.national_team_id, match, stats),
+              config,
+              { immunitaGranted: true },
+            ).raw_subtotal
+          }
+        }
+
         const own = ownershipPctByPlayer.get(fp.player_id) ?? 0
         const { final_score } = finalizePlayerForLega(
-          { raw_subtotal: raw.raw_subtotal, is_mvp: raw.is_mvp },
+          { raw_subtotal: rawSubtotal, is_mvp: raw.is_mvp },
           own,
           legaConfig,
         )

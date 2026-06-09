@@ -494,10 +494,52 @@ export async function computeLiveRoundSnapshot(
       const counts = fieldedVia.has(lp.player_id)
       const via = fieldedVia.get(lp.player_id) ?? (lp.is_starter ? 'starter' : 'bench')
 
-      const stats = (() => {
-        const m = matchByTeamId.get(player.national_team_id)
-        return m ? statsByKey.get(`${lp.player_id}:${m.id}`) : undefined
-      })()
+      const matchForPlayer = matchByTeamId.get(player.national_team_id)
+      const stats = matchForPlayer ? statsByKey.get(`${lp.player_id}:${matchForPlayer.id}`) : undefined
+
+      // Immunità (live): a player fielded by exactly ONE team in this lega has
+      // his card malus waived — same rule as the final engine, kept in sync.
+      let rawSubtotal = raw?.raw_subtotal ?? 0
+      if (
+        raw &&
+        config.immunita_enabled &&
+        (nowCount.get(lp.player_id) ?? 0) === 1 &&
+        stats &&
+        matchForPlayer &&
+        (stats.yellow_cards > 0 || stats.red_cards > 0)
+      ) {
+        rawSubtotal = scorePlayerRaw(
+          {
+            playerId: lp.player_id,
+            role: player.role as FMRole,
+            nationalTeamId: player.national_team_id,
+            stats: {
+              minutes_played: stats.minutes_played,
+              rating: stats.rating != null ? Number(stats.rating) : null,
+              goals: stats.goals,
+              penalties_scored: stats.penalties_scored ?? 0,
+              assists: stats.assists,
+              yellow_cards: stats.yellow_cards,
+              red_cards: stats.red_cards,
+              penalties_saved: stats.penalties_saved,
+              penalties_missed: stats.penalties_missed,
+              own_goals: stats.own_goals,
+              goals_conceded: stats.goals_conceded,
+              is_mvp: stats.is_mvp,
+            },
+            matchContext: {
+              real_match_id: matchForPlayer.id,
+              scoring_round_id: roundId,
+              home_team_id: matchForPlayer.home_team_id,
+              away_team_id: matchForPlayer.away_team_id,
+              home_score: matchForPlayer.home_score ?? 0,
+              away_score: matchForPlayer.away_score ?? 0,
+            },
+          },
+          config,
+          { immunitaGranted: true },
+        ).raw_subtotal
+      }
 
       let popularity_penalty_now = 0
       let popularity_penalty_potential = 0
@@ -506,12 +548,12 @@ export async function computeLiveRoundSnapshot(
 
       if (raw) {
         const finNow = finalizePlayerForLega(
-          { raw_subtotal: raw.raw_subtotal, is_mvp: raw.is_mvp },
+          { raw_subtotal: rawSubtotal, is_mvp: raw.is_mvp },
           own?.pct_now ?? 0,
           config,
         )
         const finMax = finalizePlayerForLega(
-          { raw_subtotal: raw.raw_subtotal, is_mvp: raw.is_mvp },
+          { raw_subtotal: rawSubtotal, is_mvp: raw.is_mvp },
           own?.pct_potential ?? 0,
           config,
         )
@@ -531,7 +573,7 @@ export async function computeLiveRoundSnapshot(
         status: stateOf(lp.player_id),
         counts,
         rating: stats?.rating != null ? Number(stats.rating) : null,
-        raw_subtotal: raw?.raw_subtotal ?? 0,
+        raw_subtotal: rawSubtotal,
         popularity_penalty_now,
         popularity_penalty_potential,
         mvp_bonus,

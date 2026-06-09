@@ -123,6 +123,31 @@ export default async function FormazionePage({ params }: { params: Promise<{ id:
 
   const isReadOnly = !ctx.fantasyTeamId || activeRound.status !== 'open'
 
+  // A team can only field a lineup once its squad is complete: full pool + coach.
+  const requiredPool = config.squad.pool_size
+  const squadComplete = squadPlayerIds.length >= requiredPool && coachId != null
+  const missingPlayers = Math.max(0, requiredPool - squadPlayerIds.length)
+
+  // Real-world fixtures for this scoring round — gives each national team its
+  // opponent, so the picker can show "🆚 Senegal" next to every player.
+  type TeamLite = { name: string; fifa_code: string; logo_url: string | null; flag_url: string | null }
+  type RoundMatch = { home_team_id: string; away_team_id: string; kickoff_at: string; home_team: TeamLite | null; away_team: TeamLite | null }
+  const { data: roundMatchesRaw } = await supabase
+    .from('fm_real_match')
+    .select(
+      'home_team_id, away_team_id, kickoff_at, ' +
+        'home_team:fm_national_team!fm_real_match_home_team_id_fkey(name, fifa_code, logo_url, flag_url), ' +
+        'away_team:fm_national_team!fm_real_match_away_team_id_fkey(name, fifa_code, logo_url, flag_url)'
+    )
+    .eq('scoring_round_id', activeRound.id)
+
+  const roundMatches = (roundMatchesRaw ?? []) as unknown as RoundMatch[]
+  const nextMatchByTeam: Record<string, { opponent: string; fifaCode: string; logoUrl: string | null; flagUrl: string | null; home: boolean; kickoff: string }> = {}
+  for (const m of roundMatches) {
+    if (m.away_team) nextMatchByTeam[m.home_team_id] = { opponent: m.away_team.name, fifaCode: m.away_team.fifa_code, logoUrl: m.away_team.logo_url, flagUrl: m.away_team.flag_url, home: true, kickoff: m.kickoff_at }
+    if (m.home_team) nextMatchByTeam[m.away_team_id] = { opponent: m.home_team.name, fifaCode: m.home_team.fifa_code, logoUrl: m.home_team.logo_url, flagUrl: m.home_team.flag_url, home: false, kickoff: m.kickoff_at }
+  }
+
   return (
     <div className="space-y-4">
       <header className="pt-1">
@@ -159,9 +184,21 @@ export default async function FormazionePage({ params }: { params: Promise<{ id:
         </div>
       )}
 
-      {squadPlayerIds.length === 0 && fantasyTeamId ? (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-[13px] text-amber-600 dark:text-amber-300">
-          Devi prima selezionare la tua rosa per questa fase. Vai alla tab La Mia Rosa.
+      {fantasyTeamId && !squadComplete ? (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-4 text-amber-600 dark:text-amber-300">
+          <p className="text-[14px] font-semibold">Squadra incompleta</p>
+          <p className="mt-1 text-[13px] leading-relaxed">
+            Per schierare la formazione ti servono <span className="font-semibold">{requiredPool} giocatori</span> e{' '}
+            <span className="font-semibold">1 allenatore</span>.
+            {missingPlayers > 0 && <> Mancano ancora {missingPlayers} giocatori.</>}
+            {missingPlayers === 0 && coachId == null && <> Devi scegliere un allenatore.</>}
+          </p>
+          <a
+            href={`/controfantamondiale/${id}/rosa`}
+            className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[13px] font-semibold transition-colors hover:bg-amber-500/20"
+          >
+            Completa la rosa →
+          </a>
         </div>
       ) : (
         <LineupPicker
@@ -175,6 +212,7 @@ export default async function FormazionePage({ params }: { params: Promise<{ id:
           lineupId={lineupId}
           allowedFormations={config.formations}
           isReadOnly={isReadOnly}
+          nextMatchByTeam={nextMatchByTeam}
         />
       )}
     </div>
