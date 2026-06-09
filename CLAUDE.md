@@ -15,7 +15,7 @@ Full-stack Italian Mantra-style fantasy football app. Private league, statistics
 - Use semantic CSS-var-driven utilities (`text-ink-1..5`, `bg-glass-1..3`, `bg-surface-0..3`, `border-hairline`, `border-hairline-strong`, `divide-hairline`) so colors auto-flip with the active theme. Avoid hardcoded hex (`text-[#f5f7ff]`) or `bg-white/[0.0x]` overlays.
 - Keep `text-white` only when text sits on a saturated colored background (indigo/emerald/rose CTA buttons); otherwise use `text-ink-1`.
 - Radii (airy): sm 10px, md 14px, lg 22px, xl 28px, 2xl 36px (defined in `app/globals.css` `@theme`).
-- **Fonts:** semantic slots `--cf-font-{heading,body,accent,mono}` in `globals.css`, swappable at runtime by the admin Font Switcher (`components/admin/FontSwitcher.tsx`, localStorage `cf-fonts`, applied pre-paint by boot script in `app/layout.tsx`). Only 7 approved Google Fonts; accent words use synthetic oblique via `--cf-accent-style`.
+- **Fonts:** semantic slots `--cf-font-{heading,body,accent,mono}` in `globals.css`, finalized to a fixed mapping (heading → Space Grotesk, body → Stack Sans Headline, accent → Stack Sans Notch, mono → Space Mono). The four faces load in `app/layout.tsx` (Space Grotesk/Mono via `next/font/google`, Stack Sans Headline/Notch self-hosted via `next/font/local`). Accent words use synthetic oblique via `--cf-accent-style`. The runtime admin Font Switcher was removed 2026-06-09.
 - Use `useActionState` from `react` (NOT `useFormState` from `react-dom`)
 - `cookies()` from `next/headers` must be awaited (returns Promise in Next.js 15)
 

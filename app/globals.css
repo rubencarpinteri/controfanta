@@ -95,12 +95,11 @@
 :root {
   color-scheme: light;
 
-  /* Default font slot mapping (theme-independent). Overridden per-device by the
-     admin Font Switcher via documentElement inline styles. */
-  --cf-font-heading: var(--font-mozilla-headline);
-  --cf-font-body:    var(--font-inter);
-  --cf-font-accent:  var(--font-stack-sans-headline);
-  --cf-font-mono:    var(--font-jetbrains-mono);
+  /* Font slot mapping (theme-independent, final). */
+  --cf-font-heading: var(--font-space-grotesk);
+  --cf-font-body:    var(--font-stack-sans-headline);
+  --cf-font-accent:  var(--font-stack-sans-notch);
+  --cf-font-mono:    var(--font-space-mono);
   --cf-accent-style: italic;
 
   --bg-0: #f4f5fb;
