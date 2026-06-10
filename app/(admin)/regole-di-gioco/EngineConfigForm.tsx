@@ -304,16 +304,21 @@ function OwnershipSection({
   defaultPopularity,
   defaultMvp,
   defaultCalcOrder,
+  exampleGoalBonus,
 }: {
   defaultPopularity: OwnershipBracket[]
   defaultMvp: OwnershipBracket[]
   defaultCalcOrder: CalcOrder
+  exampleGoalBonus: number
 }) {
   const [popularity, setPopularity] = useState(defaultPopularity)
   const [mvp, setMvp]               = useState(defaultMvp)
   const [calcOrder, setCalcOrder]   = useState<CalcOrder>(defaultCalcOrder)
 
-  // Live scenario preview — raw_subtotal of 8.94 (a striker who scored 1 goal).
+  // Live scenario preview — a striker (voto base 7.14) who scored 1 goal.
+  // raw_subtotal is derived from the configured ATT goal bonus, never hardcoded.
+  const exampleBaseVote = 7.14
+  const exampleRaw = exampleBaseVote + exampleGoalBonus
   const samples: Array<{ label: string; ownership: number; mvp: boolean }> = [
     { label: 'Differenziale',           ownership: 8,  mvp: false },
     { label: 'Differenziale + MVP',     ownership: 8,  mvp: true  },
@@ -322,7 +327,7 @@ function OwnershipSection({
   ]
 
   const previews = useMemo(() => {
-    const raw = 8.94
+    const raw = exampleRaw
     return samples.map((s) => {
       const popPct = bracketLookup(popularity, s.ownership)
       const mvpPct = s.mvp ? bracketLookup(mvp, s.ownership) : 0
@@ -334,7 +339,7 @@ function OwnershipSection({
         : raw + mvpAmount - penalty
       return { ...s, popPct, mvpPct, final }
     })
-  }, [popularity, mvp, calcOrder, samples])
+  }, [popularity, mvp, calcOrder, samples, exampleRaw])
 
   const popularityJson = JSON.stringify(popularity)
   const mvpJson = JSON.stringify(mvp)
@@ -389,7 +394,7 @@ function OwnershipSection({
       <div className="rounded-lg border border-hairline bg-transparent p-4">
         <p className="text-xs font-medium uppercase tracking-wider text-ink-4">Anteprima — stesso giocatore, 4 scenari</p>
         <p className="mt-0.5 mb-3 text-[11px] text-ink-4">
-          Caso esempio: un attaccante voto 7.14 + 1 gol → <span className="font-mono">raw_subtotal = 8.94</span>.
+          Caso esempio: un attaccante voto {exampleBaseVote.toFixed(2)} + 1 gol (+{exampleGoalBonus}) → <span className="font-mono">raw_subtotal = {exampleRaw.toFixed(2)}</span>.
         </p>
         <div className="grid gap-2 sm:grid-cols-2">
           {previews.map((p, i) => (
@@ -685,6 +690,7 @@ export function EngineConfigForm({ current }: Props) {
         defaultPopularity={v.popularity_brackets}
         defaultMvp={v.mvp_bonus_brackets}
         defaultCalcOrder={v.calc_order}
+        exampleGoalBonus={v.goal_bonus_att}
       />
 
       {/* ── Soglie gol e risultato (globale) ─────────────────────────── */}
