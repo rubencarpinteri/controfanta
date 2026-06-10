@@ -79,23 +79,42 @@ export async function logCronRun(db: DB, input: CronRunInput): Promise<void> {
   }
 }
 
+// Default alert channel: a private ntfy.sh topic (free, no account, no secret).
+// Subscribe once on your phone via the ntfy app or https://ntfy.sh/<topic> to
+// receive matchday push alerts. Override with SPORTMONKS_ALERT_WEBHOOK (a Slack
+// or Discord incoming-webhook URL) if you ever want a different channel.
+const DEFAULT_ALERT_WEBHOOK = 'https://ntfy.sh/controfanta-live-33a1b0a1eb39'
+
 /**
  * Loud alert for matchday anomalies the cron-status page would otherwise hide
- * (e.g. live fixtures present but zero ratings ingested). Fire-and-forget: POSTs
- * a Slack/Discord-compatible `{ text }` payload to SPORTMONKS_ALERT_WEBHOOK if
- * configured. Never throws — a broken alert must not break the cron. When no
- * webhook is set it just console.errors, which still surfaces in Vercel logs.
+ * (e.g. live fixtures present but zero ratings ingested). Fire-and-forget — it
+ * never throws, because a broken alert must never break the cron tick.
+ *
+ * Delivery: ntfy.sh topics get a plain-text body + notification headers;
+ * Slack/Discord webhooks get a `{ text }` JSON payload. Always console.errors
+ * too, so the signal survives in Vercel logs even if the channel is down.
  */
 export async function sendCronAlert(message: string): Promise<void> {
   console.error(`[cron-alert] ${message}`)
-  const url = process.env.SPORTMONKS_ALERT_WEBHOOK
-  if (!url) return
+  const url = process.env.SPORTMONKS_ALERT_WEBHOOK || DEFAULT_ALERT_WEBHOOK
   try {
-    await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: `⚠️ CONTROFANTA live ingest: ${message}` }),
-    })
+    if (url.includes('ntfy.sh')) {
+      await fetch(url, {
+        method: 'POST',
+        headers: {
+          Title: 'CONTROFANTA live ingest',
+          Priority: 'high',
+          Tags: 'warning',
+        },
+        body: message,
+      })
+    } else {
+      await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: `⚠️ CONTROFANTA live ingest: ${message}` }),
+      })
+    }
   } catch (e) {
     console.error('[cron-alert] webhook failed:', e)
   }
