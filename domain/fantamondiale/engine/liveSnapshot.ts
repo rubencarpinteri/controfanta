@@ -140,14 +140,33 @@ export type LiveSnapshotTeamStandings = {
   giornata_points: number
 }
 
+/**
+ * Cumulative season classifica INCLUDING the current live giornata.
+ * = sum of finalized past rounds + this round's live projection.
+ */
+export type LiveSnapshotTeamClassifica = {
+  /** BR points from finalized past rounds (excludes the live round) */
+  br_points_prior: number
+  /** br_points_prior + current live giornata_points */
+  br_points_total: number
+  /** raw fantasy score from finalized past rounds (excludes the live round) */
+  raw_score_prior: number
+  /** raw_score_prior + current live live_total */
+  raw_score_total: number
+  /** 1-based rank in the live classifica (br_points desc, raw desc tiebreak) */
+  rank: number
+}
+
 export type LiveRoundSnapshot = {
   computed_at: string
   round: { id: string; name: string; phase_id: string }
   teams: LiveSnapshotTeam[]
   ownership: Record<string, LiveOwnershipEntry>
   matches: LiveSnapshotMatch[]
-  /** Keyed by fantasy_team_id */
+  /** Per-giornata live standings, keyed by fantasy_team_id */
   standings: Record<string, LiveSnapshotTeamStandings>
+  /** Cumulative season classifica (past finalized rounds + live), keyed by fantasy_team_id */
+  classifica: Record<string, LiveSnapshotTeamClassifica>
 }
 
 // ---------------------------------------------------------------------------
@@ -791,6 +810,52 @@ export async function computeLiveRoundSnapshot(
     }
   }
 
+  // ============================================================
+  // Cumulative season Classifica (live) — finalized past rounds
+  // + this giornata's live projection layered on top.
+  // ============================================================
+  // Past finalized BR points + raw score, EXCLUDING the current (live) round.
+  const { data: priorScores } = await supabase
+    .from('fm_fantasy_team_round_score')
+    .select('fantasy_team_id, br_points, raw_total')
+    .in('fantasy_team_id', teamIds)
+    .neq('scoring_round_id', roundId)
+  const priorBrByTeam = new Map<string, number>()
+  const priorRawByTeam = new Map<string, number>()
+  for (const r of priorScores ?? []) {
+    priorBrByTeam.set(r.fantasy_team_id, (priorBrByTeam.get(r.fantasy_team_id) ?? 0) + (r.br_points ?? 0))
+    priorRawByTeam.set(
+      r.fantasy_team_id,
+      (priorRawByTeam.get(r.fantasy_team_id) ?? 0) + Number(r.raw_total ?? 0),
+    )
+  }
+
+  type ClassificaRow = LiveSnapshotTeamClassifica & { fantasy_team_id: string }
+  const classificaRows: ClassificaRow[] = teamsOut.map((t) => {
+    const priorBr = priorBrByTeam.get(t.fantasy_team_id) ?? 0
+    const priorRaw = priorRawByTeam.get(t.fantasy_team_id) ?? 0
+    const live = standings[t.fantasy_team_id]
+    return {
+      fantasy_team_id: t.fantasy_team_id,
+      br_points_prior: priorBr,
+      br_points_total: priorBr + (live?.giornata_points ?? 0),
+      raw_score_prior: Math.round(priorRaw * 100) / 100,
+      raw_score_total: Math.round((priorRaw + (live?.live_total ?? 0)) * 100) / 100,
+      rank: 0,
+    }
+  })
+  // Rank: BR points desc, raw total desc as tiebreak.
+  classificaRows.sort(
+    (a, b) => b.br_points_total - a.br_points_total || b.raw_score_total - a.raw_score_total,
+  )
+  classificaRows.forEach((r, i) => {
+    r.rank = i + 1
+  })
+  const classifica: Record<string, LiveSnapshotTeamClassifica> = {}
+  for (const { fantasy_team_id, ...rest } of classificaRows) {
+    classifica[fantasy_team_id] = rest
+  }
+
   return {
     computed_at: new Date().toISOString(),
     round: { id: round.id, name: round.name, phase_id: round.phase_id },
@@ -798,5 +863,6 @@ export async function computeLiveRoundSnapshot(
     ownership,
     matches: matchesOut,
     standings,
+    classifica,
   }
 }

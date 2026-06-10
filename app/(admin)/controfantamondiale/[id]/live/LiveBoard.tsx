@@ -137,6 +137,8 @@ export function LiveBoard({
         <StandingsPanel
           teams={snapshot.teams}
           standings={snapshot.standings}
+          classifica={snapshot.classifica}
+          roundName={roundName}
           myTeamId={myTeamId}
           selectedTeamId={selectedTeamId}
           onSelect={handleSelectTeam}
@@ -198,10 +200,11 @@ export function LiveBoard({
           <StandingsPanel
             teams={snapshot.teams}
             standings={snapshot.standings}
+            classifica={snapshot.classifica}
+            roundName={roundName}
             myTeamId={myTeamId}
             selectedTeamId={selectedTeamId}
             onSelect={handleSelectTeam}
-            fullWidth
           />
         )}
       </div>
@@ -729,23 +732,64 @@ function FantasyPlayerRow({ p, muted = false }: { p: LiveSnapshotPlayer; muted?:
 function StandingsPanel({
   teams,
   standings,
+  classifica,
+  roundName,
   myTeamId,
   selectedTeamId,
   onSelect,
-  fullWidth = false,
 }: {
   teams: LiveSnapshotTeam[]
   standings: LiveRoundSnapshot['standings']
+  classifica: LiveRoundSnapshot['classifica']
+  roundName: string
   myTeamId: string | null
   selectedTeamId: string | null
   onSelect: (id: string) => void
-  fullWidth?: boolean
 }) {
   return (
-    <div className={`rounded-xl border border-hairline bg-glass-1 overflow-hidden ${fullWidth ? '' : ''}`}>
-      <p className="px-3 pt-2.5 pb-1 text-[9px] font-bold uppercase tracking-wider text-ink-5">
-        Classifica live
-      </p>
+    <div className="space-y-3">
+      <GiornataLivePanel
+        teams={teams}
+        standings={standings}
+        roundName={roundName}
+        myTeamId={myTeamId}
+        selectedTeamId={selectedTeamId}
+        onSelect={onSelect}
+      />
+      <ClassificaLivePanel
+        teams={teams}
+        classifica={classifica}
+        myTeamId={myTeamId}
+        selectedTeamId={selectedTeamId}
+        onSelect={onSelect}
+      />
+    </div>
+  )
+}
+
+/** The current giornata's live battle — score, goals, giornata points. */
+function GiornataLivePanel({
+  teams,
+  standings,
+  roundName,
+  myTeamId,
+  selectedTeamId,
+  onSelect,
+}: {
+  teams: LiveSnapshotTeam[]
+  standings: LiveRoundSnapshot['standings']
+  roundName: string
+  myTeamId: string | null
+  selectedTeamId: string | null
+  onSelect: (id: string) => void
+}) {
+  // Ordered by live total (teams already arrives sorted by live_total desc).
+  return (
+    <div className="rounded-xl border border-hairline bg-glass-1 overflow-hidden">
+      <div className="px-3 pt-2.5 pb-1">
+        <p className="text-[9px] font-bold uppercase tracking-wider text-emerald-400/80">Giornata live</p>
+        <p className="text-[9px] text-ink-5">{roundName} — punteggi e gol in tempo reale</p>
+      </div>
 
       {teams.map((team, i) => {
         const s = standings[team.fantasy_team_id]
@@ -764,10 +808,8 @@ function StandingsPanel({
             }`}
           >
             <div className="flex items-start gap-2">
-              {/* rank */}
               <span className="mt-0.5 w-4 shrink-0 text-center text-[11px] font-bold text-ink-5">{i + 1}</span>
 
-              {/* name + manager */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline gap-1.5">
                   <span className={`text-[12px] font-semibold truncate ${isMine ? 'text-indigo-300' : 'text-ink-1'}`}>
@@ -782,34 +824,28 @@ function StandingsPanel({
                 )}
               </div>
 
-              {/* total score */}
               <span className="shrink-0 text-[16px] font-black tabular-nums text-ink-1 leading-none mt-0.5">
                 {fmt(total, 1)}
               </span>
             </div>
 
-            {/* second row: goals + giornata points */}
             <div className="mt-1.5 ml-6 flex items-center gap-3">
-              {/* goals */}
-              <div className="flex items-center gap-1.5">
-                <div className="flex items-center gap-0.5">
-                  {goals === 0 ? (
-                    <span className="text-[10px] text-ink-5">0 gol</span>
-                  ) : (
-                    <>
-                      {Array.from({ length: Math.min(goals, 6) }).map((_, j) => (
-                        <span key={j} className="text-[10px]">⚽</span>
-                      ))}
-                      {goals > 6 && <span className="text-[9px] text-emerald-400">+{goals - 6}</span>}
-                      <span className="ml-0.5 text-[9px] text-ink-5">{goals} {goals === 1 ? 'gol' : 'gol'}</span>
-                    </>
-                  )}
-                </div>
+              <div className="flex items-center gap-0.5">
+                {goals === 0 ? (
+                  <span className="text-[10px] text-ink-5">0 gol</span>
+                ) : (
+                  <>
+                    {Array.from({ length: Math.min(goals, 6) }).map((_, j) => (
+                      <span key={j} className="text-[10px]">⚽</span>
+                    ))}
+                    {goals > 6 && <span className="text-[9px] text-emerald-400">+{goals - 6}</span>}
+                    <span className="ml-0.5 text-[9px] text-ink-5">{goals} gol</span>
+                  </>
+                )}
               </div>
 
               <span className="text-ink-5/40 text-[9px]">·</span>
 
-              {/* giornata points */}
               <div className="flex items-center gap-1">
                 <span className={`text-[12px] font-bold tabular-nums ${gPts > 0 ? 'text-emerald-400' : 'text-ink-5'}`}>
                   {gPts}
@@ -823,6 +859,85 @@ function StandingsPanel({
 
       <div className="border-t border-hairline px-3 py-2 text-[9px] text-ink-5 leading-relaxed">
         Punti giornata calcolati in tempo reale sulle soglie gol.
+      </div>
+    </div>
+  )
+}
+
+/** Cumulative season standings, with this giornata's live points layered in. */
+function ClassificaLivePanel({
+  teams,
+  classifica,
+  myTeamId,
+  selectedTeamId,
+  onSelect,
+}: {
+  teams: LiveSnapshotTeam[]
+  classifica: LiveRoundSnapshot['classifica']
+  myTeamId: string | null
+  selectedTeamId: string | null
+  onSelect: (id: string) => void
+}) {
+  // Order by the classifica rank, not by giornata live order.
+  const ordered = [...teams].sort(
+    (a, b) =>
+      (classifica[a.fantasy_team_id]?.rank ?? 99) - (classifica[b.fantasy_team_id]?.rank ?? 99),
+  )
+
+  return (
+    <div className="rounded-xl border border-hairline bg-glass-1 overflow-hidden">
+      <div className="px-3 pt-2.5 pb-1">
+        <p className="text-[9px] font-bold uppercase tracking-wider text-ink-4">Classifica live</p>
+        <p className="text-[9px] text-ink-5">Totale stagione, giornata corrente inclusa</p>
+      </div>
+
+      {ordered.map((team) => {
+        const c = classifica[team.fantasy_team_id]
+        const isMine = team.fantasy_team_id === myTeamId
+        const isSelected = team.fantasy_team_id === selectedTeamId
+        const rank = c?.rank ?? 0
+        const brTotal = c?.br_points_total ?? 0
+        const brPrior = c?.br_points_prior ?? 0
+        const liveDelta = brTotal - brPrior
+
+        return (
+          <button
+            key={team.fantasy_team_id}
+            onClick={() => onSelect(team.fantasy_team_id)}
+            className={`w-full border-t border-hairline px-3 py-2 text-left transition-colors hover:bg-glass-2 ${
+              isSelected ? 'bg-indigo-500/8' : ''
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <span className="w-4 shrink-0 text-center text-[11px] font-bold text-ink-5">{rank}</span>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline gap-1.5">
+                  <span className={`text-[12px] font-semibold truncate ${isMine ? 'text-indigo-300' : 'text-ink-2'}`}>
+                    {team.name}
+                  </span>
+                  {isMine && (
+                    <span className="shrink-0 text-[8px] font-bold uppercase tracking-wide text-indigo-400/60">tu</span>
+                  )}
+                </div>
+              </div>
+
+              {/* live delta from this giornata */}
+              {liveDelta > 0 && (
+                <span className="shrink-0 text-[9px] font-semibold tabular-nums text-emerald-400/80">
+                  +{liveDelta}
+                </span>
+              )}
+              <span className="shrink-0 text-[15px] font-black tabular-nums text-ink-1 leading-none w-8 text-right">
+                {brTotal}
+              </span>
+            </div>
+          </button>
+        )
+      })}
+
+      <div className="border-t border-hairline px-3 py-2 text-[9px] text-ink-5 leading-relaxed">
+        Punti totali = giornate concluse + proiezione live di questa giornata.
       </div>
     </div>
   )

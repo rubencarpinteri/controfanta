@@ -93,6 +93,18 @@ export default async function LivePage({
     .maybeSingle()
 
   let snapshot = (snapRow?.snapshot as LiveRoundSnapshot | null) ?? null
+  // Backfill `classifica` for snapshots persisted before the field existed.
+  if (snapshot && !snapshot.classifica) {
+    snapshot = {
+      ...snapshot,
+      classifica: Object.fromEntries(
+        snapshot.teams.map((t, i) => [
+          t.fantasy_team_id,
+          { br_points_prior: 0, br_points_total: 0, raw_score_prior: 0, raw_score_total: 0, rank: i + 1 },
+        ])
+      ),
+    }
+  }
 
   // In preview mode with no real snapshot yet, build a shell from team + match data
   // so the layout is visible. All scores are zero; players list is empty per team.
@@ -134,6 +146,12 @@ export default async function LivePage({
       })),
       standings: Object.fromEntries(
         (fantasyTeams ?? []).map((t) => [t.id, { live_total: 0, goals_scored: 0, giornata_points: 0 }])
+      ),
+      classifica: Object.fromEntries(
+        (fantasyTeams ?? []).map((t, i) => [
+          t.id,
+          { br_points_prior: 0, br_points_total: 0, raw_score_prior: 0, raw_score_total: 0, rank: i + 1 },
+        ])
       ),
     }
   }
