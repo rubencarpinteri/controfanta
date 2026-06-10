@@ -42,18 +42,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return b.base_price - a.base_price
   })
 
-  const header = ['Girone', 'Nazionale', 'FIFA Code', 'Ruolo', 'Nome', 'Numero', 'Crediti', 'SportMonks ID']
+  const header = ['Girone', 'Nazionale', 'Ruolo', 'Nome', 'Crediti']
   const rows = sorted.map((p) => {
     const team = teamById.get(p.national_team_id)
     return [
       girone(team?.group_label ?? null),
       team?.name ?? '',
-      team?.fifa_code ?? '',
       p.role,
       p.name,
-      p.shirt_number ?? '',
       p.base_price,
-      p.sportmonks_player_id ?? '',
     ]
   })
 
