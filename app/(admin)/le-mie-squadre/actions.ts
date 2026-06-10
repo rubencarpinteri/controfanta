@@ -103,7 +103,11 @@ export async function renameFMTeamAction(
     return { error: null, success: true }
   }
 
-  const { error } = await supabase
+  // RLS on fm_fantasy_team only permits writes by super admins; a regular
+  // manager's update would silently match zero rows. Ownership is already
+  // verified above, so perform the write with the service client.
+  const service = createServiceClient()
+  const { error } = await service
     .from('fm_fantasy_team')
     .update({ name })
     .eq('id', team_id)
