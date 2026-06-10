@@ -158,6 +158,9 @@ export function SquadBuilder({
   const [pendingPlayerIds, setPendingPlayerIds] = useState<Set<string>>(() => new Set())
   const [coachPending, setCoachPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Non-blocking notice (amber) — e.g. a submitted formazione was invalidated by
+  // a rosa change and must be resubmitted.
+  const [notice, setNotice] = useState<string | null>(null)
   const [filterTeam, setFilterTeam] = useState('')
   const [filterRole, setFilterRole] = useState('')
   const [filterSearch, setFilterSearch] = useState('')
@@ -266,7 +269,11 @@ export function SquadBuilder({
       }
       try {
         const res = await toggleSquadPlayerAction(fd)
-        if (!res.ok) revert(res.error)
+        if (!res.ok) {
+          revert(res.error)
+        } else if (res.warning) {
+          setNotice(res.warning)
+        }
       } catch (e) {
         revert(e instanceof Error ? e.message : 'Errore')
       } finally {
@@ -438,6 +445,13 @@ export function SquadBuilder({
       {error && (
         <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-[13px] font-medium text-rose-500">
           {error}
+        </div>
+      )}
+
+      {/* ── Formazione-invalidated notice (amber, non-blocking) ─────────────── */}
+      {notice && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-[13px] font-medium text-amber-600 dark:text-amber-300">
+          {notice}
         </div>
       )}
 

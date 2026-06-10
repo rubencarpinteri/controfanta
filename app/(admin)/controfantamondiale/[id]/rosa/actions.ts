@@ -77,7 +77,11 @@ async function recalcBudgetSpent(supabase: Awaited<ReturnType<typeof createClien
 
 // Expected/validation failures are returned (not thrown) so their message
 // survives to the UI — Next.js masks thrown server-action errors in production.
-export type ToggleSquadResult = { ok: true } | { ok: false; error: string }
+// `warning` carries a non-blocking notice (e.g. a submitted formazione was
+// invalidated by this rosa change) that the UI should surface.
+export type ToggleSquadResult =
+  | { ok: true; warning?: string }
+  | { ok: false; error: string }
 
 export async function toggleSquadPlayerAction(fd: FormData): Promise<ToggleSquadResult> {
   const supabase = await createClient()
@@ -118,30 +122,38 @@ export async function toggleSquadPlayerAction(fd: FormData): Promise<ToggleSquad
     .eq('player_id', playerId)
     .maybeSingle()
 
+  let warning: string | undefined
+
   if (existing) {
-    // Guard: never let a player be sold out of the rosa while he is still part
-    // of a submitted formazione for any round in this phase. Doing so would
-    // silently invalidate that lineup (player no longer "nella tua rosa") and,
-    // worse, leave an orphaned starter/bench entry for live scoring. The manager
-    // must remove him from the formazione first.
-    const { data: usedInLineup } = await supabase
+    // Reshaping the rosa is allowed while the phase window is open — even after a
+    // formazione has been submitted. But the two must stay in sync: if this
+    // player is in a submitted lineup for any round of this phase, drop him from
+    // that lineup too. Otherwise the saved entry would be an orphan — illegal
+    // ("non è nella tua rosa") on the next save and, worse, scored as a phantom
+    // by the live engine, which reads lineup players with no rosa cross-check.
+    // The manager is warned that the affected formazione must be resubmitted.
+    const { data: affected } = await supabase
       .from('fm_matchday_lineup_player')
-      .select('lineup_id, fm_matchday_lineup!inner(fantasy_team_id, scoring_round_id, fm_scoring_round!inner(name, phase_id))')
+      .select('id, fm_matchday_lineup!inner(fantasy_team_id, fm_scoring_round!inner(name, phase_id))')
       .eq('player_id', playerId)
       .eq('fm_matchday_lineup.fantasy_team_id', fantasyTeamId)
       .eq('fm_matchday_lineup.fm_scoring_round.phase_id', phaseId)
-      .limit(1)
 
-    if (usedInLineup && usedInLineup.length > 0) {
-      const lineup = usedInLineup[0]!.fm_matchday_lineup as
-        | { fm_scoring_round?: { name?: string } | { name?: string }[] | null }
-        | null
-      const sr = lineup?.fm_scoring_round
-      const roundName = (Array.isArray(sr) ? sr[0]?.name : sr?.name) ?? 'in corso'
-      return {
-        ok: false,
-        error: `Questo giocatore è schierato nella tua formazione (${roundName}). Toglilo dalla formazione prima di cederlo.`,
-      }
+    if (affected && affected.length > 0) {
+      await supabase
+        .from('fm_matchday_lineup_player')
+        .delete()
+        .in('id', affected.map((a) => a.id))
+
+      const roundNames = [
+        ...new Set(
+          affected.map((a) => {
+            const sr = (a.fm_matchday_lineup as { fm_scoring_round?: { name?: string } | { name?: string }[] | null } | null)?.fm_scoring_round
+            return (Array.isArray(sr) ? sr[0]?.name : sr?.name) ?? 'in corso'
+          })
+        ),
+      ]
+      warning = `Hai modificato la rosa: la formazione (${roundNames.join(', ')}) non è più valida. Ricordati di rischierarla prima del blocco.`
     }
 
     await supabase.from('fm_phase_squad_player').delete().eq('id', existing.id)
@@ -192,7 +204,7 @@ export async function toggleSquadPlayerAction(fd: FormData): Promise<ToggleSquad
   }
 
   revalidatePath(`/controfantamondiale/${competitionId}/rosa`)
-  return { ok: true }
+  return { ok: true, warning }
 }
 
 export async function setSquadCoachAction(fd: FormData) {
