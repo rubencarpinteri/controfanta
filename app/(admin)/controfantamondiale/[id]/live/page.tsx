@@ -92,6 +92,52 @@ export default async function LivePage({
     .eq('scoring_round_id', activeRound.id)
     .maybeSingle()
 
+  let snapshot = (snapRow?.snapshot as LiveRoundSnapshot | null) ?? null
+
+  // In preview mode with no real snapshot yet, build a shell from team + match data
+  // so the layout is visible. All scores are zero; players list is empty per team.
+  if (previewMode && !snapshot) {
+    const [{ data: fantasyTeams }, { data: realMatches }, { data: nationalTeams }] = await Promise.all([
+      supabase.from('fm_fantasy_team').select('id, name').eq('league_competition_id', ctx.legaCompetition.id).order('name'),
+      supabase.from('fm_real_match').select('id, home_team_id, away_team_id, home_score, away_score, status, minute, kickoff_at').eq('scoring_round_id', activeRound.id),
+      supabase.from('fm_national_team').select('id, name, fifa_code, logo_url, flag_url'),
+    ])
+    const ntById = new Map((nationalTeams ?? []).map((t) => [t.id, t]))
+    const toRef = (id: string) => {
+      const t = ntById.get(id)
+      return { name: t?.name ?? id, fifa_code: t?.fifa_code ?? '', logo_url: t?.logo_url ?? null, flag_url: t?.flag_url ?? null }
+    }
+    snapshot = {
+      computed_at: new Date().toISOString(),
+      round: { id: activeRound.id, name: activeRound.name, phase_id: '' },
+      teams: (fantasyTeams ?? []).map((t) => ({
+        fantasy_team_id: t.id,
+        name: t.name,
+        manager_name: null,
+        formation: null,
+        coach: null,
+        players_total: 0,
+        live_total: 0,
+        players: [],
+      })),
+      ownership: {},
+      matches: (realMatches ?? []).map((m) => ({
+        match_id: m.id,
+        home_team: toRef(m.home_team_id),
+        away_team: toRef(m.away_team_id),
+        home_score: m.home_score,
+        away_score: m.away_score,
+        minute: m.minute,
+        status: (m.status as LiveRoundSnapshot['matches'][number]['status']),
+        kickoff_at: m.kickoff_at,
+        players: [],
+      })),
+      standings: Object.fromEntries(
+        (fantasyTeams ?? []).map((t) => [t.id, { live_total: 0, goals_scored: 0, giornata_points: 0 }])
+      ),
+    }
+  }
+
   return (
     <div className="space-y-4">
       {header}
@@ -104,7 +150,7 @@ export default async function LivePage({
         legaCompRef={id}
         roundName={activeRound.name}
         myTeamId={ctx.fantasyTeamId}
-        initialSnapshot={(snapRow?.snapshot as LiveRoundSnapshot | null) ?? null}
+        initialSnapshot={snapshot}
         previewMode={previewMode}
       />
     </div>

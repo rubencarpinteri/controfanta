@@ -119,7 +119,7 @@ export function LiveBoard({
       </div>
 
       {/* ── Desktop: 3-column layout ── */}
-      <div className="hidden lg:grid lg:grid-cols-[200px_1fr_240px] lg:gap-3">
+      <div className="hidden lg:grid lg:grid-cols-[260px_1fr_320px] lg:gap-3">
         <MatchListPanel
           matches={snapshot.matches}
           selectedMatchId={selectedMatch?.match_id ?? null}
@@ -268,32 +268,53 @@ function MatchChip({ match: m, selected = false }: { match: LiveSnapshotMatch; s
   const fantasyCount = m.players.filter((p) => p.ownership_signal !== null).length
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5">
+      {/* status + time */}
       <div className="flex items-center gap-1.5">
         <MatchStatusBadge status={m.status} minute={m.minute} />
         {m.status === 'scheduled' && (
           <span className="text-[9px] text-ink-5 tabular-nums">{fmtKickoff(m.kickoff_at)}</span>
         )}
       </div>
-      <div className="flex items-center gap-1 text-[11px]">
-        <span className={`font-medium ${selected ? 'text-ink-1' : 'text-ink-2'} truncate max-w-[60px]`}>
-          {m.home_team.name}
+
+      {/* home flag + code · score · away code + flag */}
+      <div className="flex items-center gap-1.5">
+        <TeamCrest
+          name={m.home_team.name}
+          logoUrl={m.home_team.logo_url}
+          flagUrl={m.home_team.flag_url}
+          fifaCode={m.home_team.fifa_code}
+          size={18}
+          className="shrink-0"
+        />
+        <span className={`text-[11px] font-bold tabular-nums uppercase tracking-tight ${selected ? 'text-ink-1' : 'text-ink-2'}`}>
+          {m.home_team.fifa_code || m.home_team.name.slice(0, 3).toUpperCase()}
         </span>
-        <span className="font-bold tabular-nums text-ink-1 shrink-0">
-          {m.status !== 'scheduled'
-            ? `${m.home_score ?? 0}–${m.away_score ?? 0}`
-            : '–'}
+
+        <span className="mx-1 text-[13px] font-black tabular-nums text-ink-1 shrink-0">
+          {m.status !== 'scheduled' ? `${m.home_score ?? 0}–${m.away_score ?? 0}` : '–'}
         </span>
-        <span className={`font-medium ${selected ? 'text-ink-1' : 'text-ink-2'} truncate max-w-[60px] text-right`}>
-          {m.away_team.name}
+
+        <span className={`text-[11px] font-bold tabular-nums uppercase tracking-tight ${selected ? 'text-ink-1' : 'text-ink-2'}`}>
+          {m.away_team.fifa_code || m.away_team.name.slice(0, 3).toUpperCase()}
         </span>
+        <TeamCrest
+          name={m.away_team.name}
+          logoUrl={m.away_team.logo_url}
+          flagUrl={m.away_team.flag_url}
+          fifaCode={m.away_team.fifa_code}
+          size={18}
+          className="shrink-0"
+        />
       </div>
+
+      {/* fantasy presence dots */}
       {fantasyCount > 0 && (
-        <div className="flex gap-0.5" title={`${fantasyCount} giocatori di questa partita in almeno una formazione`}>
-          {Array.from({ length: Math.min(fantasyCount, 6) }).map((_, i) => (
+        <div className="flex gap-0.5" title={`${fantasyCount} giocatori nel pool in questa partita`}>
+          {Array.from({ length: Math.min(fantasyCount, 8) }).map((_, i) => (
             <span key={i} className="h-1 w-1 rounded-full bg-indigo-400/50" />
           ))}
-          {fantasyCount > 6 && <span className="text-[8px] text-ink-5">+{fantasyCount - 6}</span>}
+          {fantasyCount > 8 && <span className="text-[8px] text-ink-5">+{fantasyCount - 8}</span>}
         </div>
       )}
     </div>
@@ -722,57 +743,86 @@ function StandingsPanel({
 }) {
   return (
     <div className={`rounded-xl border border-hairline bg-glass-1 overflow-hidden ${fullWidth ? '' : ''}`}>
-      <div className="grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-x-2 px-3 pt-2.5 pb-1">
-        <span className="text-[8px] font-bold uppercase tracking-wider text-ink-5">#</span>
-        <span className="text-[8px] font-bold uppercase tracking-wider text-ink-5">Squadra</span>
-        <span className="text-[8px] font-bold uppercase tracking-wider text-ink-5 text-right">Ptg</span>
-        <span className="text-[8px] font-bold uppercase tracking-wider text-ink-5 text-right">⚽</span>
-        <span className="text-[8px] font-bold uppercase tracking-wider text-ink-5 text-right">Gio.</span>
-      </div>
+      <p className="px-3 pt-2.5 pb-1 text-[9px] font-bold uppercase tracking-wider text-ink-5">
+        Classifica live
+      </p>
 
       {teams.map((team, i) => {
         const s = standings[team.fantasy_team_id]
         const isMine = team.fantasy_team_id === myTeamId
         const isSelected = team.fantasy_team_id === selectedTeamId
+        const goals = s?.goals_scored ?? 0
+        const gPts = s?.giornata_points ?? 0
+        const total = s?.live_total ?? team.live_total
 
         return (
           <button
             key={team.fantasy_team_id}
             onClick={() => onSelect(team.fantasy_team_id)}
-            className={`w-full grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-x-2 border-t border-hairline px-3 py-2 text-left transition-colors hover:bg-glass-2 ${
+            className={`w-full border-t border-hairline px-3 py-2.5 text-left transition-colors hover:bg-glass-2 ${
               isSelected ? 'bg-indigo-500/8' : ''
             }`}
           >
-            <span className="text-[10px] font-bold text-ink-5 w-4 text-center">{i + 1}</span>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1">
-                <span className={`text-[11px] font-medium truncate ${isMine ? 'text-indigo-300' : 'text-ink-1'}`}>
-                  {team.name}
-                </span>
-                {isMine && (
-                  <span className="shrink-0 text-[7px] font-bold uppercase text-indigo-400/60">tu</span>
+            <div className="flex items-start gap-2">
+              {/* rank */}
+              <span className="mt-0.5 w-4 shrink-0 text-center text-[11px] font-bold text-ink-5">{i + 1}</span>
+
+              {/* name + manager */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline gap-1.5">
+                  <span className={`text-[12px] font-semibold truncate ${isMine ? 'text-indigo-300' : 'text-ink-1'}`}>
+                    {team.name}
+                  </span>
+                  {isMine && (
+                    <span className="shrink-0 text-[8px] font-bold uppercase tracking-wide text-indigo-400/60">tu</span>
+                  )}
+                </div>
+                {team.manager_name && (
+                  <span className="text-[10px] text-ink-5 truncate block">{team.manager_name}</span>
                 )}
               </div>
-              <span className="text-[9px] text-ink-5">{team.formation ?? '—'}</span>
+
+              {/* total score */}
+              <span className="shrink-0 text-[16px] font-black tabular-nums text-ink-1 leading-none mt-0.5">
+                {fmt(total, 1)}
+              </span>
             </div>
-            <span className="text-[12px] font-bold tabular-nums text-ink-1 text-right">
-              {fmt(s?.live_total ?? team.live_total, 1)}
-            </span>
-            <GoalDots goals={s?.goals_scored ?? 0} />
-            <span
-              className={`text-[12px] font-bold tabular-nums text-right w-7 ${
-                (s?.giornata_points ?? 0) > 0 ? 'text-emerald-400' : 'text-ink-4'
-              }`}
-            >
-              {s?.giornata_points ?? 0}
-            </span>
+
+            {/* second row: goals + giornata points */}
+            <div className="mt-1.5 ml-6 flex items-center gap-3">
+              {/* goals */}
+              <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-0.5">
+                  {goals === 0 ? (
+                    <span className="text-[10px] text-ink-5">0 gol</span>
+                  ) : (
+                    <>
+                      {Array.from({ length: Math.min(goals, 6) }).map((_, j) => (
+                        <span key={j} className="text-[10px]">⚽</span>
+                      ))}
+                      {goals > 6 && <span className="text-[9px] text-emerald-400">+{goals - 6}</span>}
+                      <span className="ml-0.5 text-[9px] text-ink-5">{goals} {goals === 1 ? 'gol' : 'gol'}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <span className="text-ink-5/40 text-[9px]">·</span>
+
+              {/* giornata points */}
+              <div className="flex items-center gap-1">
+                <span className={`text-[12px] font-bold tabular-nums ${gPts > 0 ? 'text-emerald-400' : 'text-ink-5'}`}>
+                  {gPts}
+                </span>
+                <span className="text-[9px] text-ink-5">pt giornata</span>
+              </div>
+            </div>
           </button>
         )
       })}
 
-      <div className="border-t border-hairline px-3 py-2 text-[9px] text-ink-5 flex gap-3">
-        <span>⚽ gol segnati</span>
-        <span>Gio. punti giornata (live)</span>
+      <div className="border-t border-hairline px-3 py-2 text-[9px] text-ink-5 leading-relaxed">
+        Punti giornata calcolati in tempo reale sulle soglie gol.
       </div>
     </div>
   )
@@ -869,12 +919,19 @@ function MobileTeamCard({
         className="w-full flex items-center gap-2 px-3 py-2.5 bg-glass-2 border-b border-hairline"
       >
         <span className="w-5 text-center text-[11px] font-bold text-ink-5">{rank}</span>
-        <span className="flex-1 text-left text-[13px] font-semibold text-ink-1 truncate">{team.name}</span>
-        {isMine && (
-          <span className="rounded-full bg-indigo-500/15 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-indigo-300">
-            Tu
-          </span>
-        )}
+        <div className="flex-1 min-w-0 text-left">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[13px] font-semibold text-ink-1 truncate">{team.name}</span>
+            {isMine && (
+              <span className="shrink-0 rounded-full bg-indigo-500/15 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-indigo-300">
+                Tu
+              </span>
+            )}
+          </div>
+          {team.manager_name && (
+            <span className="text-[10px] text-ink-5 truncate block">{team.manager_name}</span>
+          )}
+        </div>
         <GoalDots goals={standings?.goals_scored ?? 0} />
         <span className={`text-[11px] font-bold tabular-nums ${(standings?.giornata_points ?? 0) > 0 ? 'text-emerald-400' : 'text-ink-4'}`}>
           {standings?.giornata_points ?? 0} pt

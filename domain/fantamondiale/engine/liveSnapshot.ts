@@ -76,6 +76,7 @@ export type LiveSnapshotCoach = {
 export type LiveSnapshotTeam = {
   fantasy_team_id: string
   name: string
+  manager_name: string | null
   formation: string | null
   coach: LiveSnapshotCoach | null
   /** Players-only total. */
@@ -196,10 +197,18 @@ export async function computeLiveRoundSnapshot(
   // ---- 3. This lega's teams + their submitted lineups -------------------
   const { data: teams } = await supabase
     .from('fm_fantasy_team')
-    .select('id, name')
+    .select('id, name, manager_id')
     .eq('league_competition_id', legaCompId)
     .order('name', { ascending: true })
   const teamIds = (teams ?? []).map((t) => t.id)
+
+  // Resolve manager display names from profiles
+  const managerIds = [...new Set((teams ?? []).map((t) => t.manager_id).filter(Boolean))]
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, full_name')
+    .in('id', managerIds.length > 0 ? managerIds : ['00000000-0000-0000-0000-000000000000'])
+  const managerNameById = new Map((profiles ?? []).map((p) => [p.id, p.full_name ?? null]))
   if (teamIds.length === 0) return null
 
   const { data: lineups } = await supabase
@@ -658,6 +667,7 @@ export async function computeLiveRoundSnapshot(
     return {
       fantasy_team_id: team.id,
       name: team.name,
+      manager_name: managerNameById.get(team.manager_id) ?? null,
       formation: lineup?.formation ?? null,
       coach,
       players_total: Math.round(players_total * 100) / 100,
