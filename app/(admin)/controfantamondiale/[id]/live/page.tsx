@@ -3,9 +3,20 @@ import { createClient } from '@/lib/supabase/server'
 import type { LiveRoundSnapshot } from '@/domain/fantamondiale/engine/liveSnapshot'
 import { LiveBoard } from './LiveBoard'
 
-export default async function LivePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function LivePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
   const { id } = await params
+  const sp = await searchParams
   const ctx = await requireFMContext(id)
+
+  // ?preview=1 — super-admin only gate bypass for layout review.
+  // Other teams' lineups are masked in the UI; only your own team renders in full.
+  const previewMode = sp['preview'] === '1' && ctx.isSuperAdmin
   const supabase = await createClient()
 
   const rounds = await getFMRounds(ctx.competition.id)
@@ -49,7 +60,7 @@ export default async function LivePage({ params }: { params: Promise<{ id: strin
   const firstKickoff = kickoffs.length > 0 ? Math.min(...kickoffs) : null
   const revealed = firstKickoff !== null && Date.now() >= firstKickoff
 
-  if (!revealed) {
+  if (!revealed && !previewMode) {
     const when =
       firstKickoff !== null
         ? new Date(firstKickoff).toLocaleString('it-IT', {
@@ -84,11 +95,17 @@ export default async function LivePage({ params }: { params: Promise<{ id: strin
   return (
     <div className="space-y-4">
       {header}
+      {previewMode && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-300">
+          Modalità anteprima — le formazioni degli altri partecipanti sono nascoste.
+        </div>
+      )}
       <LiveBoard
         legaCompRef={id}
         roundName={activeRound.name}
         myTeamId={ctx.fantasyTeamId}
         initialSnapshot={(snapRow?.snapshot as LiveRoundSnapshot | null) ?? null}
+        previewMode={previewMode}
       />
     </div>
   )

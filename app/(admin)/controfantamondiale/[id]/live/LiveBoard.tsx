@@ -41,11 +41,13 @@ export function LiveBoard({
   roundName,
   myTeamId,
   initialSnapshot,
+  previewMode = false,
 }: {
   legaCompRef: string
   roundName: string
   myTeamId: string | null
   initialSnapshot: LiveRoundSnapshot | null
+  previewMode?: boolean
 }) {
   const [snapshot, setSnapshot] = useState<LiveRoundSnapshot | null>(initialSnapshot)
   const [activeTab, setActiveTab] = useState<Tab>('partite')
@@ -130,6 +132,7 @@ export function LiveBoard({
           myTeamId={myTeamId}
           totalTeams={snapshot.teams.length}
           onSelectTeam={handleSelectTeam}
+          previewMode={previewMode}
         />
         <StandingsPanel
           teams={snapshot.teams}
@@ -181,6 +184,7 @@ export function LiveBoard({
                 isMine={team.fantasy_team_id === myTeamId}
                 standings={snapshot.standings[team.fantasy_team_id]}
                 expanded={team.fantasy_team_id === selectedTeamId}
+                previewMode={previewMode}
                 onToggle={() =>
                   setSelectedTeamId(
                     selectedTeamId === team.fantasy_team_id ? null : team.fantasy_team_id,
@@ -322,6 +326,7 @@ function CenterPanel({
   myTeamId,
   totalTeams,
   onSelectTeam,
+  previewMode,
 }: {
   match: LiveSnapshotMatch | null
   team: LiveSnapshotTeam | null
@@ -329,9 +334,14 @@ function CenterPanel({
   myTeamId: string | null
   totalTeams: number
   onSelectTeam: (id: string) => void
+  previewMode: boolean
 }) {
   if (activeView === 'team' && team) {
-    return <TeamDetailPanel team={team} isMine={team.fantasy_team_id === myTeamId} />
+    const isMine = team.fantasy_team_id === myTeamId
+    if (previewMode && !isMine) {
+      return <MaskedTeamPanel team={team} />
+    }
+    return <TeamDetailPanel team={team} isMine={isMine} />
   }
   if (match) {
     return <MatchDetailPanel match={match} totalTeams={totalTeams} />
@@ -784,6 +794,50 @@ function GoalDots({ goals }: { goals: number }) {
 }
 
 // ─────────────────────────────────────────────
+// Preview-mode masking components
+// ─────────────────────────────────────────────
+
+function MaskedTeamPanel({ team }: { team: LiveSnapshotTeam }) {
+  const starterCount = team.players.filter((p) => p.counts).length
+  return (
+    <div className="rounded-xl border border-hairline bg-glass-1 overflow-hidden">
+      <div className="bg-glass-2 border-b border-hairline px-4 py-2.5 flex items-center gap-2">
+        <div className="flex-1 min-w-0">
+          <span className="text-[14px] font-bold text-ink-1 truncate">{team.name}</span>
+          <p className="text-[10px] text-ink-5">{team.formation ?? '—'}</p>
+        </div>
+        <span className="text-[22px] font-black tabular-nums text-emerald-400">
+          {fmt(team.live_total, 1)}
+        </span>
+      </div>
+      <div className="p-4 text-center space-y-2">
+        <MaskedPlayerRows count={starterCount} />
+        <p className="text-[10px] text-ink-5 pt-2">
+          Formazione nascosta — visibile dal primo calcio d&apos;inizio
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function MaskedPlayerRows({ count }: { count: number }) {
+  return (
+    <div className="space-y-1">
+      {Array.from({ length: count }).map((_, i) => (
+        <div
+          key={i}
+          className="flex items-center gap-1.5 rounded-md border border-hairline bg-glass-2 px-2 py-1"
+        >
+          <span className="h-2 w-2 rounded-full bg-ink-5/20" />
+          <span className="flex-1 h-2 rounded bg-ink-5/15" />
+          <span className="w-8 h-2 rounded bg-ink-5/10" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────
 // Mobile team card (accordion)
 // ─────────────────────────────────────────────
 
@@ -793,6 +847,7 @@ function MobileTeamCard({
   isMine,
   standings,
   expanded,
+  previewMode,
   onToggle,
 }: {
   team: LiveSnapshotTeam
@@ -800,6 +855,7 @@ function MobileTeamCard({
   isMine: boolean
   standings: LiveRoundSnapshot['standings'][string] | undefined
   expanded: boolean
+  previewMode: boolean
   onToggle: () => void
 }) {
   return (
@@ -831,16 +887,22 @@ function MobileTeamCard({
 
       {expanded && (
         <div className="p-3 space-y-2">
-          {team.coach && <CoachRow coach={team.coach} />}
-          {team.players.filter((p) => p.counts).map((p) => (
-            <FantasyPlayerRow key={p.player_id} p={p} />
-          ))}
-          {team.players.filter((p) => !p.counts).length > 0 && (
+          {previewMode && !isMine ? (
+            <MaskedPlayerRows count={team.players.filter((p) => p.counts).length} />
+          ) : (
             <>
-              <p className="text-[8px] font-bold uppercase tracking-wider text-ink-5 px-1 pt-1">Panchina</p>
-              {team.players.filter((p) => !p.counts).map((p) => (
-                <FantasyPlayerRow key={p.player_id} p={p} muted />
+              {team.coach && <CoachRow coach={team.coach} />}
+              {team.players.filter((p) => p.counts).map((p) => (
+                <FantasyPlayerRow key={p.player_id} p={p} />
               ))}
+              {team.players.filter((p) => !p.counts).length > 0 && (
+                <>
+                  <p className="text-[8px] font-bold uppercase tracking-wider text-ink-5 px-1 pt-1">Panchina</p>
+                  {team.players.filter((p) => !p.counts).map((p) => (
+                    <FantasyPlayerRow key={p.player_id} p={p} muted />
+                  ))}
+                </>
+              )}
             </>
           )}
         </div>
