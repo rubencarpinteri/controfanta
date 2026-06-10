@@ -321,14 +321,14 @@ function OwnershipSection({
   const exampleBaseVote = 7.14
   const exampleRaw = exampleBaseVote + exampleGoalBonus
   const samples: Array<{ label: string; ownership: number; mvp: boolean; goal: boolean }> = [
-    { label: 'Gol · 30% · no MVP',        ownership: 30, mvp: false, goal: true  },
-    { label: 'Gol · 40% · no MVP',        ownership: 40, mvp: false, goal: true  },
-    { label: 'Gol · 50% · no MVP',        ownership: 50, mvp: false, goal: true  },
-    { label: 'Gol · 40% · MVP',           ownership: 40, mvp: true,  goal: true  },
-    { label: 'Senza gol · 30% · no MVP',  ownership: 30, mvp: false, goal: false },
-    { label: 'Senza gol · 40% · no MVP',  ownership: 40, mvp: false, goal: false },
-    { label: 'Senza gol · 50% · no MVP',  ownership: 50, mvp: false, goal: false },
-    { label: 'Senza gol · 40% · MVP',     ownership: 40, mvp: true,  goal: false },
+    { label: 'Gol · 8% · no MVP',          ownership: 8,  mvp: false, goal: true  },
+    { label: 'Gol · 30% · no MVP',         ownership: 30, mvp: false, goal: true  },
+    { label: 'Gol · 50% · no MVP',         ownership: 50, mvp: false, goal: true  },
+    { label: 'Gol · 40% · MVP',            ownership: 40, mvp: true,  goal: true  },
+    { label: 'Senza gol · 30% · no MVP',   ownership: 30, mvp: false, goal: false },
+    { label: 'Senza gol · 50% · no MVP',   ownership: 50, mvp: false, goal: false },
+    { label: 'Senza gol · 90% · no MVP',   ownership: 90, mvp: false, goal: false },
+    { label: 'Senza gol · 40% · MVP',      ownership: 40, mvp: true,  goal: false },
   ]
 
   const previews = useMemo(() => {
