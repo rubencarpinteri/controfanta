@@ -73,12 +73,24 @@ export default async function RoseNazionaliPage({
         <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-4">
           Mondiale · {teams.length} nazionali
         </p>
-        <h1
-          className="font-semibold tracking-tight text-ink-1"
-          style={{ fontSize: 'clamp(26px, 7vw, 32px)', lineHeight: 1.12, letterSpacing: '-0.03em' }}
-        >
-          Rose <span className="serif text-ink-3">nazionali</span>
-        </h1>
+        <div className="flex items-start justify-between gap-3">
+          <h1
+            className="font-semibold tracking-tight text-ink-1"
+            style={{ fontSize: 'clamp(26px, 7vw, 32px)', lineHeight: 1.12, letterSpacing: '-0.03em' }}
+          >
+            Rose <span className="serif text-ink-3">nazionali</span>
+          </h1>
+          <a
+            href={`/api/fm/${id}/listone`}
+            download
+            className="mt-1 flex shrink-0 items-center gap-1.5 rounded-xl border border-hairline bg-glass-1 px-3 py-1.5 text-[12px] font-medium text-ink-2 transition-colors hover:bg-glass-2 hover:text-ink-1"
+          >
+            <svg viewBox="0 0 16 16" fill="none" className="h-3.5 w-3.5 shrink-0" aria-hidden="true">
+              <path d="M8 2v8m0 0-3-3m3 3 3-3M3 13h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Scarica CSV
+          </a>
+        </div>
         <p className="mt-2 max-w-prose text-[13.5px] leading-snug text-ink-3">
           Tutte le squadre del Mondiale divise per girone. Tocca una nazionale per vedere i convocati, le quotazioni e l&apos;allenatore.
         </p>
