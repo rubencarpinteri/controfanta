@@ -47,7 +47,11 @@ export async function renameSerieATeamAction(
     return { error: null, success: true }
   }
 
-  const { error } = await supabase
+  // RLS on fantasy_teams only permits writes by league/super admins, so a
+  // regular manager's update would silently match zero rows. Ownership is
+  // already verified above, so perform the write with the service client.
+  const service = createServiceClient()
+  const { error } = await service
     .from('fantasy_teams')
     .update({ name })
     .eq('id', team_id)
