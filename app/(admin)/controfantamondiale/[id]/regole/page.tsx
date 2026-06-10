@@ -152,8 +152,18 @@ export default async function RegolePage({ params }: { params: Promise<{ id: str
             <span className="font-medium text-emerald-400 tabular-nums">+{config.football.assist}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-ink-4">Clean sheet (P, ≥{config.football.clean_sheet.min_minutes}′)</span>
+            <span className="text-ink-4">
+              Clean sheet (P{config.football.clean_sheet.min_minutes > 0 ? `, ≥${config.football.clean_sheet.min_minutes}′` : ''})
+            </span>
             <span className="font-medium text-indigo-400 tabular-nums">+{config.football.clean_sheet.P}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-ink-4">Rigore parato (P)</span>
+            <span className="font-medium text-emerald-400 tabular-nums">+{config.football.penalty_saved}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-ink-4">Rigore sbagliato</span>
+            <span className="font-medium text-rose-400 tabular-nums">{config.football.penalty_missed}</span>
           </div>
           {config.football.clean_sheet.D > 0 && (
             <div className="flex justify-between">

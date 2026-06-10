@@ -30,7 +30,10 @@ export default async function RoseNazionaliPage({
 
   const [teams, players, coaches] = await Promise.all([
     getFMTeams(ctx.competition.id),
-    getFMPlayers(ctx.competition.id),
+    // Manager-facing listone surface: mirror the squad builder and hide
+    // final-cut / inactive players (e.g. not called up for the WC) so the
+    // convocati here match exactly what can be drafted in "La mia rosa".
+    getFMPlayers(ctx.competition.id, { activeOnly: true }),
     getFMCoaches(ctx.competition.id),
   ])
 

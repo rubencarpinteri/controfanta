@@ -85,9 +85,11 @@ export const DEFAULT_FM_CONFIG: FMCompetitionConfig = {
     goal: { P: 3.0, D: 3.0, C: 3.0, A: 3.0 },
     penalty_scored_discount: 0,
     assist: 1.0,
-    // Clean sheet bonus for GK only; defenders get none. Valid from 10'.
-    clean_sheet: { P: 1.0, D: 0, min_minutes: 10 },
-    penalty_saved: 1.5,
+    // Clean sheet bonus for GK only; defenders get none. No minutes floor: it
+    // applies whenever the keeper is the team's fielded GK (started, or came on
+    // for a titolare who didn't play), regardless of minutes.
+    clean_sheet: { P: 1.0, D: 0, min_minutes: 0 },
+    penalty_saved: 3.0,
     penalty_missed: -3.0,
     yellow_card: -0.5,
     red_card: -1.0,

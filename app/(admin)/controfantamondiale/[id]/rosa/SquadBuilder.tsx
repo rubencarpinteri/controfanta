@@ -204,8 +204,6 @@ export function SquadBuilder({
         return rDiff !== 0 ? rDiff : a.name.localeCompare(b.name, 'it')
       })
   }, [players, selected])
-  const myCoach = coaches.find((c) => c.id === coachId) ?? null
-
   const roleCounts = useMemo(() => {
     const counts: Record<FMPlayerRole, number> = { P: 0, D: 0, C: 0, A: 0 }
     for (const p of myPlayers) counts[p.role as FMPlayerRole]++
@@ -605,19 +603,8 @@ export function SquadBuilder({
             )
           })}
 
-          {/* Coach row (after the players) */}
-          {myCoach && (
-            <div className="flex items-center gap-3 bg-glass-2 px-3.5 py-3">
-              <span className="flex h-6 min-w-[26px] shrink-0 items-center justify-center rounded-md border border-hairline text-[10px] font-bold uppercase text-ink-4">CT</span>
-              <TeamCrest name={myCoach.fm_national_team.name} logoUrl={myCoach.fm_national_team.logo_url} flagUrl={myCoach.fm_national_team.flag_url} fifaCode={myCoach.fm_national_team.fifa_code} size={22} />
-              <span className="min-w-0 flex-1 truncate text-[14.5px] font-semibold text-ink-1">{myCoach.name}</span>
-              {TIER_BADGE[coachTiers[myCoach.id] ?? ''] && (
-                <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${TIER_BADGE[coachTiers[myCoach.id] ?? '']!.cls}`}>
-                  {TIER_BADGE[coachTiers[myCoach.id] ?? '']!.short}
-                </span>
-              )}
-            </div>
-          )}
+          {/* The allenatore is shown/edited in the dedicated selector below, so
+              it is intentionally NOT repeated here at the foot of the players. */}
 
           {myPlayers.length === 0 && (
             <div className="px-4 py-10 text-center text-[13px] text-ink-5">
