@@ -35,12 +35,25 @@ export default async function LeagueMembersPage() {
     .eq('league_id', ctx.league.id)
     .order('joined_at', { ascending: true })
 
-  // Fetch all teams in the league
-  const { data: allTeams } = await supabase
-    .from('fantasy_teams')
-    .select('id, name, manager_id')
+  // Teams live in the FantaMondiale model (fm_fantasy_team), scoped to a
+  // league_competition — NOT the legacy `fantasy_teams` table (purged with the
+  // Serie A trial). Resolve the league's active competition and read its teams.
+  const { data: activeComp } = await supabase
+    .from('fm_league_competition')
+    .select('id')
     .eq('league_id', ctx.league.id)
-    .order('name', { ascending: true })
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const { data: allTeams } = activeComp
+    ? await supabase
+        .from('fm_fantasy_team')
+        .select('id, name, manager_id')
+        .eq('league_competition_id', activeComp.id)
+        .order('name', { ascending: true })
+    : { data: [] }
 
   type Member = {
     user_id: string
@@ -61,9 +74,9 @@ export default async function LeagueMembersPage() {
     teamsByManager.set(t.manager_id, [...existing, t])
   }
 
-  // Teams whose manager is the admin — used as "placeholder" teams in the invite form
-  // and as the pool for inline assignment to other members.
-  const adminOwnedTeams = teamList.filter((t) => t.manager_id === ctx.userId)
+  // FM teams are self-created by managers; there is no legacy "placeholder"
+  // assignment pool, so the inline assign/unassign UI is suppressed (read-only).
+  const adminOwnedTeams: Team[] = []
 
   const fmt = (dt: string) =>
     new Intl.DateTimeFormat('it-IT', { dateStyle: 'short' }).format(new Date(dt))
@@ -136,7 +149,7 @@ export default async function LeagueMembersPage() {
                       <td className="px-4 py-3">
                         <TeamAssignmentCell
                           memberUserId={m.user_id}
-                          isSelf={isSelf}
+                          isSelf={true}
                           teams={teams.map((t) => ({ id: t.id, name: t.name }))}
                           availablePlaceholders={adminOwnedTeams.map((t) => ({ id: t.id, name: t.name }))}
                         />

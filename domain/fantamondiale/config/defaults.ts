@@ -77,20 +77,23 @@ export const DEFAULT_FM_CONFIG: FMCompetitionConfig = {
     '5-4-1',
   ],
 
-  // Serie A-aligned football B/M values.
+  // Official, user-confirmed B/M values (2026-06-10). These are the standard
+  // that applies to any Lega without a custom league_engine_config row.
   football: {
-    // Flat goal = 2.0 (double the assist). Matches the live engine config,
-    // which flattened the old per-role goal curve.
-    goal: { P: 2.0, D: 2.0, C: 2.0, A: 2.0 },
-    penalty_scored_discount: 0.3,
+    // Flat goal = +3 for every role (GK/DEF/MID/ATT). Penalty goals score the
+    // full +3 (no discount).
+    goal: { P: 3.0, D: 3.0, C: 3.0, A: 3.0 },
+    penalty_scored_discount: 0,
     assist: 1.0,
-    clean_sheet: { P: 0.8, D: 0.5, min_minutes: 60 },
-    penalty_saved: 2.0,
+    // Clean sheet bonus for GK only; defenders get none. Valid from 10'.
+    clean_sheet: { P: 1.0, D: 0, min_minutes: 10 },
+    penalty_saved: 1.5,
     penalty_missed: -3.0,
-    yellow_card: -0.3,
-    red_card: -1.5,
-    own_goal: -1.5,
-    goals_conceded: { P: -0.4, D: -0.15, def_min_minutes: 60 },
+    yellow_card: -0.5,
+    red_card: -1.0,
+    own_goal: -1.0,
+    // Goals-conceded malus for GK only (−1 per goal); defenders get none. From 10'.
+    goals_conceded: { P: -1.0, D: 0, def_min_minutes: 10 },
     brace_bonus: 0.5,
     hat_trick_bonus: 1.0,
   },

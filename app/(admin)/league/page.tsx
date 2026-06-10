@@ -103,21 +103,21 @@ export default async function LeagueSettingsPage() {
       {/* ── Identità lega + Draft Serie A ───────────────────────────────── */}
       <LeagueSettingsForm league={ctx.league} />
 
-      {/* ── Motore di calcolo (piattaforma) ──────────────────────────────── */}
-      {/* Raw scoring math is platform-global so the same match yields the same
-          player points in every lega — super-admin only. */}
-      {superAdmin && (
-        <Card>
-          <CardHeader
-            title="Motore di calcolo"
-            description="Pivot, bonus/malus, popolarità, MVP, soglie gol e punti W/D/L."
-            action={<ScopePill color="indigo">Piattaforma</ScopePill>}
-          />
-          <CardContent>
-            <EngineConfigForm current={engineConfig ?? null} />
-          </CardContent>
-        </Card>
-      )}
+      {/* ── Motore di calcolo (lega) ─────────────────────────────────────── */}
+      {/* Bonus/malus and scoring math are per-Lega: each league admin tunes
+          their own league_engine_config row (upserted on league_id by
+          saveEngineConfigAction). Leagues without a saved row use the official
+          standard defaults from domain/fantamondiale/config/defaults.ts. */}
+      <Card>
+        <CardHeader
+          title="Motore di calcolo"
+          description="Pivot, bonus/malus, popolarità, MVP, soglie gol e punti W/D/L."
+          action={<ScopePill color="green">Tutta la lega</ScopePill>}
+        />
+        <CardContent>
+          <EngineConfigForm current={engineConfig ?? null} />
+        </CardContent>
+      </Card>
 
       {/* ── Regole speciali ──────────────────────────────────────────────── */}
       <Card>
