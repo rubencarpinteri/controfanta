@@ -34,8 +34,8 @@ const DEFAULT_ENGINE: FMEngineConfig = {
 // the 300-credit economy (more top players affordable → popularity must bite).
 const DEFAULT_POPULARITY_BRACKETS: FMBracket[] = [
   { min_pct:  0, max_pct:  10, pct:  0 },
-  { min_pct: 11, max_pct:  25, pct: 10 },
-  { min_pct: 26, max_pct:  45, pct: 25 },
+  { min_pct: 11, max_pct:  25, pct: 30 },
+  { min_pct: 26, max_pct:  45, pct: 40 },
   { min_pct: 46, max_pct:  65, pct: 50 },
   { min_pct: 66, max_pct:  80, pct: 60 },
   { min_pct: 81, max_pct: 100, pct: 70 },
@@ -46,8 +46,8 @@ const DEFAULT_MVP_BRACKETS: FMBracket[] = [
   { min_pct:  0, max_pct:  10, pct: 70 },
   { min_pct: 11, max_pct:  25, pct: 60 },
   { min_pct: 26, max_pct:  45, pct: 50 },
-  { min_pct: 46, max_pct:  65, pct: 25 },
-  { min_pct: 66, max_pct:  80, pct: 10 },
+  { min_pct: 46, max_pct:  65, pct: 40 },
+  { min_pct: 66, max_pct:  80, pct: 30 },
   { min_pct: 81, max_pct: 100, pct:  0 },
 ]
 
