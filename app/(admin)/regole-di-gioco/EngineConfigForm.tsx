@@ -548,6 +548,8 @@ function GameRulesSection({
             />
             <p className="text-[11px] text-ink-4">
               Distacco fantavoto troppo piccolo → pareggio alla fascia media.
+              Lascia <span className="font-mono">0</span> per disattivare (un 62 vs 61.9 resta 1-0).
+              Valore suggerito se attivo: <span className="font-mono">1.0</span>.
             </p>
           </div>
           <div className="flex flex-col gap-1">
@@ -564,6 +566,8 @@ function GameRulesSection({
             />
             <p className="text-[11px] text-ink-4">
               1 gol di scarto ma distacco fantavoto sottile → pareggio.
+              Lascia <span className="font-mono">0</span> per disattivare.
+              Valore suggerito se attivo: <span className="font-mono">1.5</span>.
             </p>
           </div>
         </div>

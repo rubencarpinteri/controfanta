@@ -89,9 +89,12 @@ export const DEFAULT_RESULT_RULES: ResultRulesConfig = {
     { min: 88.5, goals: 5 },
     { min: 94.5, goals: 6 },
   ],
+  // Smoothing disabled by default — a 62 vs 61.9 is still a 1-0. Admins can
+  // opt back in per league; suggested values if enabled: drawIfDiffBelow 1.0,
+  // drawIf1GoalLeadAndDiffBelow 1.5.
   smoothing: {
-    drawIfDiffBelow: 1.0,
-    drawIf1GoalLeadAndDiffBelow: 1.5,
+    drawIfDiffBelow: 0,
+    drawIf1GoalLeadAndDiffBelow: 0,
   },
   points: { win: 3, draw: 1, loss: 0 },
 }
