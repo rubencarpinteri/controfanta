@@ -154,12 +154,17 @@ export function FMConfigEditor({
       {/* ── Squad & budget ── */}
       <div className="rounded-xl border border-hairline bg-glass-1 p-5 space-y-4">
         <p className="text-[13px] font-semibold text-ink-1">Rosa e budget</p>
+        <p className="text-[11px] text-ink-4 leading-relaxed">
+          Il <span className="font-medium text-ink-2">budget di riserva</span> vale solo per le fasi
+          che non hanno un budget proprio. Il budget vero, fase per fase, si imposta in
+          &ldquo;Budget per fase&rdquo; qui sotto.
+        </p>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           {(
             [
               ['starters',  'Titolari',                1],
               ['bench',     'Panchina',                1],
-              ['budget_default', 'Budget default (crediti)', 10],
+              ['budget_default', 'Budget di riserva (fallback)', 10],
             ] as const
           ).map(([key, label, step]) => (
             <div key={key}>

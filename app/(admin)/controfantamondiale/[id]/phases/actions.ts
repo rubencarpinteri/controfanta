@@ -62,6 +62,7 @@ export async function updateLegaPhaseAction(fd: FormData) {
     )
 
   revalidatePath(`/controfantamondiale/${ref}/phases`)
+  revalidatePath(`/controfantamondiale/${ref}/config`)
 }
 
 export async function setPhaseStatusAction(
