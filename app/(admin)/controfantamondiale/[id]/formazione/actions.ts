@@ -4,10 +4,15 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { validateFMLineup, type FMRole } from '@/domain/fantamondiale/lineup/validateFMLineup'
 
-export async function saveLineupAction(fd: FormData) {
+// Result returned to the client. Expected/validation failures are returned (not
+// thrown) so their message survives to the UI — Next.js masks thrown server
+// action errors in production, replacing the message with a generic digest.
+export type SaveLineupResult = { ok: true } | { ok: false; error: string }
+
+export async function saveLineupAction(fd: FormData): Promise<SaveLineupResult> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Non autenticato')
+  if (!user) return { ok: false, error: 'Non autenticato' }
 
   const competitionId = fd.get('competition_id') as string
   const roundId = fd.get('round_id') as string
@@ -17,7 +22,7 @@ export async function saveLineupAction(fd: FormData) {
   const benchIds = (fd.getAll('bench_ids') as string[]).filter(Boolean)
   const formation = fd.get('formation') as string
 
-  if (starterIds.length !== 11) throw new Error(`Seleziona esattamente 11 titolari (selezionati: ${starterIds.length})`)
+  if (starterIds.length !== 11) return { ok: false, error: `Seleziona esattamente 11 titolari (selezionati: ${starterIds.length})` }
 
   // Verify user owns this fantasy team
   const { data: team } = await supabase
@@ -26,7 +31,7 @@ export async function saveLineupAction(fd: FormData) {
     .eq('id', fantasyTeamId)
     .eq('manager_id', user.id)
     .maybeSingle()
-  if (!team) throw new Error('Non autorizzato')
+  if (!team) return { ok: false, error: 'Non autorizzato' }
 
   // Verify round is open, get phase
   const { data: round } = await supabase
@@ -34,7 +39,7 @@ export async function saveLineupAction(fd: FormData) {
     .select('status, phase_id')
     .eq('id', roundId)
     .single()
-  if (!round || round.status !== 'open') throw new Error('Il turno non è aperto per la selezione della formazione')
+  if (!round || round.status !== 'open') return { ok: false, error: 'Il turno non è aperto per la selezione della formazione' }
 
   // Look up the phase squad for this team + phase
   const { data: squad } = await supabase
@@ -43,7 +48,7 @@ export async function saveLineupAction(fd: FormData) {
     .eq('phase_id', round.phase_id)
     .eq('fantasy_team_id', fantasyTeamId)
     .maybeSingle()
-  if (!squad) throw new Error('Non hai ancora selezionato la rosa per questa fase')
+  if (!squad) return { ok: false, error: 'Non hai ancora selezionato la rosa per questa fase' }
 
   const phaseSquadId = squad.id
 
@@ -63,7 +68,7 @@ export async function saveLineupAction(fd: FormData) {
   }
 
   const validation = validateFMLineup({ starterIds, benchIds, roleById, squadIds })
-  if (!validation.valid) throw new Error(validation.errors.join(' '))
+  if (!validation.valid) return { ok: false, error: validation.errors.join(' ') }
 
   // Upsert lineup record
   const { data: existing } = await supabase
@@ -94,7 +99,7 @@ export async function saveLineupAction(fd: FormData) {
       })
       .select('id')
       .single()
-    if (error || !newLineup) throw new Error(error?.message ?? 'Failed to create lineup')
+    if (error || !newLineup) return { ok: false, error: error?.message ?? 'Errore nella creazione della formazione' }
     lineupId = newLineup.id
   }
 
@@ -119,7 +124,8 @@ export async function saveLineupAction(fd: FormData) {
   const { error: playersError } = await supabase
     .from('fm_matchday_lineup_player')
     .insert([...starterRows, ...benchRows])
-  if (playersError) throw new Error(`Errore nel salvataggio dei giocatori: ${playersError.message}`)
+  if (playersError) return { ok: false, error: `Errore nel salvataggio dei giocatori: ${playersError.message}` }
 
   revalidatePath(`/controfantamondiale/${competitionId}/formazione`)
+  return { ok: true }
 }

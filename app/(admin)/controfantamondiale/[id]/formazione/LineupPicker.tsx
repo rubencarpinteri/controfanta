@@ -140,9 +140,19 @@ export function LineupPicker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Drop any persisted bench ids no longer in the current squad (e.g. a player
+  // removed from the rosa after a prior save). Otherwise the stale id — invisible
+  // in the UI since it's not in `players` — would be submitted and rejected
+  // server-side with "...non è nella tua rosa". Starters are already filtered via
+  // seedAssign; the bench needs the same guard.
+  const seedBench = useMemo(
+    () => initialBenchIds.filter((id) => playerById.has(id)),
+    [initialBenchIds, playerById]
+  )
+
   const [formation, setFormation] = useState(startFormation)
   const [assign, setAssign] = useState<Record<string, string>>(seedAssign)
-  const [bench, setBench] = useState<string[]>(initialBenchIds)
+  const [bench, setBench] = useState<string[]>(seedBench)
   const [view, setView] = useState<'pitch' | 'list'>('pitch')
   const [picker, setPicker] = useState<{ slot: Slot } | { bench: true } | null>(null)
   const [search, setSearch] = useState('')
@@ -261,10 +271,16 @@ export function LineupPicker({
     for (const pid of bench) fd.append('bench_ids', pid)
     startTransition(async () => {
       try {
-        await saveLineupAction(fd)
-        setSaved(true)
+        const res = await saveLineupAction(fd)
+        if (res.ok) {
+          setSaved(true)
+        } else {
+          setError(res.error)
+        }
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Errore nel salvataggio')
+        // Unexpected (network / masked server crash) — validation paths return
+        // a result instead of throwing, so reaching here is a genuine failure.
+        setError(e instanceof Error ? e.message : 'Errore imprevisto nel salvataggio')
       }
     })
   }
