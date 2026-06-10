@@ -8,7 +8,7 @@ import {
   upsertFMPlayerStats,
   upsertSerieAPlayerStats,
 } from '@/lib/sportmonks/db'
-import { checkCronEnv, logCronRun } from '@/lib/sportmonks/cronLog'
+import { checkCronEnv, logCronRun, sendCronAlert } from '@/lib/sportmonks/cronLog'
 import { writeLiveSnapshots } from '@/lib/fantamondiale/liveSnapshotWriter'
 
 const ENDPOINT = 'sportmonks-ratings-tick'
@@ -150,8 +150,23 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const body = { live: liveByLeague.size, results, liveSnapshots }
-  const hadError = results.some((r) => r.error) || (liveSnapshots?.errors.length ?? 0) > 0
+  // Matchday anomaly detection — the failure modes that the bland "skipped"/
+  // success log would otherwise bury. We're past the live-window gate, so games
+  // should be live; if SportMonks returns fixtures but we ingest zero stats, or
+  // every league's fetch failed, ratings are NOT flowing and someone must know.
+  const liveFixturesTotal = results.reduce((s, r) => s + r.live_fixtures, 0)
+  const statsTotal = results.reduce((s, r) => s + r.stats_total, 0)
+  const allFetchesEmpty = liveByLeague.size > 0 && [...liveByLeague.values()].every((v) => v.length === 0)
+  let anomaly: string | undefined
+  if (liveFixturesTotal > 0 && statsTotal === 0) {
+    anomaly = `${liveFixturesTotal} live fixture(s) but 0 player stats ingested — check ID matching / parse.`
+  } else if (allFetchesEmpty) {
+    anomaly = 'In live window but every SportMonks inplay fetch returned empty/failed — check token / API.'
+  }
+  if (anomaly) await sendCronAlert(anomaly)
+
+  const body = { live: liveByLeague.size, results, liveSnapshots, anomaly }
+  const hadError = !!anomaly || results.some((r) => r.error) || (liveSnapshots?.errors.length ?? 0) > 0
   await logCronRun(db, {
     endpoint: ENDPOINT,
     started_at,
@@ -159,7 +174,7 @@ export async function GET(req: NextRequest) {
     http_status: 200,
     summary: body,
     error: hadError
-      ? (results.find((r) => r.error)?.error ?? liveSnapshots?.errors[0] ?? null)
+      ? (anomaly ?? results.find((r) => r.error)?.error ?? liveSnapshots?.errors[0] ?? null)
       : null,
   })
   return NextResponse.json(body)

@@ -260,10 +260,22 @@ export function parseFixture(fixture: SMFixture): ParsedFixture {
     if (m) m.is_mvp = true
   }
 
-  // Parse scoreline from result_info ("Celtic won after full-time." doesn't help;
-  // fall back to summed team goals).
-  const homeScore = homeId != null ? teamGoals.get(homeId) ?? 0 : null
-  const awayScore = awayId != null ? teamGoals.get(awayId) ?? 0 : null
+  // Scoreline: prefer SportMonks' authoritative CURRENT score (include=scores),
+  // which correctly counts own goals. Summing players' GOALS misses own goals
+  // (an OG is credited to the scorer, not the beneficiary team), producing a
+  // wrong scoreline and — via `result` below — wrong coach points. Fall back to
+  // the summed goals only when the scores include is absent.
+  function authoritativeScore(teamId: number | null): number | null {
+    if (teamId == null) return null
+    const current = (fixture.scores ?? []).filter((s) => s.description === 'CURRENT')
+    const entry = current.find((s) => s.participant_id === teamId)
+    const goals = entry?.score?.goals
+    return typeof goals === 'number' ? goals : null
+  }
+  const homeScore =
+    authoritativeScore(homeId) ?? (homeId != null ? teamGoals.get(homeId) ?? 0 : null)
+  const awayScore =
+    authoritativeScore(awayId) ?? (awayId != null ? teamGoals.get(awayId) ?? 0 : null)
 
   // Outcome: prefer the SportMonks winner flag (it names the advancer even when
   // a knockout tie is decided on penalties). Fall back to the scoreline, which

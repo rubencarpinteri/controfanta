@@ -335,10 +335,14 @@ export async function refreshFMSquads(
           .maybeSingle()
 
         if (existing) {
+          // NB: `role` is intentionally NOT updated here. Managers draft players
+          // by role and lineup/quota validity depends on it; letting a daily
+          // SportMonks reclassification flip a drafted player's role mid-tournament
+          // would silently invalidate rosters. Role is set once at insert and
+          // only ever changed deliberately by an admin. Cosmetic fields stay fresh.
           await db.from('fm_player').update({
             national_team_id: team.id,
             name: playerName,
-            role,
             shirt_number: entry.jersey_number,
           }).eq('id', existing.id)
         } else {
@@ -601,13 +605,30 @@ export async function upsertSerieAPlayerStats(
 
 export async function hasFixturesInLiveWindow(db: DB): Promise<boolean> {
   const now = new Date()
-  const from = new Date(now.getTime() - 130 * 60 * 1000).toISOString()
+  // Window widened to kickoff+210min: knockout matches run extra-time + a
+  // shootout + half-time/ET breaks, which can push final-rating settling well
+  // past the old +130 cap. Better to make a few extra cheap inplay calls than
+  // to stop polling while a match is still live.
+  const from = new Date(now.getTime() - 210 * 60 * 1000).toISOString()
   const to = new Date(now.getTime() + 5 * 60 * 1000).toISOString()
   const { count } = await db
     .from('sportmonks_fixtures')
     .select('sportmonks_fixture_id', { count: 'exact', head: true })
     .gte('kickoff_at', from)
     .lte('kickoff_at', to)
-  return (count ?? 0) > 0
+  if ((count ?? 0) > 0) return true
+
+  // Reality override: the check above trusts the fixture cache's kickoff_at,
+  // which can be stale if FIFA reschedules and the daily sync hasn't caught up.
+  // If any real match is still flagged in_progress (kickoff within the last 6h
+  // to bound a stuck row), keep polling regardless of the cache — so live rating
+  // ingest can never be silently halted by a wrong cached kickoff.
+  const recent = new Date(now.getTime() - 6 * 60 * 60 * 1000).toISOString()
+  const { count: fmLive } = await db
+    .from('fm_real_match')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'in_progress')
+    .gte('kickoff_at', recent)
+  return (fmLive ?? 0) > 0
 }
 

@@ -11,7 +11,7 @@
 import { fetchSportMonks } from './client'
 import type { SMFixture } from './types'
 
-const INPLAY_INCLUDES = 'participants;lineups.details.type;events.type'
+const INPLAY_INCLUDES = 'participants;lineups.details.type;events.type;scores'
 
 export async function fetchInplayForLeague(leagueId: number): Promise<SMFixture[]> {
   const env = await fetchSportMonks<SMFixture[]>(

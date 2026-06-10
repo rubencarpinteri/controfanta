@@ -80,6 +80,28 @@ export async function logCronRun(db: DB, input: CronRunInput): Promise<void> {
 }
 
 /**
+ * Loud alert for matchday anomalies the cron-status page would otherwise hide
+ * (e.g. live fixtures present but zero ratings ingested). Fire-and-forget: POSTs
+ * a Slack/Discord-compatible `{ text }` payload to SPORTMONKS_ALERT_WEBHOOK if
+ * configured. Never throws — a broken alert must not break the cron. When no
+ * webhook is set it just console.errors, which still surfaces in Vercel logs.
+ */
+export async function sendCronAlert(message: string): Promise<void> {
+  console.error(`[cron-alert] ${message}`)
+  const url = process.env.SPORTMONKS_ALERT_WEBHOOK
+  if (!url) return
+  try {
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: `⚠️ CONTROFANTA live ingest: ${message}` }),
+    })
+  } catch (e) {
+    console.error('[cron-alert] webhook failed:', e)
+  }
+}
+
+/**
  * Up-front guard: every cron route must have CRON_SECRET and
  * SPORTMONKS_API_TOKEN set, otherwise we want a clean 503 *before*
  * spending any DB or API calls. Returns null when env is fine.

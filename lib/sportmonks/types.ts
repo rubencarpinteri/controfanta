@@ -134,10 +134,23 @@ export type SMEvent = {
   type?: { id: number; name: string; code: string; developer_name: SMEventType }
 }
 
+// Authoritative scoreline entry (include=scores). One CURRENT entry per
+// participant carries the running total — used in preference to summing player
+// GOALS, which silently omits own goals.
+export type SMScore = {
+  id?: number
+  fixture_id?: number
+  type_id?: number
+  participant_id?: number
+  score?: { goals?: number | null; participant?: string | null } | null
+  description?: string | null
+}
+
 export type SMFixture = {
   id: number
   sport_id: number
   league_id: number
+  scores?: SMScore[]
   season_id: number
   stage_id?: number | null
   group_id?: number | null
