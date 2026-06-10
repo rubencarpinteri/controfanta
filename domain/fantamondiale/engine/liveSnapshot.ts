@@ -92,11 +92,61 @@ export type LiveOwnershipEntry = {
   pct_potential: number
 }
 
+/** One player as they appear in a real (national-team) match lineup. */
+export type LiveSnapshotRealPlayer = {
+  player_id: string
+  name: string
+  role: FMRole
+  jersey_number: number | null
+  /** null = not in the fantasy pool at all */
+  rating: number | null
+  minutes_played: number | null
+  /**
+   * Ownership signal among this lega's fantasy teams.
+   * 'excl_safe'  — fielded_now === 1 AND max_possible === 1 (true exclusive)
+   * 'excl_risk'  — fielded_now === 1 BUT max_possible > 1 (sub risk in another team)
+   * 'shared'     — fielded_now > 1
+   * 'bench_only' — fielded_now === 0 but max_possible > 0 (only on bench)
+   * null         — not in any fantasy lineup in this lega
+   */
+  ownership_signal: 'excl_safe' | 'excl_risk' | 'shared' | 'bench_only' | null
+  /** How many fantasy teams have this player as a current starter. */
+  fielded_now: number
+  /** Ceiling across all possible sub scenarios. */
+  max_possible: number
+}
+
+export type LiveSnapshotMatch = {
+  match_id: string
+  home_team: LiveTeamRef
+  away_team: LiveTeamRef
+  home_score: number | null
+  away_score: number | null
+  /** Elapsed match minute from SportMonks, null if not started. */
+  minute: number | null
+  status: 'scheduled' | 'in_progress' | 'finished' | 'cancelled'
+  kickoff_at: string
+  /** Players from fm_player pool who appeared in this match (minutes_played > 0). */
+  players: LiveSnapshotRealPlayer[]
+}
+
+export type LiveSnapshotTeamStandings = {
+  /** fantasy points total (players + coach) */
+  live_total: number
+  /** number of BR goals scored (thresholds met) */
+  goals_scored: number
+  /** live giornata points from BR head-to-head comparisons */
+  giornata_points: number
+}
+
 export type LiveRoundSnapshot = {
   computed_at: string
   round: { id: string; name: string; phase_id: string }
   teams: LiveSnapshotTeam[]
   ownership: Record<string, LiveOwnershipEntry>
+  matches: LiveSnapshotMatch[]
+  /** Keyed by fantasy_team_id */
+  standings: Record<string, LiveSnapshotTeamStandings>
 }
 
 // ---------------------------------------------------------------------------
@@ -135,7 +185,7 @@ export async function computeLiveRoundSnapshot(
   // ---- 2. Matches for the round (live-tolerant: scores may be null) ------
   const { data: matches } = await supabase
     .from('fm_real_match')
-    .select('id, home_team_id, away_team_id, home_score, away_score, result, status')
+    .select('id, home_team_id, away_team_id, home_score, away_score, result, status, minute, kickoff_at')
     .eq('scoring_round_id', roundId)
   const matchByTeamId = new Map<string, NonNullable<typeof matches>[number]>()
   for (const m of matches ?? []) {
@@ -170,6 +220,29 @@ export async function computeLiveRoundSnapshot(
     .select('id, name, role, national_team_id, fm_national_team(name, fifa_code, logo_url, flag_url)')
     .in('id', allPlayerIds.length > 0 ? allPlayerIds : ['00000000-0000-0000-0000-000000000000'])
   const playerById = new Map((players ?? []).map((p) => [p.id, p]))
+
+  // Also fetch ALL fm_player rows for national teams in this round's matches
+  // so the match detail panel can show the full real lineup, not just drafted players.
+  const matchTeamIds = [...new Set((matches ?? []).flatMap((m) => [m.home_team_id, m.away_team_id]))]
+  const { data: allMatchPlayers } = await supabase
+    .from('fm_player')
+    .select('id, name, role, national_team_id')
+    .eq('competition_id', round.competition_id)
+    .in('national_team_id', matchTeamIds.length > 0 ? matchTeamIds : ['00000000-0000-0000-0000-000000000000'])
+  // Merge into playerById so scoring lookups still work
+  for (const p of allMatchPlayers ?? []) {
+    if (!playerById.has(p.id)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      playerById.set(p.id, { ...p, fm_national_team: null } as any)
+    }
+  }
+
+  // National team info for matches (needed for LiveSnapshotMatch)
+  const { data: nationalTeams } = await supabase
+    .from('fm_national_team')
+    .select('id, name, fifa_code, logo_url, flag_url')
+    .in('id', matchTeamIds.length > 0 ? matchTeamIds : ['00000000-0000-0000-0000-000000000000'])
+  const nationalTeamById = new Map((nationalTeams ?? []).map((t) => [t.id, t]))
 
   const matchIds = (matches ?? []).map((m) => m.id)
   const { data: allStats } = await supabase
@@ -595,10 +668,125 @@ export async function computeLiveRoundSnapshot(
 
   teamsOut.sort((a, b) => b.live_total - a.live_total)
 
+  // ============================================================
+  // Build matches[] for the live dashboard match panel.
+  // For each real match, include all fm_player rows for those
+  // national teams that have stats (minutes_played > 0), annotated
+  // with ownership signals derived from the already-computed ownership map.
+  // ============================================================
+  const matchesOut: LiveSnapshotMatch[] = (matches ?? []).map((m) => {
+    const homeTeamData = nationalTeamById.get(m.home_team_id)
+    const awayTeamData = nationalTeamById.get(m.away_team_id)
+    const homeTeam: LiveTeamRef = homeTeamData
+      ? { name: homeTeamData.name, fifa_code: homeTeamData.fifa_code ?? '', logo_url: homeTeamData.logo_url ?? null, flag_url: homeTeamData.flag_url ?? null }
+      : { name: m.home_team_id, fifa_code: '', logo_url: null, flag_url: null }
+    const awayTeam: LiveTeamRef = awayTeamData
+      ? { name: awayTeamData.name, fifa_code: awayTeamData.fifa_code ?? '', logo_url: awayTeamData.logo_url ?? null, flag_url: awayTeamData.flag_url ?? null }
+      : { name: m.away_team_id, fifa_code: '', logo_url: null, flag_url: null }
+
+    // All pool players for this match's two teams who have played (minutes > 0)
+    // or are listed in the pool (to show even before the match starts).
+    const matchPlayerIds = (allMatchPlayers ?? [])
+      .filter((p) => p.national_team_id === m.home_team_id || p.national_team_id === m.away_team_id)
+      .map((p) => p.id)
+
+    const realPlayers: LiveSnapshotRealPlayer[] = matchPlayerIds
+      .map((pid): LiveSnapshotRealPlayer | null => {
+        const player = playerById.get(pid)
+        if (!player) return null
+        const stats = statsByKey.get(`${pid}:${m.id}`)
+        if (!stats && m.status === 'scheduled') return null // don't show before match starts
+        if (!stats && m.status !== 'scheduled') {
+          // Match in progress/finished but no stats = didn't play
+          return null
+        }
+        const own = ownership[pid]
+        const fn = own?.fielded_now ?? 0
+        const mp = own?.max_possible ?? 0
+        let signal: LiveSnapshotRealPlayer['ownership_signal'] = null
+        if (fn > 0 || mp > 0) {
+          if (fn === 0) signal = 'bench_only'
+          else if (fn === 1 && mp === 1) signal = 'excl_safe'
+          else if (fn === 1 && mp > 1) signal = 'excl_risk'
+          else signal = 'shared'
+        }
+        return {
+          player_id: pid,
+          name: player.name,
+          role: player.role as FMRole,
+          jersey_number: null,
+          rating: stats?.rating != null ? Number(stats.rating) : null,
+          minutes_played: stats?.minutes_played ?? null,
+          ownership_signal: signal,
+          fielded_now: fn,
+          max_possible: mp,
+        }
+      })
+      .filter((p): p is LiveSnapshotRealPlayer => p !== null)
+      .sort((a, b) => a.name.localeCompare(b.name))
+
+    return {
+      match_id: m.id,
+      home_team: homeTeam,
+      away_team: awayTeam,
+      home_score: m.home_score,
+      away_score: m.away_score,
+      minute: (m as typeof m & { minute?: number | null }).minute ?? null,
+      status: m.status as LiveSnapshotMatch['status'],
+      kickoff_at: (m as typeof m & { kickoff_at: string }).kickoff_at,
+      players: realPlayers,
+    }
+  })
+
+  // Sort: in_progress first, then scheduled by kickoff, then finished
+  matchesOut.sort((a, b) => {
+    const order = { in_progress: 0, scheduled: 1, finished: 2, cancelled: 3 }
+    const diff = (order[a.status] ?? 3) - (order[b.status] ?? 3)
+    if (diff !== 0) return diff
+    return a.kickoff_at.localeCompare(b.kickoff_at)
+  })
+
+  // ============================================================
+  // Battle Royale standings — goals scored + giornata points.
+  // ============================================================
+  const br = config.battle_royale
+  const thresholds = br.goal_thresholds.slice().sort((a, b) => a - b)
+
+  function goalsFromTotal(total: number): number {
+    return thresholds.filter((t) => total >= t).length
+  }
+
+  // Compute goals per team
+  const goalsByTeam = new Map<string, number>()
+  for (const t of teamsOut) {
+    goalsByTeam.set(t.fantasy_team_id, goalsFromTotal(t.live_total))
+  }
+
+  // BR giornata points: each team plays against every other (round-robin)
+  const standings: Record<string, LiveSnapshotTeamStandings> = {}
+  for (const t of teamsOut) {
+    const myGoals = goalsByTeam.get(t.fantasy_team_id) ?? 0
+    let pts = 0
+    for (const other of teamsOut) {
+      if (other.fantasy_team_id === t.fantasy_team_id) continue
+      const theirGoals = goalsByTeam.get(other.fantasy_team_id) ?? 0
+      if (myGoals > theirGoals) pts += br.win_points
+      else if (myGoals === theirGoals) pts += br.draw_points
+      else pts += br.loss_points
+    }
+    standings[t.fantasy_team_id] = {
+      live_total: t.live_total,
+      goals_scored: myGoals,
+      giornata_points: pts,
+    }
+  }
+
   return {
     computed_at: new Date().toISOString(),
     round: { id: round.id, name: round.name, phase_id: round.phase_id },
     teams: teamsOut,
     ownership,
+    matches: matchesOut,
+    standings,
   }
 }

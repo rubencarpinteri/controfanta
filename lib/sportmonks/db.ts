@@ -422,10 +422,9 @@ export async function upsertFMPlayerStats(
   await db.from('fm_real_match').update({
     home_score: parsed.home_score,
     away_score: parsed.away_score,
-    // Records the advancer for knockout ties decided on penalties; used by the
-    // coach engine's 'advancer_wins' draw mode.
     result: parsed.result,
     status: matchStatus,
+    minute: parsed.length_minutes > 0 ? parsed.length_minutes : null,
   }).eq('id', match.id)
 
   // 3. Resolve fm_player UUIDs by sportmonks_player_id (one query)

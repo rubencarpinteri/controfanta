@@ -2098,6 +2098,7 @@ export type Database = {
           home_team_id: string
           id: string
           kickoff_at: string
+          minute: number | null
           result: Database["public"]["Enums"]["fm_match_result"] | null
           scoring_round_id: string
           sportmonks_fixture_id: number | null
@@ -2114,6 +2115,7 @@ export type Database = {
           home_team_id: string
           id?: string
           kickoff_at: string
+          minute?: number | null
           result?: Database["public"]["Enums"]["fm_match_result"] | null
           scoring_round_id: string
           sportmonks_fixture_id?: number | null
@@ -2130,6 +2132,7 @@ export type Database = {
           home_team_id?: string
           id?: string
           kickoff_at?: string
+          minute?: number | null
           result?: Database["public"]["Enums"]["fm_match_result"] | null
           scoring_round_id?: string
           sportmonks_fixture_id?: number | null
@@ -2612,7 +2615,15 @@ export type Database = {
           updated_at?: string
           weekly_budget?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "leagues_invite_token_created_by_fkey"
+            columns: ["invite_token_created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lineup_current_pointers: {
         Row: {
@@ -4145,14 +4156,6 @@ export type Database = {
         Args: { p_name: string; p_season_name: string }
         Returns: string
       }
-      opt_lega_into_fm: {
-        Args: {
-          p_league_id: string
-          p_fm_competition_id: string
-          p_base_slug: string
-        }
-        Returns: string
-      }
       fm_get_user_team_id: {
         Args: { p_league_competition_id: string }
         Returns: string
@@ -4169,6 +4172,14 @@ export type Database = {
       is_league_admin: { Args: { p_league_id: string }; Returns: boolean }
       is_league_member: { Args: { p_league_id: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
+      opt_lega_into_fm: {
+        Args: {
+          p_base_slug: string
+          p_fm_competition_id: string
+          p_league_id: string
+        }
+        Returns: string
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       submit_lineup: {
@@ -4533,28 +4544,6 @@ export const Constants = {
     },
   },
 } as const
-
-
-export type AuditAction = Database["public"]["Enums"]["audit_action"]
-export type RatingClass = Database["public"]["Enums"]["rating_class"]
-export type MatchdayStatus = Database["public"]["Enums"]["matchday_status"]
-export type LeagueRole = Database["public"]["Enums"]["league_role"]
-export type CompetitionType = Database["public"]["Enums"]["competition_type"]
-
-export type League = Database["public"]["Tables"]["leagues"]["Row"]
-export type LeaguePlayer = Database["public"]["Tables"]["league_players"]["Row"]
-export type Matchday = Database["public"]["Tables"]["matchdays"]["Row"]
-export type MatchdayFixture = Database["public"]["Tables"]["matchday_fixtures"]["Row"]
-export type Formation = Database["public"]["Tables"]["formations"]["Row"]
-export type FormationSlot = Database["public"]["Tables"]["formation_slots"]["Row"]
-export type FantasyTeam = Database["public"]["Tables"]["fantasy_teams"]["Row"]
-export type Competition = Database["public"]["Tables"]["competitions"]["Row"]
-export type CompetitionRound = Database["public"]["Tables"]["competition_rounds"]["Row"]
-export type CompetitionFixture = Database["public"]["Tables"]["competition_fixtures"]["Row"]
-export type CompetitionMatchup = Database["public"]["Tables"]["competition_matchups"]["Row"]
-export type LeagueEngineConfig = Database["public"]["Tables"]["league_engine_config"]["Row"]
-export type SerieAPlayer = Database["public"]["Tables"]["serie_a_players"]["Row"]
-
 // FantaMondiale Statistico aliases
 
 export type FMCompetition = Database["public"]["Tables"]["fm_competition"]["Row"]
@@ -4604,3 +4593,25 @@ export type FMCompetitionCoachTier = Database["public"]["Tables"]["fm_competitio
 export type FMLeaguePhase = Database["public"]["Tables"]["fm_league_phase"]["Row"]
 export type FMLeaguePhasePlayerPrice = Database["public"]["Tables"]["fm_league_phase_player_price"]["Row"]
 export type FMLeagueCompetitionConfig = Database["public"]["Tables"]["fm_league_competition_config"]["Row"]
+export type AuditAction = Database["public"]["Enums"]["audit_action"]
+export type RatingClass = Database["public"]["Enums"]["rating_class"]
+export type MatchdayStatus = Database["public"]["Enums"]["matchday_status"]
+export type LeagueRole = Database["public"]["Enums"]["league_role"]
+export type CompetitionType = Database["public"]["Enums"]["competition_type"]
+
+export type League = Database["public"]["Tables"]["leagues"]["Row"]
+export type LeaguePlayer = Database["public"]["Tables"]["league_players"]["Row"]
+export type Matchday = Database["public"]["Tables"]["matchdays"]["Row"]
+export type MatchdayFixture = Database["public"]["Tables"]["matchday_fixtures"]["Row"]
+export type Formation = Database["public"]["Tables"]["formations"]["Row"]
+export type FormationSlot = Database["public"]["Tables"]["formation_slots"]["Row"]
+export type FantasyTeam = Database["public"]["Tables"]["fantasy_teams"]["Row"]
+export type Competition = Database["public"]["Tables"]["competitions"]["Row"]
+export type CompetitionRound = Database["public"]["Tables"]["competition_rounds"]["Row"]
+export type CompetitionFixture = Database["public"]["Tables"]["competition_fixtures"]["Row"]
+export type CompetitionMatchup = Database["public"]["Tables"]["competition_matchups"]["Row"]
+export type LeagueEngineConfig = Database["public"]["Tables"]["league_engine_config"]["Row"]
+export type SerieAPlayer = Database["public"]["Tables"]["serie_a_players"]["Row"]
+
+// FantaMondiale Statistico aliases
+

@@ -89,7 +89,6 @@ export default async function LivePage({ params }: { params: Promise<{ id: strin
         roundName={activeRound.name}
         myTeamId={ctx.fantasyTeamId}
         initialSnapshot={(snapRow?.snapshot as LiveRoundSnapshot | null) ?? null}
-        initialComputedAt={snapRow?.computed_at ?? null}
       />
     </div>
   )
