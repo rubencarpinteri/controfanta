@@ -75,20 +75,24 @@ async function recalcBudgetSpent(supabase: Awaited<ReturnType<typeof createClien
   await supabase.from('fm_phase_squad').update({ budget_spent: spent }).eq('id', squadId)
 }
 
-export async function toggleSquadPlayerAction(fd: FormData) {
+// Expected/validation failures are returned (not thrown) so their message
+// survives to the UI — Next.js masks thrown server-action errors in production.
+export type ToggleSquadResult = { ok: true } | { ok: false; error: string }
+
+export async function toggleSquadPlayerAction(fd: FormData): Promise<ToggleSquadResult> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Non autenticato')
+  if (!user) return { ok: false, error: 'Non autenticato' }
 
   const competitionId = fd.get('competition_id') as string
   const phaseId = fd.get('phase_id') as string
   const playerId = fd.get('player_id') as string
 
   const legaCompId = await resolveLegaCompId(supabase, competitionId)
-  if (!legaCompId) throw new Error('Competizione non trovata')
+  if (!legaCompId) return { ok: false, error: 'Competizione non trovata' }
 
   const fantasyTeamId = await getTeamId(competitionId, user.id)
-  if (!fantasyTeamId) throw new Error('Non sei iscritto a questa competizione')
+  if (!fantasyTeamId) return { ok: false, error: 'Non sei iscritto a questa competizione' }
 
   // Phase status stays global (driven by real fixtures); budget + price come
   // from this Lega's own fantasy layer.
@@ -97,7 +101,7 @@ export async function toggleSquadPlayerAction(fd: FormData) {
     .select('status')
     .eq('id', phaseId)
     .single()
-  if (!phase || phase.status !== 'open') throw new Error('La fase non è aperta per la selezione della rosa')
+  if (!phase || phase.status !== 'open') return { ok: false, error: 'La fase non è aperta per la selezione della rosa' }
 
   // Price and budget are authoritative server-side — never trust the client.
   const config = await loadFMUnifiedConfigForLega(supabase, legaCompId)
@@ -115,6 +119,31 @@ export async function toggleSquadPlayerAction(fd: FormData) {
     .maybeSingle()
 
   if (existing) {
+    // Guard: never let a player be sold out of the rosa while he is still part
+    // of a submitted formazione for any round in this phase. Doing so would
+    // silently invalidate that lineup (player no longer "nella tua rosa") and,
+    // worse, leave an orphaned starter/bench entry for live scoring. The manager
+    // must remove him from the formazione first.
+    const { data: usedInLineup } = await supabase
+      .from('fm_matchday_lineup_player')
+      .select('lineup_id, fm_matchday_lineup!inner(fantasy_team_id, scoring_round_id, fm_scoring_round!inner(name, phase_id))')
+      .eq('player_id', playerId)
+      .eq('fm_matchday_lineup.fantasy_team_id', fantasyTeamId)
+      .eq('fm_matchday_lineup.fm_scoring_round.phase_id', phaseId)
+      .limit(1)
+
+    if (usedInLineup && usedInLineup.length > 0) {
+      const lineup = usedInLineup[0]!.fm_matchday_lineup as
+        | { fm_scoring_round?: { name?: string } | { name?: string }[] | null }
+        | null
+      const sr = lineup?.fm_scoring_round
+      const roundName = (Array.isArray(sr) ? sr[0]?.name : sr?.name) ?? 'in corso'
+      return {
+        ok: false,
+        error: `Questo giocatore è schierato nella tua formazione (${roundName}). Toglilo dalla formazione prima di cederlo.`,
+      }
+    }
+
     await supabase.from('fm_phase_squad_player').delete().eq('id', existing.id)
     await recalcBudgetSpent(supabase, squadId)
   } else {
@@ -126,7 +155,7 @@ export async function toggleSquadPlayerAction(fd: FormData) {
       .eq('phase_squad_id', squadId)
     const currentCount = roster?.length ?? 0
     if (currentCount >= pool_size) {
-      throw new Error(`Rosa piena (massimo ${pool_size} giocatori)`)
+      return { ok: false, error: `Rosa piena (massimo ${pool_size} giocatori)` }
     }
 
     const { data: pickedPlayer } = await supabase
@@ -134,7 +163,7 @@ export async function toggleSquadPlayerAction(fd: FormData) {
       .select('role')
       .eq('id', playerId)
       .single()
-    if (!pickedPlayer) throw new Error('Giocatore non trovato')
+    if (!pickedPlayer) return { ok: false, error: 'Giocatore non trovato' }
     const pickedRole = pickedPlayer.role as FMPlayerRole
 
     const roleCount = (roster ?? []).filter((r) => {
@@ -144,9 +173,7 @@ export async function toggleSquadPlayerAction(fd: FormData) {
     }).length
     const roleQuota = role_quotas[pickedRole]
     if (roleCount >= roleQuota) {
-      throw new Error(
-        `Quota ${ROLE_LABEL[pickedRole]} piena (${roleQuota} massimo)`,
-      )
+      return { ok: false, error: `Quota ${ROLE_LABEL[pickedRole]} piena (${roleQuota} massimo)` }
     }
 
     const { data: squad } = await supabase
@@ -155,7 +182,7 @@ export async function toggleSquadPlayerAction(fd: FormData) {
       .eq('id', squadId)
       .single()
     if (squad && squad.budget_spent + playerPrice > squad.budget_total) {
-      throw new Error(`Budget insufficiente (rimasti ${squad.budget_total - squad.budget_spent} cr)`)
+      return { ok: false, error: `Budget insufficiente (rimasti ${squad.budget_total - squad.budget_spent} cr)` }
     }
 
     await supabase
@@ -165,6 +192,7 @@ export async function toggleSquadPlayerAction(fd: FormData) {
   }
 
   revalidatePath(`/controfantamondiale/${competitionId}/rosa`)
+  return { ok: true }
 }
 
 export async function setSquadCoachAction(fd: FormData) {

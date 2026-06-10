@@ -250,9 +250,8 @@ export function SquadBuilder({
     fd.set('player_price', price.toString())
     fd.set('budget_total', budgetTotal.toString())
     startTransition(async () => {
-      try {
-        await toggleSquadPlayerAction(fd)
-      } catch (e) {
+      // Revert the optimistic selection + budget and surface a message.
+      const revert = (message: string) => {
         setSelected((current) => {
           const reverted = new Set(current)
           if (isIn) {
@@ -263,7 +262,13 @@ export function SquadBuilder({
           return reverted
         })
         setSpent((current) => current + (isIn ? price : -price))
-        setError(e instanceof Error ? e.message : 'Errore')
+        setError(message)
+      }
+      try {
+        const res = await toggleSquadPlayerAction(fd)
+        if (!res.ok) revert(res.error)
+      } catch (e) {
+        revert(e instanceof Error ? e.message : 'Errore')
       } finally {
         setPendingPlayerIds((prev) => {
           const nextPending = new Set(prev)
