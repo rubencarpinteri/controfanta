@@ -46,11 +46,23 @@ async function ensureSquad(
   const supabase = await createClient()
   const { data: existing } = await supabase
     .from('fm_phase_squad')
-    .select('id')
+    .select('id, budget_total')
     .eq('phase_id', phaseId)
     .eq('fantasy_team_id', fantasyTeamId)
     .maybeSingle()
-  if (existing) return existing.id
+  if (existing) {
+    // Reconcile the frozen budget with the league's current per-phase budget.
+    // A league_admin can raise/lower the budget after squads exist; the add-player
+    // check enforces squad.budget_total, so without this sync those edits never
+    // take effect for already-created squads.
+    if (existing.budget_total !== budgetTotal) {
+      await supabase
+        .from('fm_phase_squad')
+        .update({ budget_total: budgetTotal })
+        .eq('id', existing.id)
+    }
+    return existing.id
+  }
 
   const { data, error } = await supabase
     .from('fm_phase_squad')
