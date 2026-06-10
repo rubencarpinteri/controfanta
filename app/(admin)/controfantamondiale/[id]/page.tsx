@@ -126,6 +126,23 @@ export default async function FMOverviewPage({ params }: { params: Promise<{ id:
         <StatusBadge status={competition.status} />
       </div>
 
+      {/* ── Admin-who-also-plays: enrol self ──────────────────────────────────
+          Admins fall through to this dashboard branch and never saw the
+          create-team form, leaving no UI path to build their own squad. Show
+          it here when they don't yet have a fantasy team. */}
+      {ctx.fantasyTeamId === null && (
+        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-5">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-300">
+            Vuoi giocare anche tu?
+          </p>
+          <p className="mt-1 mb-3 text-[13px] leading-relaxed text-ink-3">
+            Come admin gestisci questa competizione, ma non hai ancora una squadra.
+            Creala per costruire la tua rosa e schierare la formazione.
+          </p>
+          <CreateFMTeamForm competitionRef={id} />
+        </div>
+      )}
+
       {/* ── Stats grid ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="Nazioni" value={`${activeTeams} (${eliminatedTeams}✕)`} href={`/controfantamondiale/${id}/teams`} />
