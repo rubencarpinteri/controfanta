@@ -315,20 +315,25 @@ function OwnershipSection({
   const [mvp, setMvp]               = useState(defaultMvp)
   const [calcOrder, setCalcOrder]   = useState<CalcOrder>(defaultCalcOrder)
 
-  // Live scenario preview — a striker (voto base 7.14) who scored 1 goal.
-  // raw_subtotal is derived from the configured ATT goal bonus, never hardcoded.
+  // Live scenario preview — same striker (voto base 7.14), 8 scenarios crossing
+  // goal/no-goal × MVP/no-MVP × ownership 30/40/50. raw_subtotal is derived from
+  // the configured ATT goal bonus, never hardcoded.
   const exampleBaseVote = 7.14
   const exampleRaw = exampleBaseVote + exampleGoalBonus
-  const samples: Array<{ label: string; ownership: number; mvp: boolean }> = [
-    { label: 'Differenziale',           ownership: 8,  mvp: false },
-    { label: 'Differenziale + MVP',     ownership: 8,  mvp: true  },
-    { label: 'Popolare',                ownership: 85, mvp: false },
-    { label: 'Popolare + MVP',          ownership: 70, mvp: true  },
+  const samples: Array<{ label: string; ownership: number; mvp: boolean; goal: boolean }> = [
+    { label: 'Gol · 30% · no MVP',        ownership: 30, mvp: false, goal: true  },
+    { label: 'Gol · 40% · no MVP',        ownership: 40, mvp: false, goal: true  },
+    { label: 'Gol · 50% · no MVP',        ownership: 50, mvp: false, goal: true  },
+    { label: 'Gol · 40% · MVP',           ownership: 40, mvp: true,  goal: true  },
+    { label: 'Senza gol · 30% · no MVP',  ownership: 30, mvp: false, goal: false },
+    { label: 'Senza gol · 40% · no MVP',  ownership: 40, mvp: false, goal: false },
+    { label: 'Senza gol · 50% · no MVP',  ownership: 50, mvp: false, goal: false },
+    { label: 'Senza gol · 40% · MVP',     ownership: 40, mvp: true,  goal: false },
   ]
 
   const previews = useMemo(() => {
-    const raw = exampleRaw
     return samples.map((s) => {
+      const raw = s.goal ? exampleRaw : exampleBaseVote
       const popPct = bracketLookup(popularity, s.ownership)
       const mvpPct = s.mvp ? bracketLookup(mvp, s.ownership) : 0
       const penalty = Math.abs(raw) * popPct / 100
@@ -337,9 +342,9 @@ function OwnershipSection({
       const final = calcOrder === 'penalty_then_mvp'
         ? after + mvpAmount
         : raw + mvpAmount - penalty
-      return { ...s, popPct, mvpPct, final }
+      return { ...s, raw, popPct, mvpPct, final }
     })
-  }, [popularity, mvp, calcOrder, samples, exampleRaw])
+  }, [popularity, mvp, calcOrder, samples, exampleRaw, exampleBaseVote])
 
   const popularityJson = JSON.stringify(popularity)
   const mvpJson = JSON.stringify(mvp)
@@ -390,11 +395,13 @@ function OwnershipSection({
         </p>
       </div>
 
-      {/* Live preview — same raw_subtotal, four ownership scenarios */}
+      {/* Live preview — same striker, eight scenarios (goal/no-goal × MVP × ownership) */}
       <div className="rounded-lg border border-hairline bg-transparent p-4">
-        <p className="text-xs font-medium uppercase tracking-wider text-ink-4">Anteprima — stesso giocatore, 4 scenari</p>
+        <p className="text-xs font-medium uppercase tracking-wider text-ink-4">Anteprima — stesso giocatore, 8 scenari</p>
         <p className="mt-0.5 mb-3 text-[11px] text-ink-4">
-          Caso esempio: un attaccante voto {exampleBaseVote.toFixed(2)} + 1 gol (+{exampleGoalBonus}) → <span className="font-mono">raw_subtotal = {exampleRaw.toFixed(2)}</span>.
+          Stesso attaccante (voto base {exampleBaseVote.toFixed(2)}). Con gol: +{exampleGoalBonus} →{' '}
+          <span className="font-mono">raw {exampleRaw.toFixed(2)}</span>; senza gol →{' '}
+          <span className="font-mono">raw {exampleBaseVote.toFixed(2)}</span>.
         </p>
         <div className="grid gap-2 sm:grid-cols-2">
           {previews.map((p, i) => (
@@ -402,7 +409,7 @@ function OwnershipSection({
               <div>
                 <p className="text-xs text-ink-2">{p.label}</p>
                 <p className="text-[10px] text-ink-4">
-                  {p.ownership}% ownership · pen {p.popPct}%{p.mvp ? ` · MVP +${p.mvpPct}%` : ''}
+                  raw {p.raw.toFixed(2)} · pen {p.popPct}%{p.mvp ? ` · MVP +${p.mvpPct}%` : ''}
                 </p>
               </div>
               <span className={`font-mono text-sm font-semibold ${p.final >= 0 ? 'text-ink-1' : 'text-rose-400'}`}>
