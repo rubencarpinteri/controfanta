@@ -135,6 +135,8 @@ export default async function LivePage({
       ownership: {},
       matches: (realMatches ?? []).map((m) => ({
         match_id: m.id,
+        home_team_id: m.home_team_id,
+        away_team_id: m.away_team_id,
         home_team: toRef(m.home_team_id),
         away_team: toRef(m.away_team_id),
         home_score: m.home_score,

@@ -220,6 +220,15 @@ export type ParsedPlayerStat = {
   clean_sheet: boolean
   is_captain: boolean
   is_starter: boolean
+  jersey_number: number | null
+  /** Minute this player came on (sub); null if he started or never entered. */
+  subbed_on_minute: number | null
+  /** Minute this player was taken off; null if he played to the end / DNP. */
+  subbed_off_minute: number | null
+  /** SportMonks id of the player this one came on FOR (set on the entrant). */
+  replaced_sm_id: number | null
+  /** SportMonks id of the player who came on for this one (set on the leaver). */
+  replacement_sm_id: number | null
   /** Highest-RATING player in the match per side; set after parse. */
   is_mvp: boolean
   /** Full SportMonks per-stat dump (all 60 developer_names) for archival. */

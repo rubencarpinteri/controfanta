@@ -188,9 +188,29 @@ export function parseFixture(fixture: SMFixture): ParsedFixture {
       clean_sheet: false,
       is_captain: captain,
       is_starter: l.type_id === 11,
+      jersey_number: l.jersey_number ?? null,
+      subbed_on_minute: null,
+      subbed_off_minute: null,
+      replaced_sm_id: null,
+      replacement_sm_id: null,
       is_mvp: false,
       raw_stats: dumpAllStats(l.details),
     })
+  }
+
+  // Pair up substitutions: the leaver gets subbed_off + replacement, the
+  // entrant gets subbed_on + replaced. Drives the "X came on for Y" display.
+  for (const s of extractSubs(events)) {
+    const off = byPlayer.get(s.off_player_id)
+    const on = byPlayer.get(s.on_player_id)
+    if (off) {
+      off.subbed_off_minute = s.minute
+      off.replacement_sm_id = s.on_player_id
+    }
+    if (on) {
+      on.subbed_on_minute = s.minute
+      on.replaced_sm_id = s.off_player_id
+    }
   }
 
   // Apply event-derived counters

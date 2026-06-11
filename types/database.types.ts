@@ -2014,7 +2014,10 @@ export type Database = {
           goals: number
           goals_conceded: number
           id: string
+          is_captain: boolean
           is_mvp: boolean
+          is_starter: boolean
+          jersey_number: number | null
           minutes_played: number
           own_goals: number
           penalties_missed: number
@@ -2025,6 +2028,10 @@ export type Database = {
           raw_payload: Json | null
           real_match_id: string
           red_cards: number
+          replaced_player_id: string | null
+          replacement_player_id: string | null
+          subbed_off_minute: number | null
+          subbed_on_minute: number | null
           updated_at: string
           yellow_cards: number
         }
@@ -2035,7 +2042,10 @@ export type Database = {
           goals?: number
           goals_conceded?: number
           id?: string
+          is_captain?: boolean
           is_mvp?: boolean
+          is_starter?: boolean
+          jersey_number?: number | null
           minutes_played?: number
           own_goals?: number
           penalties_missed?: number
@@ -2046,6 +2056,10 @@ export type Database = {
           raw_payload?: Json | null
           real_match_id: string
           red_cards?: number
+          replaced_player_id?: string | null
+          replacement_player_id?: string | null
+          subbed_off_minute?: number | null
+          subbed_on_minute?: number | null
           updated_at?: string
           yellow_cards?: number
         }
@@ -2056,7 +2070,10 @@ export type Database = {
           goals?: number
           goals_conceded?: number
           id?: string
+          is_captain?: boolean
           is_mvp?: boolean
+          is_starter?: boolean
+          jersey_number?: number | null
           minutes_played?: number
           own_goals?: number
           penalties_missed?: number
@@ -2067,6 +2084,10 @@ export type Database = {
           raw_payload?: Json | null
           real_match_id?: string
           red_cards?: number
+          replaced_player_id?: string | null
+          replacement_player_id?: string | null
+          subbed_off_minute?: number | null
+          subbed_on_minute?: number | null
           updated_at?: string
           yellow_cards?: number
         }
@@ -2083,6 +2104,20 @@ export type Database = {
             columns: ["real_match_id"]
             isOneToOne: false
             referencedRelation: "fm_real_match"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fm_player_match_stats_replaced_player_id_fkey"
+            columns: ["replaced_player_id"]
+            isOneToOne: false
+            referencedRelation: "fm_player"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fm_player_match_stats_replacement_player_id_fkey"
+            columns: ["replacement_player_id"]
+            isOneToOne: false
+            referencedRelation: "fm_player"
             referencedColumns: ["id"]
           },
         ]
@@ -4544,6 +4579,7 @@ export const Constants = {
     },
   },
 } as const
+
 // FantaMondiale Statistico aliases
 
 export type FMCompetition = Database["public"]["Tables"]["fm_competition"]["Row"]

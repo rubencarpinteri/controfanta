@@ -462,6 +462,13 @@ export async function upsertFMPlayerStats(
       clean_sheet: p.clean_sheet,
       goals_conceded: p.goals_conceded,
       is_mvp: p.is_mvp,
+      is_starter: p.is_starter,
+      is_captain: p.is_captain,
+      jersey_number: p.jersey_number,
+      subbed_on_minute: p.subbed_on_minute,
+      subbed_off_minute: p.subbed_off_minute,
+      replaced_player_id: p.replaced_sm_id != null ? (smToUuid.get(p.replaced_sm_id) ?? null) : null,
+      replacement_player_id: p.replacement_sm_id != null ? (smToUuid.get(p.replacement_sm_id) ?? null) : null,
       raw_payload: { source: 'sportmonks', stats: p.raw_stats } as unknown as Json,
     })
   }

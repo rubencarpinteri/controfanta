@@ -46,6 +46,13 @@ export type LiveTeamRef = {
   flag_url: string | null
 }
 
+/** One fantasy team that owns a given player, and how they deployed him. */
+export type LiveOwnerRef = {
+  fantasy_team_id: string
+  team_name: string
+  status: 'titolare' | 'panchina'
+}
+
 export type LiveSnapshotPlayer = {
   player_id: string
   name: string
@@ -61,6 +68,8 @@ export type LiveSnapshotPlayer = {
   popularity_penalty_potential: number
   mvp_bonus: number
   final_score_now: number
+  /** OTHER fantasy teams in the lega that also rostered this player. */
+  owners: LiveOwnerRef[]
 }
 
 export type LiveSnapshotCoach = {
@@ -98,10 +107,36 @@ export type LiveSnapshotRealPlayer = {
   player_id: string
   name: string
   role: FMRole
+  /** Which national team this player belongs to — lets the UI split home/away. */
+  national_team_id: string
   jersey_number: number | null
-  /** null = not in the fantasy pool at all */
+  /** Real-match starting XI vs bench (SportMonks lineup). */
+  is_starter: boolean
+  /** SportMonks rating (the input to the voto), null if no rating yet. */
   rating: number | null
+  /** Fantasy voto = raw subtotal (rating + bonus/malus), pre-ownership. */
+  voto: number | null
+  /** Highest-rated player in the fixture. */
+  is_mvp: boolean
   minutes_played: number | null
+  /** Play status, so the UI can render −, X (DNP, match over) or S.V. */
+  play_state: PlayState
+  goals: number
+  assists: number
+  yellow_cards: number
+  red_cards: number
+  own_goals: number
+  penalties_scored: number
+  penalties_saved: number
+  penalties_missed: number
+  /** Minute he came on / went off (real-match substitution). */
+  subbed_on_minute: number | null
+  subbed_off_minute: number | null
+  /** Name of the player he replaced / who replaced him. */
+  replaced_player_name: string | null
+  replacement_player_name: string | null
+  /** Which fantasy teams in the lega rostered him, titolare or panchina. */
+  owners: LiveOwnerRef[]
   /**
    * Ownership signal among this lega's fantasy teams.
    * 'excl_safe'  — fielded_now === 1 AND max_possible === 1 (true exclusive)
@@ -119,6 +154,8 @@ export type LiveSnapshotRealPlayer = {
 
 export type LiveSnapshotMatch = {
   match_id: string
+  home_team_id: string
+  away_team_id: string
   home_team: LiveTeamRef
   away_team: LiveTeamRef
   home_score: number | null
@@ -276,7 +313,7 @@ export async function computeLiveRoundSnapshot(
   const { data: allStats } = await supabase
     .from('fm_player_match_stats')
     .select(
-      'real_match_id, player_id, minutes_played, rating, goals, penalties_scored, assists, yellow_cards, red_cards, penalties_saved, penalties_missed, own_goals, goals_conceded, is_mvp',
+      'real_match_id, player_id, minutes_played, rating, goals, penalties_scored, assists, yellow_cards, red_cards, penalties_saved, penalties_missed, own_goals, goals_conceded, is_mvp, is_starter, jersey_number, subbed_on_minute, subbed_off_minute, replaced_player_id, replacement_player_id',
     )
     .in('real_match_id', matchIds.length > 0 ? matchIds : ['00000000-0000-0000-0000-000000000000'])
   const statsByKey = new Map((allStats ?? []).map((s) => [`${s.player_id}:${s.real_match_id}`, s]))
@@ -389,7 +426,11 @@ export async function computeLiveRoundSnapshot(
   const rawByPlayer = new Map<string, ReturnType<typeof scorePlayerRaw>>()
   const stateByPlayer = new Map<string, PlayState>()
 
-  for (const pid of allPlayerIds) {
+  // Score every player who appears in a round match — not just the drafted
+  // ones — so the real-match lineup can show a fantasy voto + play state for
+  // all 22+ players, owned or not.
+  const scorablePlayerIds = [...new Set([...allPlayerIds, ...(allMatchPlayers ?? []).map((p) => p.id)])]
+  for (const pid of scorablePlayerIds) {
     const player = playerById.get(pid)
     if (!player) continue
     const match = matchByTeamId.get(player.national_team_id)
@@ -548,6 +589,23 @@ export async function computeLiveRoundSnapshot(
     }
   }
 
+  // Which fantasy teams rostered each player, and how (titolare vs panchina).
+  // Drives the cross-team ownership detail on both the team and match views.
+  const teamNameById = new Map((teams ?? []).map((t) => [t.id, t.name]))
+  const ownersByPlayer = new Map<string, LiveOwnerRef[]>()
+  for (const lineup of lineups) {
+    const teamName = teamNameById.get(lineup.fantasy_team_id) ?? '—'
+    for (const lp of lineup.fm_matchday_lineup_player) {
+      const arr = ownersByPlayer.get(lp.player_id) ?? []
+      arr.push({
+        fantasy_team_id: lineup.fantasy_team_id,
+        team_name: teamName,
+        status: lp.is_starter ? 'titolare' : 'panchina',
+      })
+      ownersByPlayer.set(lp.player_id, arr)
+    }
+  }
+
   // ============================================================
   // Build the per-team board (sorted by live_total desc).
   // ============================================================
@@ -679,6 +737,9 @@ export async function computeLiveRoundSnapshot(
         popularity_penalty_potential,
         mvp_bonus,
         final_score_now,
+        owners: (ownersByPlayer.get(lp.player_id) ?? []).filter(
+          (o) => o.fantasy_team_id !== team.id,
+        ),
       })
     }
 
@@ -719,16 +780,14 @@ export async function computeLiveRoundSnapshot(
       .filter((p) => p.national_team_id === m.home_team_id || p.national_team_id === m.away_team_id)
       .map((p) => p.id)
 
+    const roleRank: Record<string, number> = { P: 0, D: 1, C: 2, A: 3 }
     const realPlayers: LiveSnapshotRealPlayer[] = matchPlayerIds
       .map((pid): LiveSnapshotRealPlayer | null => {
         const player = playerById.get(pid)
         if (!player) return null
         const stats = statsByKey.get(`${pid}:${m.id}`)
-        if (!stats && m.status === 'scheduled') return null // don't show before match starts
-        if (!stats && m.status !== 'scheduled') {
-          // Match in progress/finished but no stats = didn't play
-          return null
-        }
+        // Only players who were in the real match-day squad (have a stats row).
+        if (!stats) return null
         const own = ownership[pid]
         const fn = own?.fielded_now ?? 0
         const mp = own?.max_possible ?? 0
@@ -739,23 +798,55 @@ export async function computeLiveRoundSnapshot(
           else if (fn === 1 && mp > 1) signal = 'excl_risk'
           else signal = 'shared'
         }
+        const ratingNum = stats.rating != null ? Number(stats.rating) : null
+        const voto = ratingNum != null ? (rawByPlayer.get(pid)?.raw_subtotal ?? null) : null
         return {
           player_id: pid,
           name: player.name,
           role: player.role as FMRole,
-          jersey_number: null,
-          rating: stats?.rating != null ? Number(stats.rating) : null,
-          minutes_played: stats?.minutes_played ?? null,
+          national_team_id: player.national_team_id,
+          jersey_number: stats.jersey_number ?? null,
+          is_starter: stats.is_starter ?? false,
+          rating: ratingNum,
+          voto,
+          is_mvp: stats.is_mvp ?? false,
+          minutes_played: stats.minutes_played ?? null,
+          play_state: stateOf(pid),
+          goals: stats.goals ?? 0,
+          assists: stats.assists ?? 0,
+          yellow_cards: stats.yellow_cards ?? 0,
+          red_cards: stats.red_cards ?? 0,
+          own_goals: stats.own_goals ?? 0,
+          penalties_scored: stats.penalties_scored ?? 0,
+          penalties_saved: stats.penalties_saved ?? 0,
+          penalties_missed: stats.penalties_missed ?? 0,
+          subbed_on_minute: stats.subbed_on_minute ?? null,
+          subbed_off_minute: stats.subbed_off_minute ?? null,
+          replaced_player_name: stats.replaced_player_id
+            ? (playerById.get(stats.replaced_player_id)?.name ?? null)
+            : null,
+          replacement_player_name: stats.replacement_player_id
+            ? (playerById.get(stats.replacement_player_id)?.name ?? null)
+            : null,
+          owners: ownersByPlayer.get(pid) ?? [],
           ownership_signal: signal,
           fielded_now: fn,
           max_possible: mp,
         }
       })
       .filter((p): p is LiveSnapshotRealPlayer => p !== null)
-      .sort((a, b) => a.name.localeCompare(b.name))
+      // Starters first (by role P→D→C→A), then bench/subs, name as tiebreak.
+      .sort(
+        (a, b) =>
+          Number(b.is_starter) - Number(a.is_starter) ||
+          (roleRank[a.role] ?? 9) - (roleRank[b.role] ?? 9) ||
+          a.name.localeCompare(b.name),
+      )
 
     return {
       match_id: m.id,
+      home_team_id: m.home_team_id,
+      away_team_id: m.away_team_id,
       home_team: homeTeam,
       away_team: awayTeam,
       home_score: m.home_score,

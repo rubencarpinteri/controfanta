@@ -173,7 +173,19 @@ export async function GET(req: NextRequest) {
   } else if (allFetchesEmpty) {
     anomaly = 'In live window but every SportMonks inplay fetch returned empty/failed — check token / API.'
   }
-  if (anomaly) await sendCronAlert(anomaly)
+  if (anomaly) {
+    // Rate-limit push alerts: only fire if this exact anomaly hasn't been
+    // logged in the last 30 minutes — avoids flooding ntfy every tick.
+    const cutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString()
+    const { data: recentSame } = await db
+      .from('cron_runs')
+      .select('id')
+      .eq('endpoint', ENDPOINT)
+      .eq('error', anomaly)
+      .gte('started_at', cutoff)
+      .limit(1)
+    if (!recentSame?.length) await sendCronAlert(anomaly)
+  }
 
   const body = { live: liveByLeague.size, results, liveSnapshots, anomaly, sched, elim }
   const hadError = !!anomaly || results.some((r) => r.error) || (liveSnapshots?.errors.length ?? 0) > 0
