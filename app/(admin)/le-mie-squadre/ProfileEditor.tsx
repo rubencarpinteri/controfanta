@@ -36,7 +36,7 @@ export function ProfileEditor({ initialFullName, initialUsername }: Props) {
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-ink-4">
-            Nome visibile
+            Nome da Allenatore
           </label>
           <input
             name="full_name"
@@ -47,10 +47,13 @@ export function ProfileEditor({ initialFullName, initialUsername }: Props) {
             maxLength={60}
             className="w-full rounded-md border border-hairline bg-transparent px-2.5 py-1.5 text-[13px] text-ink-1 focus:border-indigo-400/60 focus:outline-none"
           />
+          <p className="mt-0.5 text-[10.5px] text-ink-5">
+            Il nome con cui appari agli altri nella Lega (classifiche, squadre).
+          </p>
         </div>
         <div>
           <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-ink-4">
-            Username
+            Nome Utente
           </label>
           <div className="flex items-center rounded-md border border-hairline focus-within:border-indigo-400/60">
             <span className="pl-2.5 text-[13px] text-ink-4">@</span>

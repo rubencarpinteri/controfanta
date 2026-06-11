@@ -30,6 +30,10 @@ interface Props {
   competitionSubLabel?: string | null
   /** Other members of the Lega available as transfer targets. */
   members?: MemberPickerOption[]
+  /** Link to this team's rosa builder (FM teams only). */
+  rosaHref?: string
+  /** Whether the rosa is currently editable (an open redraft phase). */
+  rosaOpen?: boolean
   /** A pending outgoing offer on this team, if one exists. */
   pendingOffer?: {
     request_id: string
@@ -87,6 +91,8 @@ export function TeamCard({
   competitionLabel,
   competitionSubLabel,
   members,
+  rosaHref,
+  rosaOpen,
   pendingOffer,
 }: Props) {
   const isNazionale = level === 'nazionale'
@@ -189,6 +195,24 @@ export function TeamCard({
 
         {renameState.error && (
           <p className="mt-2 text-[11px] text-rose-500">{renameState.error}</p>
+        )}
+
+        {/* Rosa entry point (FM teams) — label reflects whether the redraft
+            window is open (Modifica) or closed (Visualizza). */}
+        {rosaHref && (
+          <div className="mt-3">
+            <a
+              href={rosaHref}
+              className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[12px] font-semibold transition-colors ${
+                rosaOpen
+                  ? 'border-indigo-400/30 bg-indigo-500/5 text-indigo-700 hover:bg-indigo-500/10 dark:text-indigo-300'
+                  : 'border-hairline bg-glass-2 text-ink-3 hover:bg-glass-1'
+              }`}
+            >
+              <span aria-hidden>{rosaOpen ? '✎' : '👁'}</span>
+              {rosaOpen ? 'Modifica' : 'Visualizza'} la mia Rosa
+            </a>
+          </div>
         )}
 
         {/* Transfer surface */}

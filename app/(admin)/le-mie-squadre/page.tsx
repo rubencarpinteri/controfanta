@@ -45,6 +45,8 @@ export default async function MyTeamsPage() {
         league_competition_id,
         fm_league_competition!inner (
           league_id,
+          slug,
+          fm_competition_id,
           fm_competition:fm_competition_id ( name, edition )
         )
       `)
@@ -99,17 +101,17 @@ export default async function MyTeamsPage() {
         .in('team_id', ownedSerieATeamIds)
     : { data: [] as CompetitionTeam[] }
 
+  type FMJoin = {
+    league_id: string
+    slug: string | null
+    fm_competition_id: string
+    fm_competition: { name: string; edition: string } | { name: string; edition: string }[] | null
+  }
   type FMTeamRow = {
     id: string
     name: string
     league_competition_id: string
-    fm_league_competition: {
-      league_id: string
-      fm_competition: { name: string; edition: string } | { name: string; edition: string }[] | null
-    } | {
-      league_id: string
-      fm_competition: { name: string; edition: string } | { name: string; edition: string }[] | null
-    }[]
+    fm_league_competition: FMJoin | FMJoin[]
   }
 
   type MemberRow = {
@@ -174,8 +176,16 @@ export default async function MyTeamsPage() {
     })
 
   // FM teams in this Lega only.
+  type FMTeam = {
+    id: string
+    name: string
+    competitionName: string
+    competitionEdition: string | null
+    rosaHref: string
+    fmCompetitionId: string
+  }
   const fmTeams = fmTeamsRaw
-    .map((r) => {
+    .map((r): FMTeam | null => {
       const join = Array.isArray(r.fm_league_competition)
         ? r.fm_league_competition[0]
         : r.fm_league_competition
@@ -183,14 +193,31 @@ export default async function MyTeamsPage() {
       const comp = Array.isArray(join.fm_competition)
         ? join.fm_competition[0]
         : join.fm_competition
+      const ref = join.slug ?? r.league_competition_id
       return {
         id: r.id,
         name: r.name,
         competitionName: comp?.name ?? 'Competizione internazionale',
         competitionEdition: comp?.edition ?? null,
+        rosaHref: `/controfantamondiale/${ref}/rosa`,
+        fmCompetitionId: join.fm_competition_id,
       }
     })
-    .filter((t): t is { id: string; name: string; competitionName: string; competitionEdition: string | null } => t !== null)
+    .filter((t): t is FMTeam => t !== null)
+
+  // A team's rosa is editable while its competition has an OPEN phase (the
+  // redraft window). Otherwise the rosa is locked → "Visualizza" instead of
+  // "Modifica". Phases are competition-level, so one lookup covers all teams.
+  const fmCompetitionIds = Array.from(new Set(fmTeams.map((t) => t.fmCompetitionId)))
+  const openPhaseCompetitionIds = new Set<string>()
+  if (fmCompetitionIds.length > 0) {
+    const { data: openPhases } = await supabase
+      .from('fm_phase')
+      .select('competition_id')
+      .in('competition_id', fmCompetitionIds)
+      .eq('status', 'open')
+    for (const p of openPhases ?? []) openPhaseCompetitionIds.add(p.competition_id)
+  }
 
   const SERIE_A_TYPE_LABEL: Record<string, string> = {
     campionato:    'Campionato',
@@ -419,6 +446,8 @@ export default async function MyTeamsPage() {
                   competitionLabel={t.competitionName}
                   competitionSubLabel={t.competitionEdition}
                   members={transferTargets}
+                  rosaHref={t.rosaHref}
+                  rosaOpen={openPhaseCompetitionIds.has(t.fmCompetitionId)}
                   pendingOffer={pending && recipient
                     ? {
                         request_id:   pending.id,
@@ -437,7 +466,7 @@ export default async function MyTeamsPage() {
       <Card>
         <CardHeader
           title="Il mio profilo"
-          description="Il nome e lo username visibili agli altri membri della Lega."
+          description="Nome da Allenatore (visibile in Lega) e Nome Utente (il tuo @handle)."
         />
         <CardContent>
           <ProfileEditor
