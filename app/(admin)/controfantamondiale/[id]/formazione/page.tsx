@@ -1,5 +1,6 @@
 import { requireFMContext, getFMPhases, getFMRounds } from '@/lib/fantamondiale/server'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import type { FMCompetitionConfig } from '@/domain/fantamondiale/config/schema'
 import { DEFAULT_FM_CONFIG } from '@/domain/fantamondiale/config/defaults'
 import { TeamCrest } from '@/components/fm/TeamCrest'
@@ -140,15 +141,20 @@ export default async function FormazionePage({ params }: { params: Promise<{ id:
   }
 
   // ── League-wide formation status — who has submitted this round's lineup.
-  // Reveals only submitted/not (never the lineups), so it's safe pre-kickoff.
-  const { data: legaTeams } = await supabase
+  // Reveals ONLY submitted/not (never the lineups themselves), so it's safe to
+  // show before the reveal gate. Read with the service client: other managers'
+  // fm_matchday_lineup rows are hidden from a participant by RLS until reveal,
+  // so the user client would only ever see your own row. Scoped strictly to
+  // this user's own Lega (authorized via requireFMContext above).
+  const svc = createServiceClient()
+  const { data: legaTeams } = await svc
     .from('fm_fantasy_team')
     .select('id, name, manager_id')
     .eq('league_competition_id', ctx.legaCompetition.id)
     .order('name', { ascending: true })
 
   const legaTeamIds = (legaTeams ?? []).map((t) => t.id)
-  const { data: submittedRows } = await supabase
+  const { data: submittedRows } = await svc
     .from('fm_matchday_lineup')
     .select('fantasy_team_id')
     .eq('scoring_round_id', activeRound.id)
@@ -157,7 +163,7 @@ export default async function FormazionePage({ params }: { params: Promise<{ id:
   const submittedTeamIds = new Set((submittedRows ?? []).map((r) => r.fantasy_team_id))
 
   const managerIds = [...new Set((legaTeams ?? []).map((t) => t.manager_id).filter(Boolean))]
-  const { data: managerProfiles } = await supabase
+  const { data: managerProfiles } = await svc
     .from('profiles')
     .select('id, full_name')
     .in('id', managerIds.length > 0 ? managerIds : ['00000000-0000-0000-0000-000000000000'])
