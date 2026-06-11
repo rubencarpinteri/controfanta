@@ -37,6 +37,10 @@ const ROLE_LABELS: Record<keyof FMRoleQuota, string> = {
 // also contain custom modules typed in the text field — those are merged in.
 const CANONICAL_MODULES = ['3-4-3', '3-5-2', '4-3-3', '4-4-2', '4-5-1', '5-3-2', '5-4-1'] as const
 
+// Extra hyper-offensive module, surfaced in its own opt-in section and kept out
+// of the canonical grid. Off by default.
+const ULTRA_OFFENSIVE_MODULE = '4-2-4'
+
 // Knockout matrix rows, by favoredness (opponentTier − ownTier, −3…+3).
 const KO_ROWS = [
   { key: 'fav_pos3', label: 'Super favorito (+3)' },
@@ -108,15 +112,6 @@ export function FMConfigEditor({
         [key]: { ...prev.coach_tier_knockout_matrix[key], [field]: value },
       },
     }))
-    setSaved(false)
-  }
-
-  function updateFormations(text: string) {
-    const list = text
-      .split(/[\s,]+/)
-      .map((s) => s.trim())
-      .filter((s) => /^\d-\d-\d$/.test(s))
-    setCfg((prev) => ({ ...prev, formations: list.length > 0 ? list : prev.formations }))
     setSaved(false)
   }
 
@@ -251,7 +246,9 @@ export function FMConfigEditor({
           deve restare attivo.
         </p>
         <div className="flex flex-wrap gap-2">
-          {Array.from(new Set([...CANONICAL_MODULES, ...cfg.formations])).map((mod) => {
+          {Array.from(new Set([...CANONICAL_MODULES, ...cfg.formations]))
+            .filter((mod) => mod !== ULTRA_OFFENSIVE_MODULE)
+            .map((mod) => {
             const on = cfg.formations.includes(mod)
             return (
               <button
@@ -271,18 +268,31 @@ export function FMConfigEditor({
             )
           })}
         </div>
-        <details className="pt-1">
-          <summary className="cursor-pointer text-[11px] text-ink-4 hover:text-ink-2">
-            Aggiungi un modulo personalizzato
-          </summary>
-          <input
-            type="text"
-            defaultValue={cfg.formations.join(', ')}
-            onBlur={(e) => updateFormations(e.target.value)}
-            placeholder="es. 3-4-3, 4-4-2, 5-3-2"
-            className="mt-2 w-full rounded-lg border border-hairline bg-glass-2 px-3 py-2 text-[13px] font-mono text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          />
-        </details>
+        <div className="pt-2 mt-1 border-t border-hairline space-y-2">
+          <p className="text-[11px] font-semibold text-ink-2">Aggiungi Modulo Ultra Offensivo</p>
+          <p className="text-[11px] text-ink-4 leading-relaxed">
+            Il <span className="font-mono">4-2-4</span> è molto offensivo e poco realistico:
+            disattivato di default. Attivalo se vuoi concederlo agli allenatori della tua lega.
+          </p>
+          {(() => {
+            const on = cfg.formations.includes(ULTRA_OFFENSIVE_MODULE)
+            return (
+              <button
+                type="button"
+                onClick={() => toggleFormation(ULTRA_OFFENSIVE_MODULE)}
+                aria-pressed={on}
+                className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[13px] font-mono font-semibold transition-colors active:translate-y-px ${
+                  on
+                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-500/20'
+                    : 'border-rose-500/30 bg-rose-500/5 text-rose-500/70 hover:bg-rose-500/10'
+                }`}
+              >
+                <span className={`h-1.5 w-1.5 rounded-full ${on ? 'bg-emerald-500' : 'bg-rose-500/60'}`} />
+                {ULTRA_OFFENSIVE_MODULE}
+              </button>
+            )
+          })()}
+        </div>
       </div>
 
       {/* ── Coach tier matrix ── */}
