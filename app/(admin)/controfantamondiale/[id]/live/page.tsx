@@ -1,7 +1,15 @@
 import { requireFMContext, getFMRounds } from '@/lib/fantamondiale/server'
 import { createClient } from '@/lib/supabase/server'
-import type { LiveRoundSnapshot } from '@/domain/fantamondiale/engine/liveSnapshot'
+import { computeLiveRoundSnapshot, type LiveRoundSnapshot } from '@/domain/fantamondiale/engine/liveSnapshot'
 import { LiveBoard } from './LiveBoard'
+
+function needsLiveSnapshotShapeRefresh(snapshot: LiveRoundSnapshot | null): boolean {
+  return Boolean(
+    snapshot?.matches.some((match) =>
+      match.players.some((player) => !Object.hasOwn(player, 'display_voto_base')),
+    ),
+  )
+}
 
 export default async function LivePage({
   params,
@@ -93,6 +101,9 @@ export default async function LivePage({
     .maybeSingle()
 
   let snapshot = (snapRow?.snapshot as LiveRoundSnapshot | null) ?? null
+  if (needsLiveSnapshotShapeRefresh(snapshot)) {
+    snapshot = await computeLiveRoundSnapshot(activeRound.id, ctx.legaCompetition.id, supabase)
+  }
   // Backfill `classifica` for snapshots persisted before the field existed.
   if (snapshot && !snapshot.classifica) {
     snapshot = {

@@ -28,6 +28,12 @@ function fmt(n: number | null | undefined, d = 2): string {
   return Number(n).toFixed(d)
 }
 
+function shortPlayerName(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  if (parts.length < 2) return name
+  return `${parts[0]![0]!.toUpperCase()}. ${parts.slice(1).join(' ')}`
+}
+
 function fmtKickoff(iso: string): string {
   return new Date(iso).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
 }
@@ -393,6 +399,15 @@ function MatchDetailPanel({
   match: LiveSnapshotMatch
   totalTeams: number
 }) {
+  const sideLineups = (['home', 'away'] as const).map((side) => {
+    const teamRef = side === 'home' ? m.home_team : m.away_team
+    const teamId = side === 'home' ? m.home_team_id : m.away_team_id
+    const players = m.players.filter((p) => p.national_team_id === teamId)
+    return { side, teamRef, players, lineup: buildRealLineup(players) }
+  })
+  const maxMainRows = Math.max(0, ...sideLineups.map((lineup) => lineup.lineup.xi.length))
+  const maxBenchRows = Math.max(0, ...sideLineups.map((lineup) => lineup.lineup.bench.length))
+
   return (
     <div className="rounded-xl border border-hairline bg-glass-1 overflow-hidden">
       {/* header */}
@@ -406,7 +421,6 @@ function MatchDetailPanel({
               fifaCode={m.home_team.fifa_code}
               size={28}
             />
-            <span className="text-[12px] font-semibold text-ink-1">{m.home_team.name}</span>
           </div>
           <div className="flex flex-col items-center gap-0.5">
             {m.status !== 'scheduled' ? (
@@ -429,7 +443,6 @@ function MatchDetailPanel({
               fifaCode={m.away_team.fifa_code}
               size={28}
             />
-            <span className="text-[12px] font-semibold text-ink-1">{m.away_team.name}</span>
           </div>
         </div>
       </div>
@@ -438,20 +451,17 @@ function MatchDetailPanel({
       {m.players.length > 0 ? (
         <div className="p-3 space-y-3">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            {(['home', 'away'] as const).map((side) => {
-              const teamRef = side === 'home' ? m.home_team : m.away_team
-              const teamId = side === 'home' ? m.home_team_id : m.away_team_id
-              const sidePlayers = m.players.filter((p) => p.national_team_id === teamId)
-              return (
-                <MatchSideLineup
-                  key={side}
-                  teamRef={teamRef}
-                  players={sidePlayers}
-                  matchStatus={m.status}
-                  totalTeams={totalTeams}
-                />
-              )
-            })}
+            {sideLineups.map(({ side, teamRef, lineup }) => (
+              <MatchSideLineup
+                key={side}
+                teamRef={teamRef}
+                lineup={lineup}
+                matchStatus={m.status}
+                totalTeams={totalTeams}
+                minMainRows={maxMainRows}
+                minBenchRows={maxBenchRows}
+              />
+            ))}
           </div>
           <RealLineupLegend />
         </div>
@@ -468,20 +478,7 @@ function MatchDetailPanel({
   )
 }
 
-// One nation's real-match lineup: titolari (role-ordered) with each
-// substitution chained directly under the player who came off, then the
-// unused bench. Mirrors what's actually on the pitch.
-function MatchSideLineup({
-  teamRef,
-  players,
-  matchStatus,
-  totalTeams,
-}: {
-  teamRef: LiveTeamRef
-  players: LiveSnapshotRealPlayer[]
-  matchStatus: LiveSnapshotMatch['status']
-  totalTeams: number
-}) {
+function buildRealLineup(players: LiveSnapshotRealPlayer[]) {
   const byName = new Map(players.map((p) => [p.name, p]))
   const rendered = new Set<string>()
   const xi: { p: LiveSnapshotRealPlayer; depth: number }[] = []
@@ -496,15 +493,39 @@ function MatchSideLineup({
     }
   }
   for (const p of players.filter((x) => x.is_starter)) chain(p, 0)
-  // Subs who came on without a matched starter in our pool (rare).
   for (const p of players.filter((x) => !rendered.has(x.player_id) && x.subbed_on_minute != null)) {
     chain(p, 0)
   }
-  const bench = players.filter((x) => !rendered.has(x.player_id))
+
+  return {
+    xi,
+    bench: players.filter((x) => !rendered.has(x.player_id)),
+  }
+}
+
+// One nation's real-match lineup: titolari (role-ordered) with each
+// substitution chained directly under the player who came off, then the
+// unused bench. Mirrors what's actually on the pitch.
+function MatchSideLineup({
+  teamRef,
+  lineup,
+  matchStatus,
+  totalTeams,
+  minMainRows,
+  minBenchRows,
+}: {
+  teamRef: LiveTeamRef
+  lineup: ReturnType<typeof buildRealLineup>
+  matchStatus: LiveSnapshotMatch['status']
+  totalTeams: number
+  minMainRows: number
+  minBenchRows: number
+}) {
+  const { xi, bench } = lineup
 
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center gap-1.5 px-0.5">
+    <div className="grid h-full grid-rows-[auto_1fr_auto] gap-1.5">
+      <div className="flex items-center justify-center gap-1.5 px-0.5">
         <TeamCrest
           name={teamRef.name}
           logoUrl={teamRef.logo_url}
@@ -513,41 +534,60 @@ function MatchSideLineup({
           size={16}
           className="shrink-0"
         />
-        <span className="text-[11px] font-bold text-ink-2 truncate">{teamRef.name}</span>
+        <span className="truncate text-[11px] font-bold text-ink-2">
+          {teamRef.name}
+        </span>
       </div>
 
       <div className="space-y-1">
         {xi.map(({ p, depth }) => (
           <RealPlayerRow key={p.player_id} p={p} matchStatus={matchStatus} totalTeams={totalTeams} depth={depth} />
         ))}
+        {Array.from({ length: Math.max(0, minMainRows - xi.length) }).map((_, i) => (
+          <RealPlayerPlaceholder key={`main-placeholder-${i}`} />
+        ))}
       </div>
 
-      {bench.length > 0 && (
-        <div className="space-y-1 pt-1">
-          <p className="px-0.5 text-[8px] font-bold uppercase tracking-wider text-ink-5">Panchina</p>
-          {bench.map((p) => (
-            <RealPlayerRow key={p.player_id} p={p} matchStatus={matchStatus} totalTeams={totalTeams} muted />
-          ))}
-        </div>
-      )}
+      <div className="space-y-1 pt-1">
+        <p className="px-0.5 text-center text-[8px] font-bold uppercase tracking-wider text-ink-5">Panchina</p>
+        {bench.map((p) => (
+          <RealPlayerRow key={p.player_id} p={p} matchStatus={matchStatus} totalTeams={totalTeams} muted />
+        ))}
+        {Array.from({ length: Math.max(0, minBenchRows - bench.length) }).map((_, i) => (
+          <RealPlayerPlaceholder key={`bench-placeholder-${i}`} />
+        ))}
+      </div>
     </div>
   )
 }
 
-// Resolve the right-hand value: the fantasy Voto, or a no-play marker.
+function RealPlayerPlaceholder() {
+  return <div aria-hidden className="min-h-[43px] rounded-md border border-transparent px-2 py-1 opacity-0" />
+}
+
+function totalVotoColor(voto: number): string {
+  if (voto >= 10) return 'text-[#374DF5]'
+  if (voto >= 9) return 'text-[#00ADC4]'
+  if (voto >= 7) return 'text-[#00C424]'
+  if (voto >= 6) return 'text-[#D9AF00]'
+  if (voto >= 5) return 'text-[#ED7E07]'
+  return 'text-[#DC0C00]'
+}
+
+// Resolve the right-hand value: split base/total voto, or a no-play marker.
 function votoDisplay(
+  baseVoto: number | null,
   voto: number | null,
-  rating: number | null,
   minutes: number | null,
+  playState: LiveSnapshotRealPlayer['play_state'],
   matchStatus: LiveSnapshotMatch['status'],
-): { text: string; cls: string } {
-  if (voto != null && rating != null) {
-    const cls = voto >= 7 ? 'text-emerald-400' : voto < 5.5 ? 'text-rose-400' : 'text-ink-1'
-    return { text: fmt(voto, 1), cls }
+): { kind: 'score'; base: string; total: string; totalCls: string } | { kind: 'marker'; text: string; cls: string } {
+  if (playState === 'played' && baseVoto != null && voto != null) {
+    return { kind: 'score', base: fmt(baseVoto, 1), total: fmt(voto, 1), totalCls: totalVotoColor(voto) }
   }
-  if ((minutes ?? 0) > 0) return { text: 'S.V.', cls: 'text-amber-500 dark:text-amber-400' }
-  if (matchStatus === 'finished') return { text: '✕', cls: 'text-ink-5' }
-  return { text: '–', cls: 'text-ink-5' }
+  if ((minutes ?? 0) > 0) return { kind: 'marker', text: 'S.V.', cls: 'text-amber-500 dark:text-amber-400' }
+  if (matchStatus === 'finished') return { kind: 'marker', text: '✕', cls: 'text-ink-5' }
+  return { kind: 'marker', text: '–', cls: 'text-ink-5' }
 }
 
 function RealPlayerRow({
@@ -563,11 +603,16 @@ function RealPlayerRow({
   depth?: number
   muted?: boolean
 }) {
-  const v = votoDisplay(p.voto, p.rating, p.minutes_played, matchStatus)
+  const storedBaseVoto =
+    p.display_voto_base ??
+    p.voto_base ??
+    (p.play_state === 'played' && p.voto != null ? p.voto : null)
+  const storedTotalVoto = p.display_voto_total ?? p.voto
+  const v = votoDisplay(storedBaseVoto, storedTotalVoto, p.minutes_played, p.play_state, matchStatus)
 
   return (
     <div
-      className={`flex items-center gap-1.5 rounded-md border border-hairline bg-glass-2 px-2 py-1 ${
+      className={`flex min-h-[43px] items-center gap-1.5 rounded-md border border-hairline bg-glass-2 px-2 py-1 ${
         muted ? 'opacity-60' : ''
       } ${depth > 0 ? 'ml-3' : ''}`}
     >
@@ -576,7 +621,9 @@ function RealPlayerRow({
 
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1">
-          <span className="truncate text-[11px] font-medium text-ink-1">{p.name}</span>
+          <span className="truncate text-[11px] font-medium text-ink-1" title={p.name}>
+            {shortPlayerName(p.name)}
+          </span>
           {p.is_mvp && (
             <span
               title="Migliore in campo"
@@ -604,7 +651,20 @@ function RealPlayerRow({
         </span>
       </span>
 
-      <span className={`shrink-0 w-10 text-right tabular-nums text-[13px] font-bold ${v.cls}`}>{v.text}</span>
+      <span className="shrink-0 w-11 overflow-hidden rounded-md border border-hairline bg-white text-center tabular-nums">
+        {v.kind === 'score' ? (
+          <>
+            <span className="block border-b border-black/10 px-1 py-0.5 text-[11px] font-bold leading-none text-black">
+              {v.base}
+            </span>
+            <span className={`block px-1 py-0.5 text-[11px] font-black leading-none ${v.totalCls}`}>
+              {v.total}
+            </span>
+          </>
+        ) : (
+          <span className={`block px-1 py-1.5 text-[11px] font-bold leading-none ${v.cls}`}>{v.text}</span>
+        )}
+      </span>
     </div>
   )
 }
@@ -627,6 +687,15 @@ function BonusMalusIcons({ p }: { p: LiveSnapshotRealPlayer }) {
     items.push({
       key: 'ps',
       node: <span className="rounded bg-emerald-400/20 px-1 text-[8px] font-bold text-emerald-600 dark:text-emerald-300" title="Rigore parato">Rig.P</span>,
+    })
+  if (p.clean_sheet_bonus > 0)
+    items.push({
+      key: 'cs',
+      node: (
+        <span className="rounded bg-emerald-400/20 px-1 text-[8px] font-bold text-emerald-600 dark:text-emerald-300" title={`Porta inviolata +${fmt(p.clean_sheet_bonus, 1)}`}>
+          PI
+        </span>
+      ),
     })
   if (p.penalties_missed > 0)
     items.push({
@@ -664,7 +733,7 @@ function OwnersInline({ owners, totalTeams }: { owners: LiveOwnerRef[]; totalTea
   return (
     <span
       title={label}
-      className={`truncate text-[9px] ${allBench ? 'text-ink-5' : 'text-indigo-500/90 dark:text-indigo-300/90'}`}
+      className={`truncate text-[10.5px] font-semibold ${allBench ? 'text-ink-5' : 'text-indigo-500/90 dark:text-indigo-300/90'}`}
     >
       in {owners.length}/{totalTeams}: {label}
     </span>

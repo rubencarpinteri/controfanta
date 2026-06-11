@@ -1,7 +1,15 @@
 import { NextResponse } from 'next/server'
 import { requireFMContext, getFMRounds } from '@/lib/fantamondiale/server'
 import { createClient } from '@/lib/supabase/server'
-import type { LiveRoundSnapshot } from '@/domain/fantamondiale/engine/liveSnapshot'
+import { computeLiveRoundSnapshot, type LiveRoundSnapshot } from '@/domain/fantamondiale/engine/liveSnapshot'
+
+function needsLiveSnapshotShapeRefresh(snapshot: LiveRoundSnapshot | null): boolean {
+  return Boolean(
+    snapshot?.matches.some((match) =>
+      match.players.some((player) => !Object.hasOwn(player, 'display_voto_base')),
+    ),
+  )
+}
 
 /**
  * GET /api/fm/[id]/live
@@ -34,8 +42,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     .eq('scoring_round_id', activeRound.id)
     .maybeSingle()
 
+  let snapshot = (data?.snapshot as LiveRoundSnapshot | null) ?? null
+  if (needsLiveSnapshotShapeRefresh(snapshot)) {
+    snapshot = await computeLiveRoundSnapshot(activeRound.id, ctx.legaCompetition.id, supabase)
+  }
+
   return NextResponse.json({
-    snapshot: (data?.snapshot as LiveRoundSnapshot | null) ?? null,
+    snapshot,
     computed_at: data?.computed_at ?? null,
   })
 }

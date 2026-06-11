@@ -114,8 +114,17 @@ export type LiveSnapshotRealPlayer = {
   is_starter: boolean
   /** SportMonks rating (the input to the voto), null if no rating yet. */
   rating: number | null
-  /** Fantasy voto = raw subtotal (rating + bonus/malus), pre-ownership. */
+  /** Engine voto before football bonus/malus. Null means S.V. */
+  voto_base: number | null
+  /** Fantasy voto = raw subtotal (voto_base + football bonus/malus), pre-ownership. */
   voto: number | null
+  /** Real-match panel base voto, shaped to keep legacy calibrated-voto semantics. */
+  display_voto_base: number | null
+  /** Real-match panel total voto with visible football bonus/malus. */
+  display_voto_total: number | null
+  football_bonus: number
+  football_malus: number
+  clean_sheet_bonus: number
   /** Highest-rated player in the fixture. */
   is_mvp: boolean
   minutes_played: number | null
@@ -292,7 +301,6 @@ export async function computeLiveRoundSnapshot(
   const { data: allMatchPlayers } = await supabase
     .from('fm_player')
     .select('id, name, role, national_team_id')
-    .eq('competition_id', round.competition_id)
     .in('national_team_id', matchTeamIds.length > 0 ? matchTeamIds : ['00000000-0000-0000-0000-000000000000'])
   // Merge into playerById so scoring lookups still work
   for (const p of allMatchPlayers ?? []) {
@@ -317,6 +325,21 @@ export async function computeLiveRoundSnapshot(
     )
     .in('real_match_id', matchIds.length > 0 ? matchIds : ['00000000-0000-0000-0000-000000000000'])
   const statsByKey = new Map((allStats ?? []).map((s) => [`${s.player_id}:${s.real_match_id}`, s]))
+  const missingStatPlayerIds = [
+    ...new Set((allStats ?? []).map((s) => s.player_id).filter((id) => !playerById.has(id))),
+  ]
+  if (missingStatPlayerIds.length > 0) {
+    const { data: statPlayers } = await supabase
+      .from('fm_player')
+      .select('id, name, role, national_team_id')
+      .in('id', missingStatPlayerIds)
+    for (const p of statPlayers ?? []) {
+      if (!playerById.has(p.id)) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        playerById.set(p.id, { ...p, fm_national_team: null } as any)
+      }
+    }
+  }
 
   // ---- 5. Coaches (live-scored via the match result) --------------------
   const { data: phaseSquads } = await supabase
@@ -429,7 +452,13 @@ export async function computeLiveRoundSnapshot(
   // Score every player who appears in a round match — not just the drafted
   // ones — so the real-match lineup can show a fantasy voto + play state for
   // all 22+ players, owned or not.
-  const scorablePlayerIds = [...new Set([...allPlayerIds, ...(allMatchPlayers ?? []).map((p) => p.id)])]
+  const scorablePlayerIds = [
+    ...new Set([
+      ...allPlayerIds,
+      ...(allMatchPlayers ?? []).map((p) => p.id),
+      ...(allStats ?? []).map((s) => s.player_id),
+    ]),
+  ]
   for (const pid of scorablePlayerIds) {
     const player = playerById.get(pid)
     if (!player) continue
@@ -776,9 +805,14 @@ export async function computeLiveRoundSnapshot(
 
     // All pool players for this match's two teams who have played (minutes > 0)
     // or are listed in the pool (to show even before the match starts).
-    const matchPlayerIds = (allMatchPlayers ?? [])
-      .filter((p) => p.national_team_id === m.home_team_id || p.national_team_id === m.away_team_id)
-      .map((p) => p.id)
+    const matchPlayerIds = [
+      ...new Set([
+        ...(allMatchPlayers ?? [])
+          .filter((p) => p.national_team_id === m.home_team_id || p.national_team_id === m.away_team_id)
+          .map((p) => p.id),
+        ...(allStats ?? []).filter((s) => s.real_match_id === m.id).map((s) => s.player_id),
+      ]),
+    ]
 
     const roleRank: Record<string, number> = { P: 0, D: 1, C: 2, A: 3 }
     const realPlayers: LiveSnapshotRealPlayer[] = matchPlayerIds
@@ -798,8 +832,29 @@ export async function computeLiveRoundSnapshot(
           else if (fn === 1 && mp > 1) signal = 'excl_risk'
           else signal = 'shared'
         }
+        const raw = rawByPlayer.get(pid)
         const ratingNum = stats.rating != null ? Number(stats.rating) : null
-        const voto = ratingNum != null ? (rawByPlayer.get(pid)?.raw_subtotal ?? null) : null
+        const votoBase = raw?.voto_base ?? null
+        const voto = raw && votoBase != null ? raw.raw_subtotal : null
+        const matchHomeScore = m.home_score ?? 0
+        const matchAwayScore = m.away_score ?? 0
+        const isHome = player.national_team_id === m.home_team_id
+        const goalsConceded = isHome ? matchAwayScore : matchHomeScore
+        const cleanSheetBonus =
+          votoBase != null && goalsConceded === 0 && player.role === 'P'
+            ? config.football.clean_sheet.P
+            : votoBase != null &&
+                goalsConceded === 0 &&
+                player.role === 'D' &&
+                (stats.minutes_played ?? 0) >= config.football.clean_sheet.min_minutes
+              ? config.football.clean_sheet.D
+              : 0
+        const footballBonus = raw?.football_bonus ?? 0
+        const footballMalus = raw?.football_malus ?? 0
+        const displayVotoBase =
+          voto != null ? voto - footballBonus + footballMalus + cleanSheetBonus : null
+        const displayVotoTotal =
+          displayVotoBase != null ? displayVotoBase + footballBonus - footballMalus : null
         return {
           player_id: pid,
           name: player.name,
@@ -808,7 +863,13 @@ export async function computeLiveRoundSnapshot(
           jersey_number: stats.jersey_number ?? null,
           is_starter: stats.is_starter ?? false,
           rating: ratingNum,
+          voto_base: votoBase,
           voto,
+          display_voto_base: displayVotoBase,
+          display_voto_total: displayVotoTotal,
+          football_bonus: footballBonus,
+          football_malus: footballMalus,
+          clean_sheet_bonus: cleanSheetBonus,
           is_mvp: stats.is_mvp ?? false,
           minutes_played: stats.minutes_played ?? null,
           play_state: stateOf(pid),
@@ -858,13 +919,7 @@ export async function computeLiveRoundSnapshot(
     }
   })
 
-  // Sort: in_progress first, then scheduled by kickoff, then finished
-  matchesOut.sort((a, b) => {
-    const order = { in_progress: 0, scheduled: 1, finished: 2, cancelled: 3 }
-    const diff = (order[a.status] ?? 3) - (order[b.status] ?? 3)
-    if (diff !== 0) return diff
-    return a.kickoff_at.localeCompare(b.kickoff_at)
-  })
+  matchesOut.sort((a, b) => a.kickoff_at.localeCompare(b.kickoff_at))
 
   // ============================================================
   // Battle Royale standings — goals scored + giornata points.
