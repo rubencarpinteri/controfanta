@@ -10,6 +10,7 @@ import {
 } from '@/lib/sportmonks/db'
 import { checkCronEnv, logCronRun, sendCronAlert } from '@/lib/sportmonks/cronLog'
 import { writeLiveSnapshots } from '@/lib/fantamondiale/liveSnapshotWriter'
+import { autoAdvanceRounds, autoEliminateNations } from '@/lib/fantamondiale/autoSchedule'
 
 const ENDPOINT = 'sportmonks-ratings-tick'
 
@@ -41,9 +42,18 @@ export async function GET(req: NextRequest) {
 
   const db = createServiceClient()
 
+  // DB-only housekeeping that must run every minute regardless of whether any
+  // fixture is live: open/lock formazioni at their scheduled times and
+  // eliminate knockout losers. Cheap, idempotent, zero SportMonks calls — so
+  // it runs BEFORE the live-window early-exit below.
+  const [sched, elim] = await Promise.all([
+    autoAdvanceRounds(db),
+    autoEliminateNations(db),
+  ])
+
   const inWindow = await hasFixturesInLiveWindow(db)
   if (!inWindow) {
-    const body = { message: 'No fixtures in live window', live: 0 }
+    const body = { message: 'No fixtures in live window', live: 0, sched, elim }
     await logCronRun(db, {
       endpoint: ENDPOINT,
       started_at,
@@ -56,7 +66,7 @@ export async function GET(req: NextRequest) {
 
   const refs = await listActiveLeagueRefs(db)
   if (!refs.length) {
-    const body = { message: 'No active SportMonks leagues', live: 0 }
+    const body = { message: 'No active SportMonks leagues', live: 0, sched, elim }
     await logCronRun(db, {
       endpoint: ENDPOINT,
       started_at,
@@ -165,7 +175,7 @@ export async function GET(req: NextRequest) {
   }
   if (anomaly) await sendCronAlert(anomaly)
 
-  const body = { live: liveByLeague.size, results, liveSnapshots, anomaly }
+  const body = { live: liveByLeague.size, results, liveSnapshots, anomaly, sched, elim }
   const hadError = !!anomaly || results.some((r) => r.error) || (liveSnapshots?.errors.length ?? 0) > 0
   await logCronRun(db, {
     endpoint: ENDPOINT,

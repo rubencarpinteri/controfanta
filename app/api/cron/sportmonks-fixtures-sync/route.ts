@@ -8,6 +8,7 @@ import {
   upsertFixtureCache,
 } from '@/lib/sportmonks/db'
 import { checkCronEnv, logCronRun } from '@/lib/sportmonks/cronLog'
+import { autoAdvanceRounds, autoEliminateNations } from '@/lib/fantamondiale/autoSchedule'
 
 const ENDPOINT = 'sportmonks-fixtures-sync'
 
@@ -137,7 +138,14 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const body = { refs: refs.length, results }
+  // Downtime backstop for the 1-minute ratings-tick: re-run the DB-only
+  // round scheduler + knockout elimination once a day too.
+  const [sched, elim] = await Promise.all([
+    autoAdvanceRounds(db),
+    autoEliminateNations(db),
+  ])
+
+  const body = { refs: refs.length, results, sched, elim }
   const firstErr = results.find((r) => r.error)?.error
   await logCronRun(db, {
     endpoint: ENDPOINT,

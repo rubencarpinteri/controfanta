@@ -56,6 +56,12 @@ export default async function RoundsPage({ params }: { params: Promise<{ id: str
           (uno per ogni MD del girone reale); ogni fase a eliminazione (Ottavi, Quarti, Semifinali, Finale)
           contiene tipicamente 1 turno.
         </p>
+        <p className="mt-1.5 rounded-lg border border-hairline bg-glass-1 px-3 py-2 text-[11px] text-ink-4 leading-relaxed">
+          ⚙️ <span className="font-semibold text-ink-2">Automatico:</span> ogni turno si apre da solo
+          all&apos;orario di <span className="font-mono">apertura</span> e si blocca all&apos;orario di
+          <span className="font-mono"> lock</span> (derivati dai fixture SportMonks). I pulsanti qui sotto
+          restano come override manuale per anticipare.
+        </p>
       </div>
 
       {phases.map((phase) => {

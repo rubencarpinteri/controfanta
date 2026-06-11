@@ -2,6 +2,7 @@ import { requireFMContext, getFMTeams, getFMPlayers, getFMCoaches } from '@/lib/
 import { createClient } from '@/lib/supabase/server'
 import { TeamCrest } from '@/components/fm/TeamCrest'
 import { CoachTierBadge } from '@/components/fm/CoachTierBadge'
+import { setTeamStatusAction } from './actions'
 
 export const metadata = { title: 'Rose Nazionali' }
 
@@ -26,6 +27,7 @@ export default async function RoseNazionaliPage({
 }) {
   const { id } = await params
   const ctx = await requireFMContext(id)
+  const isSuperAdmin = ctx.isSuperAdmin
   const supabase = await createClient()
 
   const [teams, players, coaches] = await Promise.all([
@@ -202,6 +204,25 @@ export default async function RoseNazionaliPage({
                           </span>
                           <CoachTierBadge tier={coach.tier} full />
                         </div>
+                      )}
+
+                      {/* Super-admin override for the auto-elimination sweep. */}
+                      {isSuperAdmin && (
+                        <form action={setTeamStatusAction} className="border-t border-hairline pt-3">
+                          <input type="hidden" name="competition_ref" value={id} />
+                          <input type="hidden" name="team_id" value={team.id} />
+                          <input type="hidden" name="eliminate" value={eliminated ? '0' : '1'} />
+                          <button
+                            type="submit"
+                            className={`w-full rounded-lg border px-3 py-2 text-[12px] font-semibold transition-colors ${
+                              eliminated
+                                ? 'border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-300'
+                                : 'border-rose-500/30 text-rose-600 hover:bg-rose-500/10 dark:text-rose-300'
+                            }`}
+                          >
+                            {eliminated ? 'Ripristina in gara' : 'Segna come eliminata'}
+                          </button>
+                        </form>
                       )}
                     </div>
                   </details>
