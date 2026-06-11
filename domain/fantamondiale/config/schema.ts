@@ -186,13 +186,13 @@ export const fmCoachKnockoutMatrixSchema = z.object({
 export type FMCoachKnockoutMatrix = z.infer<typeof fmCoachKnockoutMatrixSchema>
 
 export const DEFAULT_COACH_KNOCKOUT_MATRIX: FMCoachKnockoutMatrix = {
-  fav_pos3: { win: 1, draw: -2, loss: -4 },
+  fav_pos3: { win: 1, draw: -3, loss: -4 },
   fav_pos2: { win: 2, draw: -1, loss: -3 },
   fav_pos1: { win: 3, draw:  0, loss: -2 },
   fav_even: { win: 4, draw:  1, loss: -1 },
   fav_neg1: { win: 5, draw:  2, loss:  0 },
   fav_neg2: { win: 6, draw:  3, loss:  1 },
-  fav_neg3: { win: 7, draw:  3, loss:  1 },
+  fav_neg3: { win: 7, draw:  4, loss:  0 },
 }
 
 /** Maps a favoredness integer (−3 … +3) to its matrix key. */
