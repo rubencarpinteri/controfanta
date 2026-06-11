@@ -116,7 +116,7 @@ export default async function MethodologyPage() {
           <p className="text-sm leading-relaxed text-ink-2">
             Ogni giocatore parte dal <strong className="text-ink-1">voto base</strong> (rating SportMonks proiettato sulla scala italiana via una retta che àncora{' '}
             {cfg.pivot_rating.toFixed(2)} alla sufficienza {cfg.pivot_vote.toFixed(2)}). Si aggiungono i <strong className="text-ink-1">bonus/malus</strong> di partita per ottenere il raw subtotal.
-            Poi entra in scena il <strong className="text-amber-300">trademark</strong>: chi ha scelto un giocatore poco diffuso in lega prende il punteggio intero;
+            Poi entra in scena il <strong className="text-amber-700 dark:text-amber-300">trademark</strong>: chi ha scelto un giocatore poco diffuso in lega prende il punteggio intero;
             chi ha scelto il giocatore della folla viene penalizzato in percentuale; chi ha pescato il MVP di una partita raramente posseduto riceve un grosso bonus extra.
           </p>
         </CardContent>
@@ -140,7 +140,7 @@ export default async function MethodologyPage() {
           <div className="mt-5 space-y-1.5 rounded-lg border border-hairline bg-transparent px-4 py-3 font-mono text-xs text-ink-3">
             <div><span className="text-emerald-300">raw_subtotal</span> = voto_base + bonus − malus</div>
             <div><span className="text-rose-300">penalità</span> = |raw_subtotal| × popolarità% / 100</div>
-            <div><span className="text-amber-300">bonus_mvp</span> = (raw_subtotal {cfg.calc_order === 'penalty_then_mvp' ? '− penalità' : ''}) × mvp% / 100</div>
+            <div><span className="text-amber-700 dark:text-amber-300">bonus_mvp</span> = (raw_subtotal {cfg.calc_order === 'penalty_then_mvp' ? '− penalità' : ''}) × mvp% / 100</div>
             <div className="pt-1 border-t border-hairline">
               <span className="text-ink-1">Fantavoto</span> ={' '}
               {cfg.calc_order === 'penalty_then_mvp'
@@ -177,8 +177,8 @@ export default async function MethodologyPage() {
                 <p className="mt-1 text-[11px] text-ink-4">L&apos;admin carica il listino prima dell&apos;apertura della giornata</p>
               </div>
               <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
-                <p className="text-[10px] uppercase tracking-widest text-amber-300">Ownership nascosta</p>
-                <p className="mt-1 text-sm text-amber-200 font-semibold">Fino alla chiusura</p>
+                <p className="text-[10px] uppercase tracking-widest text-amber-700 dark:text-amber-300">Ownership nascosta</p>
+                <p className="mt-1 text-sm text-amber-700 dark:text-amber-200 font-semibold">Fino alla chiusura</p>
                 <p className="mt-1 text-[11px] text-ink-3">Nessuna informazione su chi pesca chi durante la finestra aperta. È un gioco mentale.</p>
               </div>
             </div>
@@ -217,7 +217,7 @@ export default async function MethodologyPage() {
               </table>
             </div>
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
-              <p className="mb-2 text-xs font-medium uppercase tracking-wider text-amber-300">Bonus MVP</p>
+              <p className="mb-2 text-xs font-medium uppercase tracking-wider text-amber-700 dark:text-amber-300">Bonus MVP</p>
               <p className="mb-3 text-xs text-ink-3">Solo se il giocatore ha il rating più alto del suo match.</p>
               <table className="w-full text-xs">
                 <thead><tr className="border-b border-hairline text-ink-4">
@@ -288,7 +288,7 @@ export default async function MethodologyPage() {
             {' = '}
             <span className="text-ink-3">{cfg.pivot_vote.toFixed(2)}</span>
             {' + '}
-            <span className="text-amber-300">{slope.toFixed(4)}</span>
+            <span className="text-amber-700 dark:text-amber-300">{slope.toFixed(4)}</span>
             {' × ( rating − '}
             <span className="text-ink-3">{cfg.pivot_rating.toFixed(2)}</span>
             {' )'}

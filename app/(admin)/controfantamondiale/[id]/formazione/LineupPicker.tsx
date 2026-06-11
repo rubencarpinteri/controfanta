@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useMemo } from 'react'
+import { useState, useTransition, useMemo, useEffect } from 'react'
 import { saveLineupAction } from './actions'
 import { TeamCrest } from '@/components/fm/TeamCrest'
 
@@ -94,6 +94,39 @@ interface Props {
   allowedFormations: string[]
   isReadOnly: boolean
   nextMatchByTeam: Record<string, NextMatch>
+  priceById: Record<string, number>
+}
+
+// Warn before leaving with an unsaved lineup in progress (≥1 starter placed
+// but not yet schierata). Covers browser tab close/refresh (generic native
+// prompt) and in-app link navigation (custom Italian confirm).
+function useUnsavedGuard(active: boolean) {
+  useEffect(() => {
+    if (!active) return
+    const beforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    const onClickCapture = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+      const anchor = (e.target as HTMLElement | null)?.closest('a')
+      if (!anchor) return
+      const href = anchor.getAttribute('href')
+      if (!href || href.startsWith('#') || anchor.target === '_blank') return
+      // Same-page anchors / current URL → not a navigation away.
+      if (href === window.location.pathname) return
+      if (!window.confirm('Formazione non schierata. Sicuro di uscire?')) {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+    }
+    window.addEventListener('beforeunload', beforeUnload)
+    document.addEventListener('click', onClickCapture, true)
+    return () => {
+      window.removeEventListener('beforeunload', beforeUnload)
+      document.removeEventListener('click', onClickCapture, true)
+    }
+  }, [active])
 }
 
 export function LineupPicker({
@@ -107,6 +140,7 @@ export function LineupPicker({
   allowedFormations,
   isReadOnly,
   nextMatchByTeam,
+  priceById,
 }: Props) {
   const playerById = useMemo(() => {
     const m = new Map<string, Player>()
@@ -114,11 +148,16 @@ export function LineupPicker({
     return m
   }, [players])
 
+  const priceOf = (id: string) => priceById[id] ?? 0
+
+  // Group by role, each group ordered by crediti value (high → low).
   const byRole = useMemo(() => {
     const groups: Record<string, Player[]> = { P: [], D: [], C: [], A: [] }
     for (const p of players) (groups[p.role] ?? (groups['A'] ??= [])).push(p)
+    for (const r of ROLE_ORDER) groups[r]?.sort((a, b) => priceOf(b.id) - priceOf(a.id))
     return groups
-  }, [players])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [players, priceById])
 
   const startFormation =
     initialFormation && allowedFormations.includes(initialFormation)
@@ -154,7 +193,7 @@ export function LineupPicker({
   const [assign, setAssign] = useState<Record<string, string>>(seedAssign)
   const [bench, setBench] = useState<string[]>(seedBench)
   const [view, setView] = useState<'pitch' | 'list'>('pitch')
-  const [picker, setPicker] = useState<{ slot: Slot } | { bench: true } | null>(null)
+  const [picker, setPicker] = useState<{ slot: Slot } | { bench: true; role?: 'P' | 'D' | 'C' | 'A' } | null>(null)
   const [search, setSearch] = useState('')
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -178,6 +217,9 @@ export function LineupPicker({
   const benchRoleComplete = ROLE_ORDER.every((r) => (benchRoleCounts[r] ?? 0) >= 1)
   const isComplete = filled === 11
   const canSave = isComplete && benchRoleComplete
+
+  // Guard against leaving with an in-progress, unsaved lineup.
+  useUnsavedGuard(!isReadOnly && (filled >= 1 || bench.length >= 1) && !saved)
 
   // Rows for the pitch, attack rendered on top → GK at bottom.
   const pitchRows = useMemo(() => {
@@ -363,14 +405,19 @@ export function LineupPicker({
           {ROLE_ORDER.map((r) => {
             const ok = (benchRoleCounts[r] ?? 0) >= 1
             return (
-              <span
+              <button
                 key={r}
-                className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[12px] font-semibold tabular-nums ${
+                type="button"
+                disabled={isReadOnly}
+                onClick={() => setPicker({ bench: true, role: r })}
+                className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[12px] font-semibold tabular-nums transition-colors enabled:hover:brightness-110 enabled:active:translate-y-px disabled:cursor-default ${
                   ok ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500' : 'border-amber-500/30 bg-amber-500/10 text-amber-500'
                 }`}
+                aria-label={`Aggiungi riserva ${ROLE_LABEL[r]}`}
               >
                 <span className={`font-bold ${ROLE_COLORS[r]}`}>{r}</span>{benchRoleCounts[r] ?? 0}
-              </span>
+                {!isReadOnly && <span className="opacity-60">+</span>}
+              </button>
             )
           })}
         </div>
@@ -444,11 +491,19 @@ export function LineupPicker({
       {/* Player picker bottom sheet */}
       {picker && (
         <PickerSheet
-          title={'slot' in picker ? `Scegli: ${ROLE_LABEL[picker.slot.role]}` : 'Aggiungi riserva'}
+          title={
+            'slot' in picker
+              ? `Scegli: ${ROLE_LABEL[picker.slot.role]}`
+              : picker.role
+              ? `Riserva: ${ROLE_LABEL[picker.role]}`
+              : 'Aggiungi riserva'
+          }
           players={
             'slot' in picker
               ? (byRole[picker.slot.role] ?? [])
-              : players.filter((p) => !starterSet.has(p.id))
+              : picker.role
+              ? (byRole[picker.role] ?? []).filter((p) => !starterSet.has(p.id) && !benchSet.has(p.id))
+              : ROLE_ORDER.flatMap((r) => byRole[r] ?? []).filter((p) => !starterSet.has(p.id))
           }
           search={search}
           setSearch={setSearch}
@@ -457,6 +512,7 @@ export function LineupPicker({
           currentInSlot={'slot' in picker ? assign[picker.slot.id] ?? null : null}
           mode={'slot' in picker ? 'starter' : 'bench'}
           nextMatchByTeam={nextMatchByTeam}
+          priceById={priceById}
           onPick={(pid) => ('slot' in picker ? assignToSlot(picker.slot.id, pid) : addToBench(pid))}
           onClose={() => { setPicker(null); setSearch('') }}
         />
@@ -690,6 +746,7 @@ function PickerSheet({
   currentInSlot,
   mode,
   nextMatchByTeam,
+  priceById,
   onPick,
   onClose,
 }: {
@@ -702,6 +759,7 @@ function PickerSheet({
   currentInSlot: string | null
   mode: 'starter' | 'bench'
   nextMatchByTeam: Record<string, NextMatch>
+  priceById: Record<string, number>
   onPick: (playerId: string) => void
   onClose: () => void
 }) {
@@ -715,13 +773,13 @@ function PickerSheet({
     <div className="fixed inset-0 z-50 flex flex-col justify-end">
       <div onClick={onClose} className="absolute inset-0 bg-black/45 backdrop-blur-[3px]" />
       <div
-        className="relative flex max-h-[80%] flex-col overflow-hidden rounded-t-[28px] border border-b-0 border-hairline bg-glass-3 backdrop-blur-2xl"
+        className="relative flex max-h-[92%] flex-col overflow-hidden rounded-t-[28px] border border-b-0 border-hairline bg-glass-3 backdrop-blur-2xl"
         style={{ boxShadow: '0 -20px 60px -20px rgba(0,0,0,0.4)' }}
       >
-        <div className="flex-shrink-0 px-4 pb-2 pt-2.5">
-          <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-hairline-strong" />
-          <div className="mb-2.5 flex items-center justify-between">
-            <h3 className="text-[17px] font-semibold text-ink-1">{title}</h3>
+        <div className="flex-shrink-0 px-4 pb-2 pt-2">
+          <div className="mx-auto mb-2 h-1 w-9 rounded-full bg-hairline-strong" />
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="text-[16px] font-semibold text-ink-1">{title}</h3>
             <span className="text-[12px] text-ink-4">{list.length} disponibili</span>
           </div>
           <input
@@ -729,7 +787,7 @@ function PickerSheet({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Cerca per nome o nazionale…"
-            className="w-full rounded-xl border border-hairline-strong bg-glass-1 px-3.5 py-2.5 text-[14px] text-ink-1 outline-none"
+            className="w-full rounded-xl border border-hairline-strong bg-glass-1 px-3.5 py-2 text-[14px] text-ink-1 outline-none"
           />
         </div>
         <div className="flex-1 overflow-y-auto px-3 pb-7 pt-1">
@@ -738,12 +796,13 @@ function PickerSheet({
             const isCurrent = currentInSlot === p.id
             const inUse =
               !isCurrent && (mode === 'starter' ? starterSet.has(p.id) : benchSet.has(p.id) || starterSet.has(p.id))
+            const nm = nextMatchByTeam[p.national_team_id]
             return (
               <button
                 key={p.id}
                 disabled={inUse}
                 onClick={() => onPick(p.id)}
-                className={`mb-1 flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left ${
+                className={`mb-0.5 flex w-full items-center gap-2.5 rounded-lg border px-2.5 py-1.5 text-left ${
                   inUse ? 'cursor-not-allowed border-transparent opacity-40' : 'border-hairline bg-glass-1'
                 } ${isCurrent ? 'ring-1 ring-accent' : ''}`}
               >
@@ -752,28 +811,31 @@ function PickerSheet({
                   logoUrl={p.fm_national_team.logo_url}
                   flagUrl={p.fm_national_team.flag_url}
                   fifaCode={p.fm_national_team.fifa_code}
-                  size={32}
+                  size={26}
                 />
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-[14px] font-semibold text-ink-1">{p.name}</div>
-                  <div className="mt-0.5 flex items-center gap-2">
-                    <span className={`text-[11px] font-bold ${ROLE_COLORS[p.role]}`}>{ROLE_LABEL[p.role]}</span>
-                    <span className="text-[11.5px] text-ink-4">{p.fm_national_team.name}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className={`text-[10.5px] font-bold ${ROLE_COLORS[p.role]}`}>{ROLE_LABEL[p.role]}</span>
+                    <span className="truncate text-[14px] font-semibold text-ink-1">{p.name}</span>
                   </div>
-                  {(() => {
-                    const nm = nextMatchByTeam[p.national_team_id]
-                    if (!nm) return null
-                    return (
-                      <div className="mt-1 flex items-center gap-1.5 text-[11px] text-ink-5">
+                  <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-ink-5">
+                    <span className="truncate text-ink-4">{p.fm_national_team.name}</span>
+                    {nm && (
+                      <>
+                        <span className="text-ink-5">·</span>
                         <span className="font-semibold text-ink-4">{nm.home ? 'vs' : '@'}</span>
-                        <TeamCrest name={nm.opponent} logoUrl={nm.logoUrl} flagUrl={nm.flagUrl} fifaCode={nm.fifaCode} size={13} />
-                        <span className="truncate font-medium text-ink-3">{nm.opponent}</span>
-                        {formatKickoff(nm.kickoff) && <span className="shrink-0 text-ink-5">· {formatKickoff(nm.kickoff)}</span>}
-                      </div>
-                    )
-                  })()}
+                        <TeamCrest name={nm.opponent} logoUrl={nm.logoUrl} flagUrl={nm.flagUrl} fifaCode={nm.fifaCode} size={12} />
+                        <span className="truncate font-medium text-ink-3">{nm.fifaCode}</span>
+                        {formatKickoff(nm.kickoff) && <span className="shrink-0 text-ink-5">{formatKickoff(nm.kickoff)}</span>}
+                      </>
+                    )}
+                  </div>
                 </div>
-                {inUse && <span className="text-[11px] font-semibold text-ink-5">in uso</span>}
+                <div className="flex shrink-0 flex-col items-end leading-none">
+                  <span className="mono text-[14px] font-bold tabular-nums text-ink-1">{priceById[p.id] ?? 0}</span>
+                  <span className="text-[9px] uppercase tracking-wider text-ink-5">cr</span>
+                </div>
+                {inUse && <span className="text-[10px] font-semibold text-ink-5">in uso</span>}
                 {isCurrent && <span className="text-[13px] text-accent">✓</span>}
               </button>
             )

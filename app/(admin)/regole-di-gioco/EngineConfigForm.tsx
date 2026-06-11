@@ -352,7 +352,7 @@ function OwnershipSection({
   return (
     <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-5 space-y-5">
       <div>
-        <p className="text-sm font-semibold text-amber-300">Ownership · MVP — il marchio del gioco</p>
+        <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Ownership · MVP — il marchio del gioco</p>
         <p className="mt-1 text-xs text-ink-3 leading-relaxed">
           Più una scelta è popolare nella lega, più il giocatore viene penalizzato in percentuale.
           Più una scelta è rara e il giocatore risulta MVP del suo match, più viene premiato.

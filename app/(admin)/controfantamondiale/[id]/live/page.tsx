@@ -75,7 +75,7 @@ export default async function LivePage({
       <div className="space-y-4">
         {header}
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-8 text-center">
-          <p className="text-[14px] font-semibold text-amber-300">Live non ancora disponibile</p>
+          <p className="text-[14px] font-semibold text-amber-700 dark:text-amber-300">Live non ancora disponibile</p>
           <p className="mt-1 text-[12px] text-ink-3">
             Si apre al calcio d&apos;inizio della prima partita ufficiale di {activeRound.name}.
           </p>
@@ -160,7 +160,7 @@ export default async function LivePage({
     <div className="space-y-4">
       {header}
       {previewMode && (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-300">
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-300">
           Modalità anteprima — le formazioni degli altri partecipanti sono nascoste.
         </div>
       )}

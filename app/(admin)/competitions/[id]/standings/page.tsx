@@ -134,7 +134,7 @@ export default async function CompetitionStandingsPage({
       </div>
 
       {isStaleSnapshot && (
-        <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-sm text-amber-300">
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
           <span className="mr-1.5 font-semibold">⚠ Classifica provvisoria.</span>
           La classifica mostrata si basa sull&apos;ultimo snapshot disponibile, ma la giornata collegata al turno più recente non è ancora ripubblicata — i dati potrebbero essere temporaneamente non aggiornati.
         </div>

@@ -54,7 +54,7 @@ interface LineupBuilderProps {
 type Assignments = Record<string, string>
 
 const ROLE_STYLE: Record<string, { bg: string; text: string; border: string }> = {
-  Por: { bg: 'bg-yellow-900/60', text: 'text-yellow-300', border: 'border-yellow-500/50' },
+  Por: { bg: 'bg-yellow-900/60', text: 'text-yellow-700 dark:text-yellow-300', border: 'border-yellow-500/50' },
   Dc:  { bg: 'bg-blue-900/60',   text: 'text-blue-300',   border: 'border-blue-500/50'   },
   B:   { bg: 'bg-blue-900/60',   text: 'text-blue-300',   border: 'border-blue-500/50'   },
   Dd:  { bg: 'bg-blue-900/60',   text: 'text-blue-300',   border: 'border-blue-500/50'   },

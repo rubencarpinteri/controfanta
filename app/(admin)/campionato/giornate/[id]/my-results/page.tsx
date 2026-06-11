@@ -506,7 +506,7 @@ function RevealColumn({
   const accentText = {
     emerald: 'text-emerald-300',
     rose:    'text-rose-300',
-    amber:   'text-amber-300',
+    amber:   'text-amber-700 dark:text-amber-300',
   }[accent]
   const accentValueColor = {
     emerald: 'text-emerald-400',

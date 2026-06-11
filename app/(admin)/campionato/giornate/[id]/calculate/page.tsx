@@ -228,14 +228,14 @@ export default async function CalculatePage({
       </div>
 
       {hasStaleOverrides && (
-        <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-sm text-amber-300">
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
           <span className="mr-1.5 font-semibold">⚠ Punteggi non aggiornati.</span>
           Sono state apportate modifiche agli override dopo l&apos;ultima pubblicazione — esegui un nuovo calcolo e pubblica per aggiornare i punteggi e le classifiche di competizione.
         </div>
       )}
 
       {hasStaleStats && (
-        <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-sm text-amber-300">
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
           <span className="mr-1.5 font-semibold">⚠ Statistiche modificate.</span>
           Una o più statistiche sono state aggiornate dopo l&apos;ultima pubblicazione — esegui un nuovo calcolo e pubblica per aggiornare i punteggi e le classifiche di competizione.
         </div>

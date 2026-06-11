@@ -111,7 +111,7 @@ function ScorePreview({ teams }: { teams: PreviewTeamResult[] }) {
                         <span className="text-ink-1">{p.finalScore?.toFixed(2)}</span>
                       )}
                       {p.source === 'leghe' && (
-                        <span className="text-amber-300">{p.finalScore?.toFixed(2)}</span>
+                        <span className="text-amber-700 dark:text-amber-300">{p.finalScore?.toFixed(2)}</span>
                       )}
                       {p.source === 'none' && !p.isNv && (
                         <span className="text-red-400">—</span>
@@ -449,7 +449,7 @@ export function ImportLegheClient({ matchdayId, matchdayName, allTeams }: Props)
         </div>
       )}
       {!canConfirm && hasUnresolved.length > 0 && (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-300">
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
           ⚠ Alcune squadre non sono state associate automaticamente. Selezionale manualmente sopra.
         </div>
       )}

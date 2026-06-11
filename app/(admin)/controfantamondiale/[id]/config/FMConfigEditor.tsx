@@ -33,6 +33,21 @@ const ROLE_LABELS: Record<keyof FMRoleQuota, string> = {
   A: 'Attaccanti',
 }
 
+// Canonical mantra modules offered as toggleable chips. The active list can
+// also contain custom modules typed in the text field — those are merged in.
+const CANONICAL_MODULES = ['3-4-3', '3-5-2', '4-3-3', '4-4-2', '4-5-1', '5-3-2', '5-4-1'] as const
+
+// Knockout matrix rows, by favoredness (opponentTier − ownTier, −3…+3).
+const KO_ROWS = [
+  { key: 'fav_pos3', label: 'Super favorito (+3)' },
+  { key: 'fav_pos2', label: 'Favorito (+2)' },
+  { key: 'fav_pos1', label: 'Leggero favorito (+1)' },
+  { key: 'fav_even', label: 'Equilibrio (0)' },
+  { key: 'fav_neg1', label: 'Leggero sfavorito (−1)' },
+  { key: 'fav_neg2', label: 'Sfavorito (−2)' },
+  { key: 'fav_neg3', label: 'Super sfavorito (−3)' },
+] as const
+
 export function FMConfigEditor({
   competitionId,
   initialConfig,
@@ -81,10 +96,18 @@ export function FMConfigEditor({
     setSaved(false)
   }
 
-  function updateSubstitution<K extends keyof FMCompetitionConfig['substitution']>(
-    key: K, value: FMCompetitionConfig['substitution'][K]
+  function updateCoachKnockout(
+    key: keyof FMCompetitionConfig['coach_tier_knockout_matrix'],
+    field: 'win' | 'draw' | 'loss',
+    value: number
   ) {
-    setCfg((prev) => ({ ...prev, substitution: { ...prev.substitution, [key]: value } }))
+    setCfg((prev) => ({
+      ...prev,
+      coach_tier_knockout_matrix: {
+        ...prev.coach_tier_knockout_matrix,
+        [key]: { ...prev.coach_tier_knockout_matrix[key], [field]: value },
+      },
+    }))
     setSaved(false)
   }
 
@@ -94,6 +117,19 @@ export function FMConfigEditor({
       .map((s) => s.trim())
       .filter((s) => /^\d-\d-\d$/.test(s))
     setCfg((prev) => ({ ...prev, formations: list.length > 0 ? list : prev.formations }))
+    setSaved(false)
+  }
+
+  function toggleFormation(mod: string) {
+    setCfg((prev) => {
+      const has = prev.formations.includes(mod)
+      // Never allow emptying the list — at least one module must stay enabled.
+      if (has && prev.formations.length === 1) return prev
+      const formations = has
+        ? prev.formations.filter((f) => f !== mod)
+        : [...prev.formations, mod]
+      return { ...prev, formations }
+    })
     setSaved(false)
   }
 
@@ -207,96 +243,54 @@ export function FMConfigEditor({
         </div>
       </div>
 
-      {/* ── Formations ── */}
+      {/* ── Allowed modules ── */}
       <div className="rounded-xl border border-hairline bg-glass-1 p-5 space-y-3">
-        <p className="text-[13px] font-semibold text-ink-1">Formazioni consentite</p>
+        <p className="text-[13px] font-semibold text-ink-1">Moduli Disponibili</p>
         <p className="text-[11px] text-ink-4">
-          Lista separata da virgola o spazio nel formato <span className="font-mono">X-Y-Z</span>
-          (es. <span className="font-mono">3-4-3, 4-4-2, 5-3-2</span>).
+          Tocca un modulo per consentirlo (verde) o disattivarlo (rosso). Almeno un modulo
+          deve restare attivo.
         </p>
-        <input
-          type="text"
-          defaultValue={cfg.formations.join(', ')}
-          onBlur={(e) => updateFormations(e.target.value)}
-          className="w-full rounded-lg border border-hairline bg-glass-2 px-3 py-2 text-[13px] font-mono text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-        />
-        <div className="flex flex-wrap gap-1">
-          {cfg.formations.map((f) => (
-            <span key={f} className="rounded border border-hairline bg-glass-2 px-2 py-0.5 text-[11px] font-mono text-ink-2">
-              {f}
-            </span>
-          ))}
+        <div className="flex flex-wrap gap-2">
+          {Array.from(new Set([...CANONICAL_MODULES, ...cfg.formations])).map((mod) => {
+            const on = cfg.formations.includes(mod)
+            return (
+              <button
+                key={mod}
+                type="button"
+                onClick={() => toggleFormation(mod)}
+                aria-pressed={on}
+                className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[13px] font-mono font-semibold transition-colors active:translate-y-px ${
+                  on
+                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-500/20'
+                    : 'border-rose-500/30 bg-rose-500/5 text-rose-500/70 hover:bg-rose-500/10'
+                }`}
+              >
+                <span className={`h-1.5 w-1.5 rounded-full ${on ? 'bg-emerald-500' : 'bg-rose-500/60'}`} />
+                {mod}
+              </button>
+            )
+          })}
         </div>
-      </div>
-
-      {/* ── Substitution rule ── */}
-      <div className="rounded-xl border border-hairline bg-glass-1 p-5 space-y-4">
-        <div>
-          <p className="text-[13px] font-semibold text-ink-1">Sostituzioni</p>
-          <p className="mt-0.5 text-[11px] text-ink-4 leading-relaxed">
-            Il modulo scelto è insindacabile: un titolare che non gioca viene sostituito dalla
-            prima riserva dello stesso ruolo, in ordine di panchina. Niente sostituzioni tra ruoli
-            diversi — finita la panchina del ruolo, lo slot resta vuoto e si gioca in meno.
-          </p>
-        </div>
-
-        <div>
-          <label className="block text-[9px] uppercase tracking-wider text-ink-5 mb-1.5 font-semibold">
-            Quando scatta la sostituzione
-          </label>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            {(
-              [
-                ['min_minutes', 'Minuti minimi', 'Sostituisci se il titolare gioca meno dei minuti indicati'],
-                ['no_rating', 'Nessun voto (s.v.)', 'Sostituisci solo se il titolare non ha un voto utilizzabile'],
-              ] as const
-            ).map(([value, label, desc]) => {
-              const active = cfg.substitution.trigger === value
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => updateSubstitution('trigger', value)}
-                  className={`flex-1 rounded-lg border px-3 py-2.5 text-left transition-colors ${
-                    active
-                      ? 'border-indigo-500 bg-indigo-500/10'
-                      : 'border-hairline bg-glass-2 hover:bg-glass-1'
-                  }`}
-                >
-                  <span className={`block text-[12px] font-semibold ${active ? 'text-indigo-300' : 'text-ink-2'}`}>
-                    {label}
-                  </span>
-                  <span className="mt-0.5 block text-[10px] text-ink-4 leading-snug">{desc}</span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        {cfg.substitution.trigger === 'min_minutes' && (
-          <div className="max-w-[180px]">
-            <label className="block text-[9px] uppercase tracking-wider text-ink-5 mb-1 font-semibold">
-              Minuti minimi
-            </label>
-            <input
-              type="number"
-              step={1}
-              min={0}
-              max={90}
-              value={cfg.substitution.min_minutes}
-              onChange={(e) => updateSubstitution('min_minutes', Number(e.target.value))}
-              className="w-full rounded-lg border border-hairline bg-glass-2 px-3 py-2 text-[13px] text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            />
-          </div>
-        )}
+        <details className="pt-1">
+          <summary className="cursor-pointer text-[11px] text-ink-4 hover:text-ink-2">
+            Aggiungi un modulo personalizzato
+          </summary>
+          <input
+            type="text"
+            defaultValue={cfg.formations.join(', ')}
+            onBlur={(e) => updateFormations(e.target.value)}
+            placeholder="es. 3-4-3, 4-4-2, 5-3-2"
+            className="mt-2 w-full rounded-lg border border-hairline bg-glass-2 px-3 py-2 text-[13px] font-mono text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          />
+        </details>
       </div>
 
       {/* ── Coach tier matrix ── */}
       <div className="rounded-xl border border-hairline bg-glass-1 p-5 space-y-3">
-        <p className="text-[13px] font-semibold text-ink-1">Allenatore — Matrice Tier × Risultato</p>
+        <p className="text-[13px] font-semibold text-ink-1">Allenatore — Fase a gironi (Tier × Risultato)</p>
         <p className="text-[11px] text-ink-4">
           Punti che l&apos;allenatore aggiunge al raw subtotal della squadra fantasy in base
-          al tier della nazionale e al risultato della partita reale.
+          al tier della nazionale e al risultato della partita reale. Vale solo nella fase a gironi.
         </p>
         <div className="overflow-x-auto rounded-lg border border-hairline">
           <table className="w-full text-[12px] tabular-nums">
@@ -330,6 +324,54 @@ export function FMConfigEditor({
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* ── Knockout matrix (favoredness) ── */}
+        <div className="space-y-2 pt-4 mt-2 border-t border-hairline">
+          <p className="text-[13px] font-semibold text-ink-1">Allenatore — Eliminazione diretta (Favore × Risultato)</p>
+          <p className="text-[11px] text-ink-4 leading-relaxed">
+            Dalla fase a eliminazione il bonus non dipende più dal solo tier, ma dal{' '}
+            <span className="font-medium text-ink-2">favore</span> = tier avversario − tier proprio
+            (−3…+3). I favoriti guadagnano poco vincendo e sono puniti duramente se perdono; gli
+            sfavoriti il contrario.
+          </p>
+          <div className="overflow-x-auto rounded-lg border border-hairline">
+            <table className="w-full text-[12px] tabular-nums">
+              <thead>
+                <tr className="border-b border-hairline">
+                  <th className="px-3 py-2 text-left text-ink-4 font-medium">Favore</th>
+                  <th className="px-3 py-2 text-center text-emerald-400 font-medium">Vittoria</th>
+                  <th className="px-3 py-2 text-center text-ink-4 font-medium">Pareggio</th>
+                  <th className="px-3 py-2 text-center text-rose-400 font-medium">Sconfitta</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-hairline">
+                {KO_ROWS.map(({ key, label }) => {
+                  const row = cfg.coach_tier_knockout_matrix[key]
+                  return (
+                    <tr key={key}>
+                      <td className="px-3 py-2 text-ink-2 font-medium whitespace-nowrap">{label}</td>
+                      {(['win', 'draw', 'loss'] as const).map((field) => (
+                        <td key={field} className="px-3 py-1.5 text-center">
+                          <input
+                            type="number"
+                            step={1}
+                            value={row[field]}
+                            onChange={(e) => updateCoachKnockout(key, field, Number(e.target.value))}
+                            className="w-16 rounded border border-hairline bg-glass-2 px-2 py-1 text-center text-[12px] text-ink-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-[11px] text-ink-4">
+            La colonna <span className="font-medium text-ink-2">Pareggio</span> si applica solo se la
+            gara è decisa ai rigori e la modalità sotto è impostata su &ldquo;Il pareggio conta&rdquo;.
+          </p>
         </div>
 
         {/* ── Knockout draw mode ── */}

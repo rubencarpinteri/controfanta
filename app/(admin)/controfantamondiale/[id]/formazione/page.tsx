@@ -95,6 +95,23 @@ export default async function FormazionePage({ params }: { params: Promise<{ id:
     .in('id', squadPlayerIds.length > 0 ? squadPlayerIds : ['00000000-0000-0000-0000-000000000000'])
     .order('name', { ascending: true })
 
+  // Per-league phase prices (crediti) for the squad — drives the picker's
+  // high→low ordering and the value shown on each row. Falls back to the
+  // player's base_price when this Lega hasn't priced the player for the phase.
+  const priceById: Record<string, number> = {}
+  if (activePhase && squadPlayerIds.length > 0) {
+    const { data: priceRows } = await supabase
+      .from('fm_league_phase_player_price')
+      .select('player_id, price')
+      .eq('league_competition_id', ctx.legaCompetition.id)
+      .eq('phase_id', activePhase.id)
+      .in('player_id', squadPlayerIds)
+    for (const r of priceRows ?? []) priceById[r.player_id] = r.price
+  }
+  for (const p of squadPlayers ?? []) {
+    if (priceById[p.id] == null) priceById[p.id] = (p as { base_price?: number }).base_price ?? 0
+  }
+
   // Load the squad's coach (fixed for the phase) + its frozen tier, so it's
   // always visible here — including when the round is locked/closed.
   let coach: { name: string; team: { name: string; fifa_code: string; logo_url: string | null; flag_url: string | null } | null; tier: string | null } | null = null
@@ -213,6 +230,7 @@ export default async function FormazionePage({ params }: { params: Promise<{ id:
           allowedFormations={config.formations}
           isReadOnly={isReadOnly}
           nextMatchByTeam={nextMatchByTeam}
+          priceById={priceById}
         />
       )}
     </div>

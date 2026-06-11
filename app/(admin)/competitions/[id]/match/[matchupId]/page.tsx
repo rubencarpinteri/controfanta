@@ -451,7 +451,7 @@ export default async function MatchDetailPage({
 
         {/* Formations */}
         {!homeLineup && !awayLineup ? (
-          <div className="px-5 py-4 text-[13px] text-amber-300">
+          <div className="px-5 py-4 text-[13px] text-amber-700 dark:text-amber-300">
             Nessuna formazione inserita per questa giornata. Importa le formazioni dalla pagina della giornata.
           </div>
         ) : (

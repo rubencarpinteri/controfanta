@@ -69,7 +69,7 @@ export default async function RegolePage({ params }: { params: Promise<{ id: str
             La panchina deve contenere <span className="font-semibold text-ink-1">almeno un giocatore per ruolo</span> (1 P, 1 D, 1 C, 1 A);
             puoi aggiungerne altri fino a esaurire la rosa. Più riserve schieri, più giocatori riveli.
           </p>
-          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-200 leading-relaxed">
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-200 leading-relaxed">
             Titolari e panchina diventano <span className="font-semibold">pubblici al primo calcio d&apos;inizio</span> del turno:
             chi vedi nelle panchine altrui ti dice quali giocatori sono &ldquo;presi&rdquo;. Tieni nascosta più rosa possibile.
           </div>

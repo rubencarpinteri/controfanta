@@ -233,7 +233,7 @@ export function RoundsManager({
                   <div className={`rounded-lg border px-4 py-3 text-sm ${
                     bulkBRState.result.rounds_failed === 0
                       ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-400'
-                      : 'border-amber-500/30 bg-amber-500/5 text-amber-300'
+                      : 'border-amber-500/30 bg-amber-500/5 text-amber-700 dark:text-amber-300'
                   }`}>
                     Creati <span className="font-semibold">{bulkBRState.result.rounds_created}</span> turni
                     {' · '}

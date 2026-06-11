@@ -245,7 +245,7 @@ export function OverridesManager({ matchdayId, matchdayStatus, activeOverrides, 
         </p>
       )}
       {staleWarning && (
-        <div className="rounded-lg border border-amber-500/40 bg-amber-500/8 px-4 py-3 text-sm text-amber-300">
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/8 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
           <span className="mr-1.5 font-semibold">⚠ Punteggi non aggiornati.</span>
           {staleWarning}
         </div>

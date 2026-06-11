@@ -10,14 +10,14 @@ interface AlertProps {
 const styles: Record<AlertVariant, string> = {
   error:   'border-rose-400/25 bg-rose-500/8 text-rose-200',
   success: 'border-emerald-400/25 bg-emerald-500/8 text-emerald-200',
-  warning: 'border-amber-400/25 bg-amber-500/8 text-amber-200',
+  warning: 'border-amber-400/25 bg-amber-500/8 text-amber-700 dark:text-amber-200',
   info:    'border-sky-400/25 bg-sky-500/8 text-sky-200',
 }
 
 const titleColor: Record<AlertVariant, string> = {
   error:   'text-rose-300',
   success: 'text-emerald-300',
-  warning: 'text-amber-300',
+  warning: 'text-amber-700 dark:text-amber-300',
   info:    'text-sky-300',
 }
 

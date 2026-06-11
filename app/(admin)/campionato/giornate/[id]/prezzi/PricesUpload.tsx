@@ -97,7 +97,7 @@ export function PricesUpload({ matchdayId }: Props) {
               <button
                 type="button"
                 onClick={() => setShowUnmatched((v) => !v)}
-                className="text-xs text-amber-300 hover:text-amber-200"
+                className="text-xs text-amber-700 dark:text-amber-300 hover:text-amber-700 dark:text-amber-200"
               >
                 {showUnmatched ? '▾ Nascondi' : '▸ Mostra'} righe non abbinate
               </button>
@@ -120,7 +120,7 @@ export function PricesUpload({ matchdayId }: Props) {
                           <td className="px-2 py-1 text-ink-2">{r.full_name}</td>
                           <td className="px-2 py-1 text-ink-3">{r.club}</td>
                           <td className="px-2 py-1 font-mono text-ink-3">{r.price}</td>
-                          <td className="px-2 py-1 text-amber-300">
+                          <td className="px-2 py-1 text-amber-700 dark:text-amber-300">
                             {r.reason === 'no-match' ? 'nessun abbinamento' : 'ambiguo (più candidati)'}
                           </td>
                         </tr>

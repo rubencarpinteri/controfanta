@@ -197,7 +197,7 @@ export default async function LineupPage({
       </div>
 
       {!pricesReady && matchday.status === 'open' && (
-        <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-sm text-amber-300">
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
           ⚠ I prezzi per questa giornata non sono stati ancora caricati ({pricedCount} / {poolSize}).
           Contatta l&apos;admin di lega.
         </div>
