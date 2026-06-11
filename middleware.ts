@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 // Routes that do not require authentication.
 // /api/cron/* is reached by external cron callers (GitHub Actions) that
 // authenticate with a Bearer token validated inside each route handler.
-const PUBLIC_PATHS = ['/login', '/signup', '/reset-password', '/auth', '/api/cron', '/join', '/font-playground']
+const PUBLIC_PATHS = ['/login', '/signup', '/reset-password', '/auth', '/api/cron', '/join']
 const PUBLIC_EXACT = new Set<string>(['/'])
 
 export async function middleware(request: NextRequest) {

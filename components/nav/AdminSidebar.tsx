@@ -7,7 +7,7 @@ import { logoutAction } from '@/app/(auth)/login/actions'
 import { toggleViewAsManagerAction } from '@/app/(admin)/preview-actions'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 
-type IconName = 'calendar' | 'trophy' | 'user' | 'beaker' | 'gear' | 'logout' | 'ball' | 'globe' | 'book'
+type IconName = 'calendar' | 'trophy' | 'user' | 'gear' | 'logout' | 'ball' | 'globe' | 'book'
 
 interface NavItem {
   href: string
@@ -40,7 +40,6 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   { href: '/le-mie-squadre', label: 'Le mie squadre', icon: 'user' },
-  { href: '/playground',     label: 'Playground',     icon: 'beaker', adminOnly: true },
   { href: '/league',         label: 'Impostazioni',   icon: 'gear',   adminOnly: true, matchPaths: ['/regole-di-gioco'] },
 ]
 
@@ -77,13 +76,6 @@ function NavIcon({ name, size = 16 }: { name: IconName; size?: number }) {
         <svg {...props}>
           <circle cx="12" cy="8" r="3.5" />
           <path d="M5 20a7 7 0 0 1 14 0" />
-        </svg>
-      )
-    case 'beaker':
-      return (
-        <svg {...props}>
-          <path d="M9 3v6L4 19a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3l-5-10V3" />
-          <path d="M8 3h8M8 14h8" />
         </svg>
       )
     case 'gear':
@@ -147,7 +139,7 @@ export function AdminSidebar({ isAdmin, canPreview, previewing, username, league
     // /dashboard owns a lot of nested surfaces (campionato, competitions,
     // fantamondiale, …) via matchPaths — so we can't early-return on exact
     // match. Check matchPaths first, then fall back to prefix match for
-    // simpler items like /league or /playground.
+    // simpler items like /league.
     if (item.matchPaths?.some((p) => pathname.startsWith(p))) return true
     if (item.href === '/dashboard') return pathname === '/dashboard'
     return pathname.startsWith(item.href)
