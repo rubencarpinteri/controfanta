@@ -406,7 +406,7 @@ export default async function MyTeamsPage() {
                   level="nazionale"
                   competitionLabel="Serie A"
                   competitionSubLabel={subLabel}
-                  members={transferTargets}
+                  members={isAdmin ? transferTargets : undefined}
                   pendingOffer={pending && recipient
                     ? {
                         request_id:   pending.id,
@@ -445,7 +445,7 @@ export default async function MyTeamsPage() {
                   level="internazionale"
                   competitionLabel={t.competitionName}
                   competitionSubLabel={t.competitionEdition}
-                  members={transferTargets}
+                  members={isAdmin ? transferTargets : undefined}
                   rosaHref={t.rosaHref}
                   rosaOpen={openPhaseCompetitionIds.has(t.fmCompetitionId)}
                   pendingOffer={pending && recipient

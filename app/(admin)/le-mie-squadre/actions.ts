@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { requireLeagueContext } from '@/lib/league'
+import { requireLeagueContext, isSuperAdmin } from '@/lib/league'
 import { writeAuditLog } from '@/lib/audit'
 
 export interface RenameTeamState {
@@ -223,6 +223,10 @@ export async function offerTeamTransferAction(
 ): Promise<TransferActionState> {
   const ctx = await requireLeagueContext()
   const supabase = await createClient()
+
+  if (ctx.role !== 'league_admin' && !(await isSuperAdmin())) {
+    return { error: 'Solo gli amministratori della Lega possono assegnare una squadra.', success: false }
+  }
 
   const parsed = offerSchema.safeParse({
     team_id:    formData.get('team_id'),
@@ -467,6 +471,10 @@ export async function offerFMTeamTransferAction(
 ): Promise<TransferActionState> {
   const ctx = await requireLeagueContext()
   const supabase = await createClient()
+
+  if (ctx.role !== 'league_admin' && !(await isSuperAdmin())) {
+    return { error: 'Solo gli amministratori della Lega possono assegnare una squadra.', success: false }
+  }
 
   const parsed = offerFMSchema.safeParse({
     team_id:    formData.get('team_id'),
