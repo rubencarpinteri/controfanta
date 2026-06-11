@@ -4,6 +4,7 @@ import type { FMCompetitionConfig } from '@/domain/fantamondiale/config/schema'
 import { DEFAULT_FM_CONFIG } from '@/domain/fantamondiale/config/defaults'
 import { TeamCrest } from '@/components/fm/TeamCrest'
 import { CoachTierBadge } from '@/components/fm/CoachTierBadge'
+import { FormationStatusBoard } from '@/components/fm/FormationStatusBoard'
 import { LineupPicker } from './LineupPicker'
 
 export default async function FormazionePage({ params }: { params: Promise<{ id: string }> }) {
@@ -138,6 +139,37 @@ export default async function FormazionePage({ params }: { params: Promise<{ id:
     }
   }
 
+  // ── League-wide formation status — who has submitted this round's lineup.
+  // Reveals only submitted/not (never the lineups), so it's safe pre-kickoff.
+  const { data: legaTeams } = await supabase
+    .from('fm_fantasy_team')
+    .select('id, name, manager_id')
+    .eq('league_competition_id', ctx.legaCompetition.id)
+    .order('name', { ascending: true })
+
+  const legaTeamIds = (legaTeams ?? []).map((t) => t.id)
+  const { data: submittedRows } = await supabase
+    .from('fm_matchday_lineup')
+    .select('fantasy_team_id')
+    .eq('scoring_round_id', activeRound.id)
+    .in('fantasy_team_id', legaTeamIds.length > 0 ? legaTeamIds : ['00000000-0000-0000-0000-000000000000'])
+    .not('submitted_at', 'is', null)
+  const submittedTeamIds = new Set((submittedRows ?? []).map((r) => r.fantasy_team_id))
+
+  const managerIds = [...new Set((legaTeams ?? []).map((t) => t.manager_id).filter(Boolean))]
+  const { data: managerProfiles } = await supabase
+    .from('profiles')
+    .select('id, full_name')
+    .in('id', managerIds.length > 0 ? managerIds : ['00000000-0000-0000-0000-000000000000'])
+  const managerNameById = new Map((managerProfiles ?? []).map((p) => [p.id, p.full_name ?? null]))
+
+  const formationStatusTeams = (legaTeams ?? []).map((t) => ({
+    id: t.id,
+    name: t.name,
+    manager_name: t.manager_id ? managerNameById.get(t.manager_id) ?? null : null,
+    submitted: submittedTeamIds.has(t.id),
+  }))
+
   const isReadOnly = !ctx.fantasyTeamId || activeRound.status !== 'open'
 
   // A team can only field a lineup once its squad is complete: full pool + coach.
@@ -233,6 +265,12 @@ export default async function FormazionePage({ params }: { params: Promise<{ id:
           priceById={priceById}
         />
       )}
+
+      <FormationStatusBoard
+        teams={formationStatusTeams}
+        myTeamId={ctx.fantasyTeamId}
+        locked={activeRound.status !== 'open'}
+      />
     </div>
   )
 }

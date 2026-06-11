@@ -30,6 +30,12 @@ function fmtKickoff(iso: string): string {
   return new Date(iso).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
 }
 
+// A team that never submitted a lineup arrives in the snapshot with no formation
+// and no players — it scores 0 for the giornata (Battle Royale).
+function isNotFielded(team: LiveSnapshotTeam): boolean {
+  return team.formation === null && team.players.length === 0
+}
+
 // ─────────────────────────────────────────────
 // Root board — manages poll + tab/selection state
 // ─────────────────────────────────────────────
@@ -555,6 +561,7 @@ function TeamDetailPanel({
 }) {
   const fielded = team.players.filter((p) => p.counts)
   const bench = team.players.filter((p) => !p.counts)
+  const notFielded = isNotFielded(team)
 
   return (
     <div
@@ -573,13 +580,24 @@ function TeamDetailPanel({
               </span>
             )}
           </div>
-          <span className="text-[10px] text-ink-5">{team.formation ?? '—'}</span>
+          <span className="text-[10px] text-ink-5">{notFielded ? 'Formazione non schierata' : team.formation ?? '—'}</span>
         </div>
         <span className="text-[22px] font-black tabular-nums text-emerald-400">
           {fmt(team.live_total, 1)}
         </span>
       </div>
 
+      {notFielded ? (
+        <div className="m-3 rounded-lg border border-rose-500/30 bg-rose-500/8 p-4 text-center">
+          <p className="text-[13px] font-semibold text-rose-500 dark:text-rose-300">
+            Formazione non schierata
+          </p>
+          <p className="mt-1 text-[11px] leading-relaxed text-ink-4">
+            Nessuna formazione inviata prima del lock. La squadra prende{' '}
+            <span className="font-semibold">0 punti</span> in questa giornata di Battle Royale.
+          </p>
+        </div>
+      ) : (
       <div className="p-3 space-y-3">
         {/* coach */}
         {team.coach && <CoachRow coach={team.coach} />}
@@ -616,6 +634,7 @@ function TeamDetailPanel({
           </div>
         )}
       </div>
+      )}
     </div>
   )
 }
@@ -819,8 +838,14 @@ function GiornataLivePanel({
                     <span className="shrink-0 text-[8px] font-bold uppercase tracking-wide text-indigo-400/60">tu</span>
                   )}
                 </div>
-                {team.manager_name && (
-                  <span className="text-[10px] text-ink-5 truncate block">{team.manager_name}</span>
+                {isNotFielded(team) ? (
+                  <span className="text-[10px] font-semibold text-rose-500 dark:text-rose-400 truncate block">
+                    Formazione non schierata
+                  </span>
+                ) : (
+                  team.manager_name && (
+                    <span className="text-[10px] text-ink-5 truncate block">{team.manager_name}</span>
+                  )
                 )}
               </div>
 
@@ -1023,6 +1048,7 @@ function MobileTeamCard({
   previewMode: boolean
   onToggle: () => void
 }) {
+  const notFielded = isNotFielded(team)
   return (
     <div
       className={`rounded-xl border bg-glass-1 overflow-hidden ${
@@ -1043,8 +1069,14 @@ function MobileTeamCard({
               </span>
             )}
           </div>
-          {team.manager_name && (
-            <span className="text-[10px] text-ink-5 truncate block">{team.manager_name}</span>
+          {notFielded ? (
+            <span className="text-[10px] font-semibold text-rose-500 dark:text-rose-400 truncate block">
+              Formazione non schierata
+            </span>
+          ) : (
+            team.manager_name && (
+              <span className="text-[10px] text-ink-5 truncate block">{team.manager_name}</span>
+            )
           )}
         </div>
         <GoalDots goals={standings?.goals_scored ?? 0} />
@@ -1059,7 +1091,16 @@ function MobileTeamCard({
 
       {expanded && (
         <div className="p-3 space-y-2">
-          {previewMode && !isMine ? (
+          {notFielded ? (
+            <div className="rounded-lg border border-rose-500/30 bg-rose-500/8 p-3 text-center">
+              <p className="text-[12px] font-semibold text-rose-500 dark:text-rose-300">
+                Formazione non schierata
+              </p>
+              <p className="mt-1 text-[10px] leading-relaxed text-ink-4">
+                Nessuna formazione inviata prima del lock — 0 punti in questa giornata.
+              </p>
+            </div>
+          ) : previewMode && !isMine ? (
             <MaskedPlayerRows count={team.players.filter((p) => p.counts).length} />
           ) : (
             <>
