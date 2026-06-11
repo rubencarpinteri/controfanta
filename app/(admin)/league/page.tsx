@@ -207,15 +207,12 @@ export default async function LeagueSettingsPage() {
       <Card>
         <CardHeader
           title="Gestione"
-          description="Membri, ruoli ambigui, rose Serie A, formazioni."
+          description="Membri e inviti della lega."
         />
         <CardContent>
           <nav className="space-y-1">
             {[
               { href: '/league/members',    label: 'Membri e inviti',      sub: 'Invita manager, cambia ruoli, gestisci le squadre' },
-              { href: '/league/role-rules', label: 'Regole ruoli ambigui', sub: 'Configura E → DEF o MID e altri ruoli ambigui (Serie A)' },
-              { href: '/formations',        label: 'Formazioni valide',    sub: 'Gestisci formazioni e slot Mantra (Serie A)' },
-              { href: '/roster',            label: 'Gestione rose',        sub: 'Visualizza e modifica le rose Serie A' },
             ].map(({ href, label, sub }) => (
               <a
                 key={href}
