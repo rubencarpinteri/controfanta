@@ -617,12 +617,27 @@ export async function hasFixturesInLiveWindow(db: DB): Promise<boolean> {
   // to stop polling while a match is still live.
   const from = new Date(now.getTime() - 210 * 60 * 1000).toISOString()
   const to = new Date(now.getTime() + 5 * 60 * 1000).toISOString()
-  const { count } = await db
+  // Only open the live window for fixtures that aren't already finished in
+  // fm_real_match — avoids keeping the window open for games that ended hours
+  // ago but whose kickoff_at is still within the 210-min gate.
+  const { data: candidates } = await db
     .from('sportmonks_fixtures')
-    .select('sportmonks_fixture_id', { count: 'exact', head: true })
+    .select('sportmonks_fixture_id')
     .gte('kickoff_at', from)
     .lte('kickoff_at', to)
-  if ((count ?? 0) > 0) return true
+  if (candidates?.length) {
+    const smIds = candidates.map((c) => c.sportmonks_fixture_id)
+    // Fixtures that are either not linked to fm_real_match yet, or linked but
+    // not yet finished — either case means we should keep polling.
+    const { data: finished } = await db
+      .from('fm_real_match')
+      .select('sportmonks_fixture_id')
+      .in('sportmonks_fixture_id', smIds)
+      .eq('status', 'finished')
+    const finishedIds = new Set((finished ?? []).map((r) => r.sportmonks_fixture_id))
+    const anyNotDone = smIds.some((id) => !finishedIds.has(id))
+    if (anyNotDone) return true
+  }
 
   // Reality override: the check above trusts the fixture cache's kickoff_at,
   // which can be stale if FIFA reschedules and the daily sync hasn't caught up.
