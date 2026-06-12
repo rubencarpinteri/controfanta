@@ -76,29 +76,33 @@ function teamLiveCounts(
   let field = 0
   let bench = 0
   for (const p of team.players) {
-    const s = liveField.get(p.player_id)
-    if (s === 'field') field++
-    else if (s === 'bench') bench++
+    const real = liveField.get(p.player_id)
+    if (!real) continue // his nation isn't in a live match right now → no dot
+    // Green only for a player who is BOTH a titolare in this fantasy team's
+    // formation AND currently on the pitch. Everyone else in a live match
+    // (fantasy bench, or a titolare not on the pitch) is grey.
+    if (p.via === 'starter' && real === 'field') field++
+    else bench++
   }
   return { field, bench }
 }
 
-// Glowing dots: green for each rostered player currently on the pitch in a live
-// match, grey for those in the squad but on the bench right now.
+// Glowing dots: green for each fantasy titolare currently on the pitch in a live
+// match, grey for the rest of the squad involved in a live match.
 function LiveDots({ field, bench }: { field: number; bench: number }) {
   if (field + bench === 0) return null
   return (
-    <span className="inline-flex items-center gap-0.5" title={`${field} in campo · ${bench} in panchina (live)`}>
+    <span className="inline-flex items-center gap-1" title={`${field} titolari in campo · ${bench} altri (live)`}>
       {Array.from({ length: field }).map((_, i) => (
         <span
           key={`f${i}`}
-          className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_5px_1px] shadow-emerald-400/70"
+          className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_7px_2px] shadow-emerald-400/70"
         />
       ))}
       {Array.from({ length: bench }).map((_, i) => (
         <span
           key={`b${i}`}
-          className="h-1.5 w-1.5 animate-pulse rounded-full bg-ink-5/50 shadow-[0_0_4px_1px] shadow-ink-5/30"
+          className="h-2.5 w-2.5 animate-pulse rounded-full bg-ink-5/55 shadow-[0_0_5px_1px] shadow-ink-5/30"
         />
       ))}
     </span>
