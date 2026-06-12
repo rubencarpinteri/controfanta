@@ -63,7 +63,25 @@ export type LiveSnapshotPlayer = {
   /** Is this player in the fielded-now set (i.e. counts toward live_total)? */
   counts: boolean
   rating: number | null
+  /** Calibrated fantasy voto before football bonus/malus and ownership effects. */
+  voto_base: number | null
+  /** Team panel base voto, shaped like the real-match panel display. */
+  display_voto_base: number | null
+  /** Team panel total voto with visible football bonus/malus, before ownership effects. */
+  display_voto_total: number | null
   raw_subtotal: number
+  football_bonus: number
+  football_malus: number
+  clean_sheet_bonus: number
+  yellow_cards: number
+  red_cards: number
+  own_goals: number
+  penalties_scored: number
+  penalties_saved: number
+  penalties_missed: number
+  goals: number
+  assists: number
+  immunita_active: boolean
   popularity_penalty_now: number
   popularity_penalty_potential: number
   mvp_bonus: number
@@ -687,7 +705,8 @@ export async function computeLiveRoundSnapshot(
 
       // Immunità (live): a player fielded by exactly ONE team in this lega has
       // his card malus waived — same rule as the final engine, kept in sync.
-      let rawSubtotal = raw?.raw_subtotal ?? 0
+      let adjustedRaw = raw
+      let immunitaActive = false
       if (
         raw &&
         config.immunita_enabled &&
@@ -696,7 +715,7 @@ export async function computeLiveRoundSnapshot(
         matchForPlayer &&
         (stats.yellow_cards > 0 || stats.red_cards > 0)
       ) {
-        rawSubtotal = scorePlayerRaw(
+        adjustedRaw = scorePlayerRaw(
           {
             playerId: lp.player_id,
             role: player.role as FMRole,
@@ -726,22 +745,45 @@ export async function computeLiveRoundSnapshot(
           },
           config,
           { immunitaGranted: true },
-        ).raw_subtotal
+        )
+        immunitaActive = true
       }
+      const rawSubtotal = adjustedRaw?.raw_subtotal ?? 0
 
       let popularity_penalty_now = 0
       let popularity_penalty_potential = 0
       let mvp_bonus = 0
       let final_score_now = 0
+      const matchHomeScore = matchForPlayer?.home_score ?? 0
+      const matchAwayScore = matchForPlayer?.away_score ?? 0
+      const isHome = matchForPlayer ? player.national_team_id === matchForPlayer.home_team_id : false
+      const goalsConceded = isHome ? matchAwayScore : matchHomeScore
+      const cleanSheetBonus =
+        raw?.voto_base != null && goalsConceded === 0 && player.role === 'P'
+          ? config.football.clean_sheet.P
+          : raw?.voto_base != null &&
+              goalsConceded === 0 &&
+              player.role === 'D' &&
+              (stats?.minutes_played ?? 0) >= config.football.clean_sheet.min_minutes
+            ? config.football.clean_sheet.D
+            : 0
+      const displayVotoBase =
+        adjustedRaw && adjustedRaw.voto_base != null
+          ? rawSubtotal - adjustedRaw.football_bonus + adjustedRaw.football_malus + cleanSheetBonus
+          : null
+      const displayVotoTotal =
+        displayVotoBase != null
+          ? displayVotoBase + (adjustedRaw?.football_bonus ?? 0) - (adjustedRaw?.football_malus ?? 0)
+          : null
 
-      if (raw) {
+      if (adjustedRaw) {
         const finNow = finalizePlayerForLega(
-          { raw_subtotal: rawSubtotal, is_mvp: raw.is_mvp },
+          { raw_subtotal: rawSubtotal, is_mvp: adjustedRaw.is_mvp },
           own?.pct_now ?? 0,
           config,
         )
         const finMax = finalizePlayerForLega(
-          { raw_subtotal: rawSubtotal, is_mvp: raw.is_mvp },
+          { raw_subtotal: rawSubtotal, is_mvp: adjustedRaw.is_mvp },
           own?.pct_potential ?? 0,
           config,
         )
@@ -761,7 +803,22 @@ export async function computeLiveRoundSnapshot(
         status: stateOf(lp.player_id),
         counts,
         rating: stats?.rating != null ? Number(stats.rating) : null,
+        voto_base: raw?.voto_base ?? null,
+        display_voto_base: displayVotoBase,
+        display_voto_total: displayVotoTotal,
         raw_subtotal: rawSubtotal,
+        football_bonus: adjustedRaw?.football_bonus ?? 0,
+        football_malus: adjustedRaw?.football_malus ?? 0,
+        clean_sheet_bonus: cleanSheetBonus,
+        yellow_cards: stats?.yellow_cards ?? 0,
+        red_cards: stats?.red_cards ?? 0,
+        own_goals: stats?.own_goals ?? 0,
+        penalties_scored: stats?.penalties_scored ?? 0,
+        penalties_saved: stats?.penalties_saved ?? 0,
+        penalties_missed: stats?.penalties_missed ?? 0,
+        goals: stats?.goals ?? 0,
+        assists: stats?.assists ?? 0,
+        immunita_active: immunitaActive,
         popularity_penalty_now,
         popularity_penalty_potential,
         mvp_bonus,

@@ -666,7 +666,7 @@ function RealPlayerRow({
         </span>
 
         <span className="mt-0.5 flex items-center gap-1.5">
-          <OwnersInline owners={p.owners} totalTeams={totalTeams} />
+          <OwnerPills owners={p.owners} totalTeams={totalTeams} compact />
         </span>
       </span>
 
@@ -689,7 +689,21 @@ function RealPlayerRow({
 }
 
 // Compact goal/assist/card/penalty badges from the real-match stat line.
-function BonusMalusIcons({ p }: { p: LiveSnapshotRealPlayer }) {
+type BonusMalusPlayer = Pick<
+  LiveSnapshotRealPlayer | LiveSnapshotPlayer,
+  | 'goals'
+  | 'assists'
+  | 'penalties_saved'
+  | 'clean_sheet_bonus'
+  | 'penalties_missed'
+  | 'own_goals'
+  | 'red_cards'
+  | 'yellow_cards'
+> & {
+  immunita_active?: boolean
+}
+
+function BonusMalusIcons({ p }: { p: BonusMalusPlayer }) {
   const items: { key: string; node: ReactNode }[] = []
   const positiveIconClass = 'bg-ink-5/10 text-ink-2'
   if (p.goals > 0)
@@ -722,9 +736,25 @@ function BonusMalusIcons({ p }: { p: LiveSnapshotRealPlayer }) {
       node: <span className="rounded bg-rose-500/25 px-1 text-[8px] font-bold text-rose-600 dark:text-rose-300" title="Autogol">AG</span>,
     })
   if (p.red_cards > 0)
-    items.push({ key: 'r', node: <span className="inline-block h-3 w-2 rounded-sm bg-rose-500" title="Rosso" /> })
+    items.push({
+      key: 'r',
+      node: (
+        <span className="inline-flex items-center gap-0.5" title={p.immunita_active ? 'Rosso presente, malus annullato da immunità' : 'Rosso'}>
+          <span className="inline-block h-3 w-2 rounded-sm bg-rose-500" />
+          {p.immunita_active && <span className="text-[10px] leading-none text-indigo-500 dark:text-indigo-300">🛡</span>}
+        </span>
+      ),
+    })
   if (p.yellow_cards > 0 && p.red_cards === 0)
-    items.push({ key: 'y', node: <span className="inline-block h-3 w-2 rounded-sm bg-amber-400" title="Giallo" /> })
+    items.push({
+      key: 'y',
+      node: (
+        <span className="inline-flex items-center gap-0.5" title={p.immunita_active ? 'Giallo presente, malus annullato da immunità' : 'Giallo'}>
+          <span className="inline-block h-3 w-2 rounded-sm bg-amber-400" />
+          {p.immunita_active && <span className="text-[10px] leading-none text-indigo-500 dark:text-indigo-300">🛡</span>}
+        </span>
+      ),
+    })
   if (!items.length) return null
   return (
     <span className="flex shrink-0 items-center gap-1 self-center">
@@ -755,50 +785,6 @@ function BonusIcon({
     >
       <span aria-hidden>{icon}</span>
       {count != null && count > 1 && <span className="text-[8px]">×{count}</span>}
-    </span>
-  )
-}
-
-// "in N squadre" with the team names + titolare/panchina, shown inline.
-function OwnersInline({ owners, totalTeams }: { owners: LiveOwnerRef[]; totalTeams: number }) {
-  if (!owners.length) return null
-  const label = owners.map((o) => `${o.team_name} (${o.status === 'titolare' ? 'tit' : 'pan'})`).join(' · ')
-  const allBench = owners.every((o) => o.status === 'panchina')
-  return (
-    <span
-      title={label}
-      className={`truncate text-[10.5px] font-semibold ${allBench ? 'text-ink-5' : 'text-indigo-500/90 dark:text-indigo-300/90'}`}
-    >
-      in {owners.length}/{totalTeams}:{' '}
-      {owners.map((owner, i) => {
-        const isStarter = owner.status === 'titolare'
-        return (
-        <span key={`${owner.team_name}-${owner.status}-${i}`}>
-          <span className={isStarter ? '' : 'text-ink-5'}>
-            {owner.team_name} ({isStarter ? 'tit' : 'pan'})
-          </span>
-          {i < owners.length - 1 && <span className="text-ink-5"> · </span>}
-        </span>
-        )
-      })}
-    </span>
-  )
-}
-
-function OwnerNameList({ owners }: { owners: LiveOwnerRef[] }) {
-  return (
-    <span className="text-indigo-500/90 dark:text-indigo-300/90">
-      {owners.map((owner, i) => {
-        const isStarter = owner.status === 'titolare'
-        return (
-          <span key={`${owner.team_name}-${owner.status}-${i}`}>
-            <span className={isStarter ? '' : 'text-ink-5'}>
-              {owner.team_name} ({isStarter ? 'tit' : 'pan'})
-            </span>
-            {i < owners.length - 1 && <span className="text-ink-5"> · </span>}
-          </span>
-        )
-      })}
     </span>
   )
 }
@@ -865,9 +851,6 @@ function TeamDetailPanel({
         </div>
       ) : (
       <div className="p-3 space-y-3">
-        {/* coach */}
-        {team.coach && <CoachRow coach={team.coach} />}
-
         {/* legend: what the chips mean */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-[9px] text-ink-5">
           <span className="flex items-center gap-1">
@@ -893,6 +876,13 @@ function TeamDetailPanel({
           )
         })}
 
+        {/* coach */}
+        {team.coach && (
+          <div className="border-t border-hairline pt-2">
+            <CoachRow coach={team.coach} />
+          </div>
+        )}
+
         {/* bench */}
         {bench.length > 0 && (
           <div className="border-t border-hairline pt-2.5 space-y-1">
@@ -911,17 +901,17 @@ function TeamDetailPanel({
 function CoachRow({ coach }: { coach: LiveSnapshotTeam['coach'] }) {
   if (!coach) return null
   return (
-    <div className="flex items-center gap-2 rounded-md border border-hairline bg-glass-2 px-2 py-1.5">
-      <span className="w-4 text-[9px] font-bold text-ink-5">CT</span>
+    <div className="flex min-h-[44px] items-center gap-2 rounded-lg border border-indigo-400/20 bg-indigo-400/8 px-2.5 py-2">
+      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-indigo-400/12 text-[10px] font-black text-indigo-500 dark:text-indigo-300">CT</span>
       <TeamCrest
         name={coach.team?.name ?? ''}
         logoUrl={coach.team?.logo_url ?? null}
         flagUrl={coach.team?.flag_url ?? null}
         fifaCode={coach.team?.fifa_code ?? ''}
-        size={14}
-        className="w-4"
+        size={18}
+        className="w-[18px]"
       />
-      <span className="flex-1 text-[11px] font-medium text-ink-1 truncate">{coach.name}</span>
+      <span className="flex-1 truncate text-[12px] font-semibold text-ink-1">{coach.name}</span>
       <CoachTierBadge tier={coach.tier} />
       {coach.live_result && (
         <span
@@ -954,24 +944,19 @@ function FantasyPlayerRow({ p, muted = false }: { p: LiveSnapshotPlayer; muted?:
   const penRises = penPot - penNow > 0.005
   const showMvp = p.mvp_bonus > 0.005
 
-  // The trademark mechanic lives in the chips below the name: the MVP bonus and
-  // the popularity penalty (now ▸ ceiling). They were invisible before — here
-  // they're first-class, readable, and colour-coded.
-  // Right column shows the final Voto (rating + bonus/malus − penalty), or a
-  // no-play marker: – not played yet, ✕ his match ended without him.
   const played = p.rating != null || p.status === 'played'
-  const scoreText = played ? fmt(p.final_score_now, 1) : p.status === 'pending' ? '–' : '✕'
-  const finalColor = !played
-    ? 'text-ink-5'
-    : p.final_score_now >= 7
-    ? 'text-emerald-400'
-    : p.final_score_now < 5.5
-    ? 'text-rose-400'
-    : 'text-ink-1'
+  const v = played
+    ? {
+        kind: 'score' as const,
+        base: fmt(p.display_voto_base ?? p.voto_base ?? p.raw_subtotal, 1),
+        total: fmt((p.display_voto_total ?? p.final_score_now) + p.mvp_bonus - penNow, 1),
+        totalCls: totalVotoColor((p.display_voto_total ?? p.final_score_now) + p.mvp_bonus - penNow),
+      }
+    : { kind: 'marker' as const, text: p.status === 'pending' ? '–' : '✕', cls: 'text-ink-5' }
 
   return (
     <div
-      className={`flex items-center gap-2 rounded-md border border-hairline bg-glass-2 px-2 py-1.5 ${
+      className={`flex min-h-[54px] items-center gap-2 rounded-md border border-hairline bg-glass-2 px-2 py-1.5 ${
         muted ? 'opacity-55' : ''
       }`}
     >
@@ -999,17 +984,11 @@ function FantasyPlayerRow({ p, muted = false }: { p: LiveSnapshotPlayer; muted?:
               sub
             </span>
           )}
+          <BonusMalusIcons p={p} />
         </div>
 
-        {/* cross-team ownership: which other teams rostered him, and how */}
-        {p.owners.length > 0 && (
-          <div className="mt-0.5 truncate text-[9px] text-ink-5">
-            anche in{' '}
-            <OwnerNameList owners={p.owners} />
-          </div>
-        )}
+        <OwnerPills owners={p.owners} />
 
-        {/* trademark chips: MVP bonus + popularity penalty */}
         {(showMvp || showPen) && (
           <div className="mt-1 flex flex-wrap items-center gap-1">
             {showMvp && (
@@ -1019,23 +998,80 @@ function FantasyPlayerRow({ p, muted = false }: { p: LiveSnapshotPlayer; muted?:
             )}
             {showPen &&
               (penNow > 0.005 ? (
-                <span className="inline-flex items-center gap-0.5 rounded-full bg-rose-400/12 px-1.5 py-px text-[10px] font-semibold tabular-nums text-rose-500 dark:text-rose-300">
-                  pop −{fmt(penNow)}
-                  {penRises && <span className="opacity-60"> ▸ −{fmt(penPot)}</span>}
+                <span className="inline-flex items-center gap-1 rounded-full bg-rose-400/12 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-rose-500 dark:text-rose-300">
+                  <span>Penalità</span>
+                  <span className="text-indigo-500 dark:text-indigo-300">−{fmt(penNow)}</span>
+                  {penRises && (
+                    <>
+                      <span className="text-ink-5">→</span>
+                      <span className="text-ink-5">−{fmt(penPot)}</span>
+                    </>
+                  )}
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-0.5 rounded-full bg-rose-400/8 px-1.5 py-px text-[10px] font-semibold tabular-nums text-rose-500/80 dark:text-rose-300/80">
-                  pop a rischio ▸ −{fmt(penPot)}
+                <span className="inline-flex items-center gap-1 rounded-full bg-rose-400/8 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-rose-500/80 dark:text-rose-300/80">
+                  <span>Rischio penalità</span>
+                  <span className="text-indigo-500 dark:text-indigo-300">0</span>
+                  <span className="text-ink-5">→</span>
+                  <span className="text-ink-5">−{fmt(penPot)}</span>
                 </span>
               ))}
           </div>
         )}
       </div>
 
-      <div className="shrink-0 text-right leading-none">
-        <div className={`text-[16px] font-bold tabular-nums ${finalColor}`}>{scoreText}</div>
-        <div className="mt-0.5 text-[9px] uppercase tracking-wide text-ink-5">voto</div>
-      </div>
+      <span className="shrink-0 w-12 overflow-hidden rounded-md border border-hairline bg-surface-2 text-center tabular-nums shadow-sm">
+        {v.kind === 'score' ? (
+          <>
+            <span className="block border-b border-hairline px-1 py-0.5 text-[11px] font-bold leading-none text-ink-2">
+              {v.base}
+            </span>
+            <span className={`block px-1 py-0.5 text-[11px] font-black leading-none ${v.totalCls}`}>
+              {v.total}
+            </span>
+          </>
+        ) : (
+          <span className={`block px-1 py-1.5 text-[11px] font-bold leading-none ${v.cls}`}>{v.text}</span>
+        )}
+      </span>
+    </div>
+  )
+}
+
+function OwnerPills({
+  owners,
+  totalTeams,
+  compact = false,
+}: {
+  owners: LiveOwnerRef[]
+  totalTeams?: number
+  compact?: boolean
+}) {
+  if (!owners.length) return null
+  return (
+    <div className={`${compact ? 'mt-0.5' : 'mt-1'} flex min-w-0 flex-wrap items-center gap-1`}>
+      <span className={`${compact ? 'text-[9px]' : 'text-[10px]'} font-medium text-ink-5`}>
+        {totalTeams ? `in ${owners.length}/${totalTeams}` : 'anche in'}
+      </span>
+      {owners.map((owner, i) => {
+        const isStarter = owner.status === 'titolare'
+        return (
+          <span
+            key={`${owner.team_name}-${owner.status}-${i}`}
+            className={`inline-flex ${compact ? 'max-w-[118px] px-1.5 py-px text-[9px]' : 'max-w-[180px] px-2 py-0.5 text-[10px]'} items-center gap-1 rounded-full border font-semibold ${
+              isStarter
+                ? 'border-indigo-400/25 bg-indigo-400/12 text-indigo-500 dark:text-indigo-300'
+                : 'border-hairline bg-ink-5/8 text-ink-5'
+            }`}
+            title={`${owner.team_name} (${isStarter ? 'titolare' : 'panchina'})`}
+          >
+            <span className="truncate">{owner.team_name}</span>
+            <span className={isStarter ? 'text-indigo-500/80 dark:text-indigo-300/80' : 'text-ink-5'}>
+              {isStarter ? 'tit' : 'pan'}
+            </span>
+          </span>
+        )
+      })}
     </div>
   )
 }
@@ -1387,10 +1423,14 @@ function MobileTeamCard({
             <MaskedPlayerRows count={team.players.filter((p) => p.counts).length} />
           ) : (
             <>
-              {team.coach && <CoachRow coach={team.coach} />}
               {team.players.filter((p) => p.counts).map((p) => (
                 <FantasyPlayerRow key={p.player_id} p={p} />
               ))}
+              {team.coach && (
+                <div className="border-t border-hairline pt-2">
+                  <CoachRow coach={team.coach} />
+                </div>
+              )}
               {team.players.filter((p) => !p.counts).length > 0 && (
                 <>
                   <p className="text-[8px] font-bold uppercase tracking-wider text-ink-5 px-1 pt-1">Panchina</p>
