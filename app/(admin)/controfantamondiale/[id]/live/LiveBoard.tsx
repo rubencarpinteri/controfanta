@@ -37,10 +37,72 @@ function fmtKickoff(iso: string): string {
   return new Date(iso).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
 }
 
+// Default match focus: the first live (in-progress) match if any are playing,
+// otherwise the first match of the round.
+function defaultMatchId(matches: LiveSnapshotMatch[]): string | null {
+  const live = matches.find((m) => m.status === 'in_progress')
+  return (live ?? matches[0])?.match_id ?? null
+}
+
 // A team that never submitted a lineup arrives in the snapshot with no formation
 // and no players — it scores 0 for the giornata (Battle Royale).
 function isNotFielded(team: LiveSnapshotTeam): boolean {
   return team.formation === null && team.players.length === 0
+}
+
+type LiveFieldState = 'field' | 'bench'
+
+// Map of player_id → live presence, for matches that are in progress right now.
+// 'field' = currently on the pitch; 'bench' = in the matchday squad but not on
+// the pitch at this moment (unused sub, or already substituted off).
+function buildLiveFieldMap(matches: LiveSnapshotMatch[]): Map<string, LiveFieldState> {
+  const map = new Map<string, LiveFieldState>()
+  for (const m of matches) {
+    if (m.status !== 'in_progress') continue
+    for (const p of m.players) {
+      const onPitch =
+        (p.is_starter && p.subbed_off_minute == null) ||
+        (p.subbed_on_minute != null && p.subbed_off_minute == null)
+      map.set(p.player_id, onPitch ? 'field' : 'bench')
+    }
+  }
+  return map
+}
+
+function teamLiveCounts(
+  team: LiveSnapshotTeam,
+  liveField: Map<string, LiveFieldState>,
+): { field: number; bench: number } {
+  let field = 0
+  let bench = 0
+  for (const p of team.players) {
+    const s = liveField.get(p.player_id)
+    if (s === 'field') field++
+    else if (s === 'bench') bench++
+  }
+  return { field, bench }
+}
+
+// Glowing dots: green for each rostered player currently on the pitch in a live
+// match, grey for those in the squad but on the bench right now.
+function LiveDots({ field, bench }: { field: number; bench: number }) {
+  if (field + bench === 0) return null
+  return (
+    <span className="inline-flex items-center gap-0.5" title={`${field} in campo · ${bench} in panchina (live)`}>
+      {Array.from({ length: field }).map((_, i) => (
+        <span
+          key={`f${i}`}
+          className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_5px_1px] shadow-emerald-400/70"
+        />
+      ))}
+      {Array.from({ length: bench }).map((_, i) => (
+        <span
+          key={`b${i}`}
+          className="h-1.5 w-1.5 animate-pulse rounded-full bg-ink-5/50 shadow-[0_0_4px_1px] shadow-ink-5/30"
+        />
+      ))}
+    </span>
+  )
 }
 
 // ─────────────────────────────────────────────
@@ -64,8 +126,9 @@ export function LiveBoard({
 }) {
   const [snapshot, setSnapshot] = useState<LiveRoundSnapshot | null>(initialSnapshot)
   const [activeTab, setActiveTab] = useState<Tab>('partite')
+  const [userPickedMatch, setUserPickedMatch] = useState(false)
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(
-    initialSnapshot?.matches[0]?.match_id ?? null,
+    defaultMatchId(initialSnapshot?.matches ?? []),
   )
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(myTeamId)
   const timer = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -91,9 +154,18 @@ export function LiveBoard({
   }, [legaCompRef])
 
   const handleSelectMatch = useCallback((matchId: string) => {
+    setUserPickedMatch(true)
     setSelectedMatchId(matchId)
     setActiveTab('partite')
   }, [])
+
+  // Until the user explicitly picks a match, keep the focus on the live game
+  // (e.g. once a scheduled match kicks off it becomes the focus automatically).
+  useEffect(() => {
+    if (userPickedMatch || !snapshot) return
+    const next = defaultMatchId(snapshot.matches)
+    if (next && next !== selectedMatchId) setSelectedMatchId(next)
+  }, [snapshot, userPickedMatch, selectedMatchId])
 
   const handleSelectTeam = useCallback((teamId: string) => {
     setSelectedTeamId(teamId)
@@ -121,6 +193,7 @@ export function LiveBoard({
 
   const selectedMatch = snapshot.matches.find((m) => m.match_id === selectedMatchId) ?? snapshot.matches[0] ?? null
   const selectedTeam = snapshot.teams.find((t) => t.fantasy_team_id === selectedTeamId) ?? null
+  const liveField = buildLiveFieldMap(snapshot.matches)
 
   return (
     <div className="flex flex-col gap-3">
@@ -145,6 +218,7 @@ export function LiveBoard({
           myTeamId={myTeamId}
           totalTeams={snapshot.teams.length}
           previewMode={previewMode}
+          liveField={liveField}
         />
         <StandingsPanel
           teams={snapshot.teams}
@@ -159,14 +233,14 @@ export function LiveBoard({
 
       {/* ── Mobile: tab bar ── */}
       <div className="lg:hidden">
-        <div className="mb-3 flex gap-1 rounded-full border border-hairline bg-glass-1 p-1 shadow-sm">
+        <div className="mb-3 flex gap-1 rounded-full border border-hairline bg-glass-1 p-1.5 shadow-sm">
           {(['partite', 'squadre', 'classifica'] as Tab[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 rounded-full py-2 text-[13px] font-semibold capitalize tracking-tight transition-all duration-200 ${
+              className={`flex-1 rounded-full py-2.5 text-[15px] font-semibold capitalize tracking-tight transition-all duration-200 ${
                 activeTab === tab
-                  ? 'bg-surface-2 text-ink-1 shadow-md shadow-black/5 ring-1 ring-black/[0.04] dark:ring-white/[0.06]'
+                  ? 'bg-accent text-white shadow-md shadow-accent/25'
                   : 'text-ink-4 hover:text-ink-2'
               }`}
             >
@@ -199,6 +273,7 @@ export function LiveBoard({
                 standings={snapshot.standings[team.fantasy_team_id]}
                 expanded={team.fantasy_team_id === selectedTeamId}
                 previewMode={previewMode}
+                liveCounts={teamLiveCounts(team, liveField)}
                 onToggle={() =>
                   setSelectedTeamId(
                     selectedTeamId === team.fantasy_team_id ? null : team.fantasy_team_id,
@@ -397,6 +472,7 @@ function CenterPanel({
   myTeamId,
   totalTeams,
   previewMode,
+  liveField,
 }: {
   match: LiveSnapshotMatch | null
   team: LiveSnapshotTeam | null
@@ -404,13 +480,14 @@ function CenterPanel({
   myTeamId: string | null
   totalTeams: number
   previewMode: boolean
+  liveField: Map<string, LiveFieldState>
 }) {
   if (activeView === 'team' && team) {
     const isMine = team.fantasy_team_id === myTeamId
     if (previewMode && !isMine) {
       return <MaskedTeamPanel team={team} />
     }
-    return <TeamDetailPanel team={team} isMine={isMine} />
+    return <TeamDetailPanel team={team} isMine={isMine} liveCounts={teamLiveCounts(team, liveField)} />
   }
   if (match) {
     return <MatchDetailPanel match={match} totalTeams={totalTeams} />
@@ -629,11 +706,18 @@ function RealPlayerRow({
   const storedTotalVoto = p.display_voto_total ?? p.voto
   const v = votoDisplay(storedBaseVoto, storedTotalVoto, p.minutes_played, p.play_state, matchStatus)
 
+  // Exclusively owned (single team in the lega) AND best in the fixture — the
+  // jackpot moment of the format. The whole row lights up magenta.
+  const exclusive = p.owners.length === 1
+  const exclusiveMvp = exclusive && p.is_mvp
+
   return (
     <div
-      className={`flex min-h-[45px] items-center gap-1 rounded-md border border-hairline bg-glass-2 px-1.5 py-1 sm:gap-1.5 sm:px-2 ${
-        muted ? 'opacity-60' : ''
-      } ${depth > 0 ? 'ml-2 sm:ml-3' : ''}`}
+      className={`flex min-h-[45px] items-center gap-1 rounded-md border px-1.5 py-1 sm:gap-1.5 sm:px-2 ${
+        exclusiveMvp
+          ? 'border-fuchsia-500/60 bg-fuchsia-500/15 shadow-sm shadow-fuchsia-500/20'
+          : 'border-hairline bg-glass-2'
+      } ${muted ? 'opacity-60' : ''} ${depth > 0 ? 'ml-2 sm:ml-3' : ''}`}
     >
       {depth > 0 && <span className="text-[10px] text-emerald-500 dark:text-emerald-400">↳</span>}
       <span className={`text-[10px] font-bold ${ROLE_COLOR[p.role] ?? 'text-ink-4'}`}>{p.role}</span>
@@ -807,9 +891,11 @@ function RealLineupLegend() {
 function TeamDetailPanel({
   team,
   isMine,
+  liveCounts,
 }: {
   team: LiveSnapshotTeam
   isMine: boolean
+  liveCounts: { field: number; bench: number }
 }) {
   const fielded = team.players.filter((p) => p.counts)
   const bench = team.players.filter((p) => !p.counts)
@@ -832,7 +918,10 @@ function TeamDetailPanel({
               </span>
             )}
           </div>
-          <span className="text-[10px] text-ink-5">{notFielded ? 'Formazione non schierata' : team.formation ?? '—'}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-ink-5">{notFielded ? 'Formazione non schierata' : team.formation ?? '—'}</span>
+            <LiveDots field={liveCounts.field} bench={liveCounts.bench} />
+          </div>
         </div>
         <span className="text-[22px] font-black tabular-nums text-emerald-400">
           {fmt(team.live_total, 1)}
@@ -944,15 +1033,20 @@ function FantasyPlayerRow({ p, muted = false }: { p: LiveSnapshotPlayer; muted?:
   const penRises = penPot - penNow > 0.005
   const showMvp = p.mvp_bonus > 0.005
 
-  const played = p.rating != null || p.status === 'played'
-  const v = played
+  // A voto exists only when the engine produced a base rating. A player who was
+  // on the pitch but has no rating yet is S.V. (senza voto) — never show 0.0.
+  const baseVoto = p.display_voto_base ?? p.voto_base ?? p.rating
+  const hasVoto = baseVoto != null
+  const v = hasVoto
     ? {
         kind: 'score' as const,
-        base: fmt(p.display_voto_base ?? p.voto_base ?? p.raw_subtotal, 1),
+        base: fmt(baseVoto, 1),
         total: fmt((p.display_voto_total ?? p.final_score_now) + p.mvp_bonus - penNow, 1),
         totalCls: totalVotoColor((p.display_voto_total ?? p.final_score_now) + p.mvp_bonus - penNow),
       }
-    : { kind: 'marker' as const, text: p.status === 'pending' ? '–' : '✕', cls: 'text-ink-5' }
+    : p.status === 'played'
+      ? { kind: 'marker' as const, text: 'S.V.', cls: 'text-amber-500 dark:text-amber-400' }
+      : { kind: 'marker' as const, text: p.status === 'pending' ? '–' : '✕', cls: 'text-ink-5' }
 
   return (
     <div
@@ -1048,9 +1142,16 @@ function OwnerPills({
   compact?: boolean
 }) {
   if (!owners.length) return null
+  // Exclusive ownership — rostered by exactly one team in the whole lega. This
+  // is the trademark moment of the format, so the "in 1/N" badge glows magenta.
+  const isExclusive = totalTeams != null && owners.length === 1
   return (
     <div className={`${compact ? 'mt-0.5' : 'mt-1'} flex min-w-0 flex-wrap items-center gap-1`}>
-      <span className={`${compact ? 'text-[9px]' : 'text-[10px]'} font-medium text-ink-5`}>
+      <span
+        className={`${compact ? 'text-[9px]' : 'text-[10px]'} font-medium ${
+          isExclusive ? 'font-black text-fuchsia-500 dark:text-fuchsia-400' : 'text-ink-5'
+        }`}
+      >
         {totalTeams ? `in ${owners.length}/${totalTeams}` : 'anche in'}
       </span>
       {owners.map((owner, i) => {
@@ -1382,6 +1483,7 @@ function MobileTeamCard({
   standings,
   expanded,
   previewMode,
+  liveCounts,
   onToggle,
 }: {
   team: LiveSnapshotTeam
@@ -1390,6 +1492,7 @@ function MobileTeamCard({
   standings: LiveRoundSnapshot['standings'][string] | undefined
   expanded: boolean
   previewMode: boolean
+  liveCounts: { field: number; bench: number }
   onToggle: () => void
 }) {
   const notFielded = isNotFielded(team)
@@ -1423,6 +1526,7 @@ function MobileTeamCard({
             )
           )}
         </div>
+        <LiveDots field={liveCounts.field} bench={liveCounts.bench} />
         <span className={`shrink-0 text-[10px] tabular-nums ${(standings?.goals_scored ?? 0) > 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-ink-5'}`}>
           ⚽ {standings?.goals_scored ?? 0}
         </span>
