@@ -132,7 +132,7 @@ export function LiveBoard({
       </div>
 
       {/* ── Desktop: 3-column layout ── */}
-      <div className="hidden lg:grid lg:grid-cols-[198px_minmax(0,1fr)_236px] lg:gap-3 xl:grid-cols-[210px_minmax(0,1fr)_248px]">
+      <div className="hidden lg:grid lg:grid-cols-[190px_minmax(0,1fr)_190px] lg:gap-3 xl:grid-cols-[198px_minmax(0,1fr)_198px]">
         <MatchListPanel
           matches={snapshot.matches}
           selectedMatchId={selectedMatch?.match_id ?? null}
@@ -268,7 +268,7 @@ function MatchListPanel({
         <button
           key={m.match_id}
           onClick={() => onSelect(m.match_id)}
-          className={`w-full border-t border-hairline px-3 py-2 text-left transition-colors hover:bg-glass-2 ${
+          className={`w-full border-t border-hairline px-2.5 py-2 text-left transition-colors hover:bg-glass-2 ${
             m.match_id === selectedMatchId ? 'bg-indigo-500/8' : ''
           }`}
         >
@@ -297,35 +297,35 @@ function MatchChip({ match: m, selected = false }: { match: LiveSnapshotMatch; s
       {/* home flag + code · score · away code + flag */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5">
         <div className="flex min-w-0 items-center gap-1">
-        <TeamCrest
-          name={m.home_team.name}
-          logoUrl={m.home_team.logo_url}
-          flagUrl={m.home_team.flag_url}
-          fifaCode={m.home_team.fifa_code}
-          size={23}
-          className="shrink-0"
-        />
-        <span className={`text-[13px] font-black tabular-nums uppercase tracking-tight ${selected ? 'text-ink-1' : 'text-ink-2'}`}>
-          {m.home_team.fifa_code || m.home_team.name.slice(0, 3).toUpperCase()}
-        </span>
+          <TeamCrest
+            name={m.home_team.name}
+            logoUrl={m.home_team.logo_url}
+            flagUrl={m.home_team.flag_url}
+            fifaCode={m.home_team.fifa_code}
+            size={24}
+            className="shrink-0"
+          />
+          <span className={`text-[14px] font-black tabular-nums uppercase tracking-tight ${selected ? 'text-ink-1' : 'text-ink-2'}`}>
+            {m.home_team.fifa_code || m.home_team.name.slice(0, 3).toUpperCase()}
+          </span>
         </div>
 
-        <span className="text-[13px] font-black tabular-nums text-ink-1">
+        <span className="text-[14px] font-black tabular-nums text-ink-1">
           {m.status !== 'scheduled' ? `${m.home_score ?? 0}–${m.away_score ?? 0}` : '–'}
         </span>
 
         <div className="flex min-w-0 items-center justify-end gap-1">
-        <span className={`text-[13px] font-black tabular-nums uppercase tracking-tight ${selected ? 'text-ink-1' : 'text-ink-2'}`}>
-          {m.away_team.fifa_code || m.away_team.name.slice(0, 3).toUpperCase()}
-        </span>
-        <TeamCrest
-          name={m.away_team.name}
-          logoUrl={m.away_team.logo_url}
-          flagUrl={m.away_team.flag_url}
-          fifaCode={m.away_team.fifa_code}
-          size={23}
-          className="shrink-0"
-        />
+          <span className={`text-[14px] font-black tabular-nums uppercase tracking-tight ${selected ? 'text-ink-1' : 'text-ink-2'}`}>
+            {m.away_team.fifa_code || m.away_team.name.slice(0, 3).toUpperCase()}
+          </span>
+          <TeamCrest
+            name={m.away_team.name}
+            logoUrl={m.away_team.logo_url}
+            flagUrl={m.away_team.flag_url}
+            fifaCode={m.away_team.fifa_code}
+            size={24}
+            className="shrink-0"
+          />
         </div>
       </div>
 
@@ -640,7 +640,7 @@ function RealPlayerRow({
 
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
-          <span className="truncate text-[13px] font-semibold text-ink-1" title={p.name}>
+          <span className="truncate text-[13.5px] font-semibold text-ink-1" title={p.name}>
             {shortPlayerName(p.name)}
           </span>
           {p.is_mvp && (
@@ -691,23 +691,24 @@ function RealPlayerRow({
 // Compact goal/assist/card/penalty badges from the real-match stat line.
 function BonusMalusIcons({ p }: { p: LiveSnapshotRealPlayer }) {
   const items: { key: string; node: ReactNode }[] = []
+  const positiveIconClass = 'bg-ink-5/10 text-ink-2'
   if (p.goals > 0)
-    items.push({ key: 'g', node: <BonusIcon title="Gol" icon="⚽" count={p.goals} /> })
+    items.push({ key: 'g', node: <BonusIcon title="Gol" icon="⚽" count={p.goals} className={positiveIconClass} /> })
   if (p.assists > 0)
     items.push({
       key: 'a',
-      node: <BonusIcon title="Assist" icon="👟" count={p.assists} className="bg-sky-400/20 text-sky-600 dark:text-sky-300" />,
+      node: <BonusIcon title="Assist" icon="👟" count={p.assists} className={positiveIconClass} />,
     })
   if (p.penalties_saved > 0)
     items.push({
       key: 'ps',
-      node: <BonusIcon title="Rigore parato" icon="🧤" count={p.penalties_saved} className="bg-emerald-400/20 text-emerald-600 dark:text-emerald-300" />,
+      node: <BonusIcon title="Rigore parato" icon="🧤" count={p.penalties_saved} className={positiveIconClass} />,
     })
   if (p.clean_sheet_bonus > 0)
     items.push({
       key: 'cs',
       node: (
-        <BonusIcon title={`Porta inviolata +${fmt(p.clean_sheet_bonus, 1)}`} icon="🧤" className="bg-emerald-400/20 text-emerald-600 dark:text-emerald-300" />
+        <BonusIcon title={`Porta inviolata +${fmt(p.clean_sheet_bonus, 1)}`} icon="🧤" className={positiveIconClass} />
       ),
     })
   if (p.penalties_missed > 0)
@@ -769,15 +770,35 @@ function OwnersInline({ owners, totalTeams }: { owners: LiveOwnerRef[]; totalTea
       className={`truncate text-[10.5px] font-semibold ${allBench ? 'text-ink-5' : 'text-indigo-500/90 dark:text-indigo-300/90'}`}
     >
       in {owners.length}/{totalTeams}:{' '}
-      {owners.map((owner, i) => (
+      {owners.map((owner, i) => {
+        const isStarter = owner.status === 'titolare'
+        return (
         <span key={`${owner.team_name}-${owner.status}-${i}`}>
-          <span>{owner.team_name} </span>
-          <span className={owner.status === 'titolare' ? '' : 'text-ink-5'}>
-            ({owner.status === 'titolare' ? 'tit' : 'pan'})
+          <span className={isStarter ? '' : 'text-ink-5'}>
+            {owner.team_name} ({isStarter ? 'tit' : 'pan'})
           </span>
           {i < owners.length - 1 && <span className="text-ink-5"> · </span>}
         </span>
-      ))}
+        )
+      })}
+    </span>
+  )
+}
+
+function OwnerNameList({ owners }: { owners: LiveOwnerRef[] }) {
+  return (
+    <span className="text-indigo-500/90 dark:text-indigo-300/90">
+      {owners.map((owner, i) => {
+        const isStarter = owner.status === 'titolare'
+        return (
+          <span key={`${owner.team_name}-${owner.status}-${i}`}>
+            <span className={isStarter ? '' : 'text-ink-5'}>
+              {owner.team_name} ({isStarter ? 'tit' : 'pan'})
+            </span>
+            {i < owners.length - 1 && <span className="text-ink-5"> · </span>}
+          </span>
+        )
+      })}
     </span>
   )
 }
@@ -972,7 +993,7 @@ function FantasyPlayerRow({ p, muted = false }: { p: LiveSnapshotPlayer; muted?:
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <span className="truncate text-[13px] font-semibold text-ink-1">{p.name}</span>
+          <span className="truncate text-[13.5px] font-semibold text-ink-1">{p.name}</span>
           {p.via === 'sub' && (
             <span className="shrink-0 rounded bg-emerald-400/15 px-1 py-px text-[8px] font-bold uppercase text-emerald-300">
               sub
@@ -984,9 +1005,7 @@ function FantasyPlayerRow({ p, muted = false }: { p: LiveSnapshotPlayer; muted?:
         {p.owners.length > 0 && (
           <div className="mt-0.5 truncate text-[9px] text-ink-5">
             anche in{' '}
-            <span className="text-indigo-500/90 dark:text-indigo-300/90">
-              {p.owners.map((o) => `${o.team_name} (${o.status === 'titolare' ? 'tit' : 'pan'})`).join(' · ')}
-            </span>
+            <OwnerNameList owners={p.owners} />
           </div>
         )}
 
@@ -1084,9 +1103,9 @@ function GiornataLivePanel({
   const maxTotal = Math.max(1, ...teams.map((t) => (standings ?? {})[t.fantasy_team_id]?.live_total ?? t.live_total))
   return (
     <div className="rounded-xl border border-hairline bg-glass-1 overflow-hidden">
-      <div className="px-3 pt-2.5 pb-1">
-        <p className="text-[9px] font-bold uppercase tracking-wider text-emerald-400/80">Giornata live</p>
-        <p className="text-[9px] text-ink-5">{roundName} — punteggi e gol in tempo reale</p>
+      <div className="px-2.5 pt-2.5 pb-1">
+        <p className="text-[9.5px] font-bold uppercase tracking-wider text-emerald-400/80">Giornata live</p>
+        <p className="text-[9.5px] text-ink-5">{roundName} — punteggi e gol in tempo reale</p>
       </div>
 
       {teams.map((team, i) => {
@@ -1103,7 +1122,7 @@ function GiornataLivePanel({
           <button
             key={team.fantasy_team_id}
             onClick={() => onSelect(team.fantasy_team_id)}
-            className={`w-full border-t border-hairline px-3 py-2 text-left transition-colors hover:bg-glass-2 ${
+            className={`w-full border-t border-hairline px-2.5 py-2 text-left transition-colors hover:bg-glass-2 ${
               isSelected ? 'bg-indigo-500/8' : ''
             }`}
           >
@@ -1118,7 +1137,7 @@ function GiornataLivePanel({
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline gap-1.5">
-                  <span className={`truncate text-[12px] font-semibold ${isMine ? 'text-indigo-500 dark:text-indigo-300' : 'text-ink-1'}`}>
+                  <span className={`truncate text-[13px] font-bold ${isMine ? 'text-indigo-500 dark:text-indigo-300' : 'text-ink-1'}`}>
                     {team.name}
                   </span>
                   {isMine && (
@@ -1137,7 +1156,7 @@ function GiornataLivePanel({
                   />
                 </div>
 
-                <div className="mt-1 flex items-center gap-2 text-[9px] text-ink-5">
+                <div className="mt-1 flex items-center gap-2 text-[9.5px] text-ink-5">
                   <span className="flex items-center gap-0.5 tabular-nums">
                     <span className={goals > 0 ? 'text-emerald-500 dark:text-emerald-400' : ''}>⚽ {goals}</span>
                   </span>
@@ -1148,7 +1167,7 @@ function GiornataLivePanel({
                 </div>
               </div>
 
-              <span className="shrink-0 self-start text-[17px] font-black tabular-nums text-ink-1 leading-none">
+              <span className="shrink-0 self-start text-[18px] font-black tabular-nums text-ink-1 leading-none">
                 {fmt(total, 1)}
               </span>
             </div>
@@ -1156,7 +1175,7 @@ function GiornataLivePanel({
         )
       })}
 
-      <div className="border-t border-hairline px-3 py-2 text-[9px] text-ink-5 leading-relaxed">
+      <div className="border-t border-hairline px-2.5 py-2 text-[9.5px] text-ink-5 leading-relaxed">
         Punti giornata calcolati in tempo reale sulle soglie gol.
       </div>
     </div>
@@ -1188,9 +1207,9 @@ function ClassificaLivePanel({
 
   return (
     <div className="rounded-xl border border-hairline bg-glass-1 overflow-hidden">
-      <div className="px-3 pt-2.5 pb-1">
-        <p className="text-[9px] font-bold uppercase tracking-wider text-ink-4">Classifica live</p>
-        <p className="text-[9px] text-ink-5">Totale stagione, giornata corrente inclusa</p>
+      <div className="px-2.5 pt-2.5 pb-1">
+        <p className="text-[9.5px] font-bold uppercase tracking-wider text-ink-4">Classifica live</p>
+        <p className="text-[9.5px] text-ink-5">Totale stagione, giornata corrente inclusa</p>
       </div>
 
       {ordered.map((team) => {
@@ -1206,16 +1225,16 @@ function ClassificaLivePanel({
           <button
             key={team.fantasy_team_id}
             onClick={() => onSelect(team.fantasy_team_id)}
-            className={`w-full border-t border-hairline px-3 py-2 text-left transition-colors hover:bg-glass-2 ${
+            className={`w-full border-t border-hairline px-2.5 py-2 text-left transition-colors hover:bg-glass-2 ${
               isSelected ? 'bg-indigo-500/8' : ''
             }`}
           >
             <div className="flex items-center gap-2">
-              <span className="w-4 shrink-0 text-center text-[11px] font-bold text-ink-5">{rank}</span>
+              <span className="w-4 shrink-0 text-center text-[12px] font-bold text-ink-5">{rank}</span>
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline gap-1.5">
-                  <span className={`text-[12px] font-semibold truncate ${isMine ? 'text-indigo-300' : 'text-ink-2'}`}>
+                  <span className={`truncate text-[13px] font-bold ${isMine ? 'text-indigo-300' : 'text-ink-2'}`}>
                     {team.name}
                   </span>
                   {isMine && (
@@ -1226,11 +1245,11 @@ function ClassificaLivePanel({
 
               {/* live delta from this giornata */}
               {liveDelta > 0 && (
-                <span className="shrink-0 text-[9px] font-semibold tabular-nums text-emerald-400/80">
+                <span className="shrink-0 text-[9.5px] font-semibold tabular-nums text-emerald-400/80">
                   +{liveDelta}
                 </span>
               )}
-              <span className="shrink-0 text-[15px] font-black tabular-nums text-ink-1 leading-none w-8 text-right">
+              <span className="w-8 shrink-0 text-right text-[17px] font-black tabular-nums leading-none text-ink-1">
                 {brTotal}
               </span>
             </div>
@@ -1238,7 +1257,7 @@ function ClassificaLivePanel({
         )
       })}
 
-      <div className="border-t border-hairline px-3 py-2 text-[9px] text-ink-5 leading-relaxed">
+      <div className="border-t border-hairline px-2.5 py-2 text-[9.5px] text-ink-5 leading-relaxed">
         Punti totali = giornate concluse + proiezione live di questa giornata.
       </div>
     </div>
