@@ -1299,8 +1299,8 @@ function RoleNail({ role }: { role: string }) {
     <span
       aria-hidden
       title={ROLE_NAME[role] ?? role}
-      className="absolute left-0 top-0 z-[1] flex items-center justify-center text-[10px] font-black leading-none text-white"
-      style={{ width: 26, height: 21, paddingTop: 4, paddingLeft: 5, background: c, borderRadius: '0 0 9px 0' }}
+      className="absolute left-0 top-0 z-[1] flex items-center justify-center text-[9px] font-black leading-none text-white"
+      style={{ width: 18, height: 15, paddingTop: 1, paddingLeft: 1.5, background: c, borderRadius: '0 0 6px 0' }}
     >
       {role}
     </span>
@@ -1451,7 +1451,7 @@ function FantasyPitchChip({
     <button
       type="button"
       onClick={onSelect}
-      className={`relative flex min-h-[116px] min-w-0 flex-col items-center gap-1 overflow-hidden rounded-[16px] border bg-glass-3 px-1 py-1.5 text-center shadow-sm transition-all ${
+      className={`relative flex min-h-[116px] min-w-0 flex-col items-center gap-1 overflow-hidden rounded-[12px] border bg-glass-3 px-1 py-1.5 text-center shadow-sm transition-all ${
         selected ? 'border-accent bg-accent/10 ring-2 ring-accent' : 'border-hairline'
       }`}
     >
