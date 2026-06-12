@@ -153,6 +153,20 @@ function resolveGKWithSubs(
   return currentGK
 }
 
+// True when candidate `a` should hold the single MVP flag over incumbent `b`.
+// Primary key is RATING; ties are resolved by match impact (goals, then
+// assists, then fewer goals conceded) and finally by a stable id tie-break so
+// the same player keeps the flag across ticks when nothing else separates them.
+function beatsForMvp(a: ParsedPlayerStat, b: ParsedPlayerStat): boolean {
+  const ra = a.rating ?? -Infinity
+  const rb = b.rating ?? -Infinity
+  if (ra !== rb) return ra > rb
+  if (a.goals_scored !== b.goals_scored) return a.goals_scored > b.goals_scored
+  if (a.assists !== b.assists) return a.assists > b.assists
+  if (a.goals_conceded !== b.goals_conceded) return a.goals_conceded < b.goals_conceded
+  return a.sportmonks_player_id < b.sportmonks_player_id
+}
+
 // ---------- main parse ----------
 
 export function parseFixture(fixture: SMFixture): ParsedFixture {
@@ -287,19 +301,18 @@ export function parseFixture(fixture: SMFixture): ParsedFixture {
     }
   }
 
-  // MVP: highest RATING (single MVP for the whole match)
-  let mvpId: number | null = null
-  let mvpRating = -Infinity
+  // MVP: highest RATING (single MVP for the whole match). SportMonks exposes no
+  // man-of-the-match flag in the lineups feed — only the RATING stat — so rating
+  // is the single source. Exact rating ties (common with live provisional
+  // ratings rounded to 2 dp) are broken deterministically by match impact, then
+  // by sportmonks_player_id, so the pick is stable across live ticks instead of
+  // hinging on SportMonks' array order.
+  let mvp: ParsedPlayerStat | null = null
   for (const p of byPlayer.values()) {
-    if (p.rating != null && p.rating > mvpRating) {
-      mvpRating = p.rating
-      mvpId = p.sportmonks_player_id
-    }
+    if (p.rating == null) continue
+    if (mvp == null || beatsForMvp(p, mvp)) mvp = p
   }
-  if (mvpId != null) {
-    const m = byPlayer.get(mvpId)
-    if (m) m.is_mvp = true
-  }
+  if (mvp) mvp.is_mvp = true
 
   // Scoreline: prefer SportMonks' authoritative CURRENT score (include=scores),
   // which correctly counts own goals. Summing players' GOALS misses own goals
