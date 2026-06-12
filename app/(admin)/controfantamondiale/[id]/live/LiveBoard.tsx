@@ -1337,21 +1337,18 @@ function PopularityChip({
     (hasPen
       ? ` · Penalità di Popolarità −${fmt(ppNow, 2)}${ppMax - ppNow > 0.005 ? ` → −${fmt(ppMax, 2)}` : ''}`
       : '')
+  // Compact on the narrow pitch chip: just the current ownership %, tinted rose
+  // once a penalty is actually biting. The full now→max and penalty breakdown
+  // lives in the tooltip and the tap-to-open detail sheet.
   return (
     <span
-      className="inline-flex items-center gap-0.5 rounded bg-rose-400/10 px-1 text-[8px] font-semibold tabular-nums"
+      className={`inline-flex items-center gap-0.5 whitespace-nowrap rounded px-1 text-[8px] font-bold tabular-nums ${
+        ppNow > 0.005 ? 'bg-rose-400/15 text-rose-600 dark:text-rose-300' : 'bg-ink-5/10 text-ink-3'
+      }`}
       title={title}
     >
-      <UsersGlyph className="text-rose-500 dark:text-rose-300" />
-      <span className="text-ink-3">
-        {pctNow}%{pctMax > pctNow && <span className="text-ink-5">→{pctMax}%</span>}
-      </span>
-      {hasPen && (
-        <span className="text-rose-600 dark:text-rose-300">
-          −{fmt(ppNow, 1)}
-          {ppMax - ppNow > 0.005 && <span className="text-ink-5">→−{fmt(ppMax, 1)}</span>}
-        </span>
-      )}
+      <UsersGlyph className={ppNow > 0.005 ? 'text-rose-500 dark:text-rose-300' : 'text-ink-4'} />
+      {pctNow}%
     </span>
   )
 }
