@@ -84,6 +84,10 @@ export type LiveSnapshotPlayer = {
   immunita_active: boolean
   popularity_penalty_now: number
   popularity_penalty_potential: number
+  /** Bracket penalty % (ownership-derived) — known up-front, even pre-match.
+   *  e.g. 20% ownership → 30 here. The amount above is this % of |raw_subtotal|. */
+  popularity_penalty_pct_now: number
+  popularity_penalty_pct_potential: number
   mvp_bonus: number
   final_score_now: number
   /** OTHER fantasy teams in the lega that also rostered this player. */
@@ -822,6 +826,19 @@ export async function computeLiveRoundSnapshot(
         if (counts) players_total += finNow.final_score
       }
 
+      // Bracket penalty % depends only on ownership, so it's known even before
+      // the player has a rating (raw_subtotal is irrelevant to the bracket).
+      const popularity_penalty_pct_now = finalizePlayerForLega(
+        { raw_subtotal: 0, is_mvp: false },
+        own?.pct_now ?? 0,
+        config,
+      ).popularity_penalty_pct
+      const popularity_penalty_pct_potential = finalizePlayerForLega(
+        { raw_subtotal: 0, is_mvp: false },
+        own?.pct_potential ?? 0,
+        config,
+      ).popularity_penalty_pct
+
       players.push({
         player_id: lp.player_id,
         name: player.name,
@@ -849,6 +866,8 @@ export async function computeLiveRoundSnapshot(
         immunita_active: immunitaActive,
         popularity_penalty_now,
         popularity_penalty_potential,
+        popularity_penalty_pct_now,
+        popularity_penalty_pct_potential,
         mvp_bonus,
         final_score_now,
         owners: (ownersByPlayer.get(lp.player_id) ?? []).filter(

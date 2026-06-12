@@ -1094,10 +1094,15 @@ function LineupLegend() {
     <div className="mt-1 rounded-xl border border-hairline bg-glass-1 px-3 py-2.5">
       <p className="mb-1.5 text-[9px] font-bold uppercase tracking-wider text-ink-5">Legenda</p>
       <div className="mb-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[10px] text-ink-4">
-        <span className="mr-0.5 text-ink-5">Bordo carta = ruolo:</span>
+        <span className="mr-0.5 text-ink-5">Sigla in alto a sinistra = ruolo:</span>
         {(['P', 'D', 'C', 'A'] as const).map((r) => (
           <span key={r} className="flex items-center gap-1">
-            <span className="inline-block h-3 w-4 rounded-[3px] border-[1.5px]" style={{ borderColor: ROLE_DOT[r] }} />
+            <span
+              className="grid h-[14px] w-[14px] place-items-center rounded-[4px] text-[8px] font-black leading-none text-white"
+              style={{ background: ROLE_DOT[r] }}
+            >
+              {r}
+            </span>
             {ROLE_NAME[r]}
           </span>
         ))}
@@ -1112,7 +1117,7 @@ function LineupLegend() {
         <span className="flex items-center gap-1"><span aria-hidden>👑</span>MVP</span>
         <span className="flex items-center gap-1">
           <span className="inline-flex items-center text-rose-500 dark:text-rose-300"><UsersGlyph /></span>
-P.P. — Popolarità (% della lega che lo schiera) e Penalità (<span className="font-semibold text-rose-500 dark:text-rose-300">adesso</span> → <span className="text-ink-5">massima</span>)
+<span className="font-semibold text-rose-500 dark:text-rose-300">−%</span> P.P. — Penalità di Popolarità: quota di voto persa perché lo schiera anche un&apos;altra squadra (es. 20% lega → −30%)
         </span>
         <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-lime-400 shadow-[0_0_5px_1px] shadow-lime-400/70" />in campo ora</span>
         <span className="flex items-center gap-1"><span className="text-[#f01c9c]"><DiamondGlyph /></span>esclusiva</span>
@@ -1283,6 +1288,23 @@ function PlayerCrest({ p, live, size }: { p: LiveSnapshotPlayer; live: boolean; 
   )
 }
 
+// Small role "nail" tucked in the card's top-left corner — the role letter on
+// its solid role color. Reads the role at a glance and stays visible whatever
+// the card's border/selection state is (unlike the old thin role outline).
+function RoleNail({ role }: { role: string }) {
+  const c = ROLE_DOT[role] ?? '#94a3b8'
+  return (
+    <span
+      aria-hidden
+      title={ROLE_NAME[role] ?? role}
+      className="absolute left-0 top-0 z-[1] grid h-[15px] w-[15px] place-items-center rounded-br-lg rounded-tl-xl text-[9px] font-black leading-none text-white"
+      style={{ background: c }}
+    >
+      {role}
+    </span>
+  )
+}
+
 // MVP crown + the football bonus/malus emoji glyphs (goals/assists carry ×N,
 // clean sheet shows the 🧤, cards are colored chips) — reused from the list row.
 // `hideMvp` suppresses the standalone crown when it's merged into the combined
@@ -1319,36 +1341,33 @@ function MvpExclusiveGlyph() {
 // (now → potential) and, once it materialises, the P.P. voto deduction.
 // The percentage is known up-front (it's just ownership), so it shows even
 // before any penalty has accrued — the user can read the risk at a glance.
-function PopularityChip({
-  entry,
-  ppNow,
-  ppMax,
-}: {
-  entry: LiveOwnershipEntry | undefined
-  ppNow: number
-  ppMax: number
-}) {
-  if (!entry) return null
-  const pctNow = Math.round(entry.pct_now)
-  const pctMax = Math.round(entry.pct_potential)
-  const hasPen = ppNow > 0.005 || ppMax > 0.005
+// Shows the Penalità di Popolarità as a PERCENTAGE — the malus a shared player
+// will take on his score (e.g. 20% ownership → −30%). The % is bracket-derived,
+// so it's known up-front, before he's even played. The minus sign and rose tint
+// make it read unambiguously as a penalty. Ownership %, the now→max ramp and the
+// live malus amount all live in the tooltip and the detail sheet.
+function PopularityChip({ p, entry }: { p: LiveSnapshotPlayer; entry: LiveOwnershipEntry | undefined }) {
+  const penPctNow = Math.round(p.popularity_penalty_pct_now ?? 0)
+  const penPctMax = Math.round(p.popularity_penalty_pct_potential ?? 0)
+  const penPct = penPctNow || penPctMax
+  if (penPct <= 0) return null // ≤10% ownership → no penalty bracket
+  const biting = p.popularity_penalty_now > 0.005
+  const pctOwnNow = entry ? Math.round(entry.pct_now) : null
+  const pctOwnMax = entry ? Math.round(entry.pct_potential) : null
   const title =
-    `Popolarità ${pctNow}%${pctMax > pctNow ? ` → ${pctMax}%` : ''} della lega lo schiera` +
-    (hasPen
-      ? ` · Penalità di Popolarità −${fmt(ppNow, 2)}${ppMax - ppNow > 0.005 ? ` → −${fmt(ppMax, 2)}` : ''}`
-      : '')
-  // Compact on the narrow pitch chip: just the current ownership %, tinted rose
-  // once a penalty is actually biting. The full now→max and penalty breakdown
-  // lives in the tooltip and the tap-to-open detail sheet.
+    `Penalità di Popolarità −${penPct}%` +
+    (penPctMax > penPctNow ? ` → −${penPctMax}% se il possesso sale a ${pctOwnMax}%` : '') +
+    (pctOwnNow != null ? ` · popolarità ${pctOwnNow}% della lega` : '') +
+    (biting ? ` · malus attuale −${fmt(p.popularity_penalty_now, 2)}` : '')
   return (
     <span
-      className={`inline-flex items-center gap-0.5 whitespace-nowrap rounded px-1 text-[8px] font-bold tabular-nums ${
-        ppNow > 0.005 ? 'bg-rose-400/15 text-rose-600 dark:text-rose-300' : 'bg-ink-5/10 text-ink-3'
-      }`}
       title={title}
+      className={`inline-flex items-center gap-0.5 whitespace-nowrap rounded px-1 text-[8px] font-bold tabular-nums ${
+        biting ? 'bg-rose-500/20 text-rose-600 dark:text-rose-300' : 'bg-rose-400/12 text-rose-500/90 dark:text-rose-300/85'
+      }`}
     >
-      <UsersGlyph className={ppNow > 0.005 ? 'text-rose-500 dark:text-rose-300' : 'text-ink-4'} />
-      {pctNow}%
+      <UsersGlyph className="text-rose-500 dark:text-rose-300" />
+      −{penPct}%
     </span>
   )
 }
@@ -1423,23 +1442,18 @@ function FantasyPitchChip({
   onSelect: () => void
 }) {
   const v = computeVoto(p)
-  const ppNow = p.popularity_penalty_now
-  const ppMax = p.popularity_penalty_potential
   const isMvp = p.mvp_bonus > 0.005
   const exclusiveMvp = p.owners.length === 0 && isMvp
-  const shared = p.owners.length > 0
-  const roleColor = ROLE_DOT[p.role] ?? '#94a3b8'
 
   return (
     <button
       type="button"
       onClick={onSelect}
-      title={ROLE_NAME[p.role] ?? p.role}
-      style={{ borderColor: roleColor, borderWidth: 1.5 }}
-      className={`flex min-h-[116px] min-w-0 flex-col items-center gap-1 rounded-xl border-solid bg-glass-3 px-1 py-1.5 text-center shadow-sm transition-all ${
-        selected ? 'bg-accent/10 ring-2 ring-accent' : ''
+      className={`relative flex min-h-[116px] min-w-0 flex-col items-center gap-1 rounded-xl border bg-glass-3 px-1 py-1.5 text-center shadow-sm transition-all ${
+        selected ? 'border-accent bg-accent/10 ring-2 ring-accent' : 'border-hairline'
       }`}
     >
+      <RoleNail role={p.role} />
       <PlayerCrest p={p} live={liveState === 'field'} size={28} />
 
       <span className="flex w-full items-center justify-center gap-0.5">
@@ -1465,7 +1479,7 @@ function FantasyPitchChip({
           all on one wrapping line so every card keeps the same structure & height */}
       <span className="mt-auto flex w-full flex-wrap items-center justify-center gap-x-1 gap-y-0.5 pt-0.5">
         <PitchGlyphs p={p} hideMvp={exclusiveMvp} />
-        {shared && <PopularityChip entry={entry} ppNow={ppNow} ppMax={ppMax} />}
+        <PopularityChip p={p} entry={entry} />
         <OwnershipMini owners={p.owners} isMvp={isMvp} />
       </span>
     </button>
@@ -1491,11 +1505,17 @@ function BenchChip({
       type="button"
       onClick={onSelect}
       title={ROLE_NAME[p.role] ?? p.role}
-      style={{ borderColor: roleColor, borderWidth: 1.5 }}
-      className={`flex min-w-0 items-center gap-1.5 rounded-lg border-solid bg-glass-2 px-1.5 py-1.5 text-left transition-all ${
-        selected ? 'bg-accent/10 ring-2 ring-accent' : ''
+      className={`flex min-w-0 items-center gap-1.5 rounded-lg border bg-glass-2 px-1.5 py-1.5 text-left transition-all ${
+        selected ? 'border-accent bg-accent/10 ring-2 ring-accent' : 'border-hairline'
       }`}
     >
+      <span
+        aria-hidden
+        className="grid h-4 w-4 shrink-0 place-items-center rounded text-[8px] font-black leading-none text-white"
+        style={{ background: roleColor }}
+      >
+        {p.role}
+      </span>
       <PlayerCrest p={p} live={liveState === 'field'} size={18} />
       <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-ink-2">{shortPlayerName(p.name)}</span>
       <OwnershipMini owners={p.owners} />
@@ -1539,34 +1559,28 @@ function PlayerDetailSheet({
   if (p.red_cards > 0) chips.push({ key: 'r', icon: <span className="inline-block h-3 w-2 rounded-sm bg-rose-500" />, label: 'Espulsione', tone: 'neg' })
   if (p.mvp_bonus > 0.005) chips.push({ key: 'mvp', icon: '👑', label: 'MVP', value: `+${fmt(p.mvp_bonus, 1)}`, tone: 'mvp' })
   const hasPen = pp > 0.005 || ppPot > 0.005
-  const shared = p.owners.length > 0
-  if (shared || hasPen)
+  const penPctNow = Math.round(p.popularity_penalty_pct_now ?? 0)
+  const penPctMax = Math.round(p.popularity_penalty_pct_potential ?? 0)
+  const penPct = penPctNow || penPctMax
+  if (penPct > 0 || hasPen)
     chips.push({
       key: 'pp',
       icon: <UsersGlyph className="text-rose-500 dark:text-rose-300" />,
       label: 'P.P.',
       title:
-        `Popolarità ${pctNow}%${pctMax != null && pctMax > (pctNow ?? 0) ? ` → ${pctMax}%` : ''} della lega lo schiera` +
-        (hasPen ? ` · Penalità di Popolarità −${fmt(pp, 2)} → −${fmt(ppPot, 2)}` : ''),
+        `Penalità di Popolarità −${penPct}%${penPctMax > penPctNow ? ` → −${penPctMax}%` : ''}` +
+        (pctNow != null ? ` · popolarità ${pctNow}%${pctMax != null && pctMax > pctNow ? ` → ${pctMax}%` : ''} della lega` : '') +
+        (hasPen ? ` · malus −${fmt(pp, 2)} → −${fmt(ppPot, 2)}` : ''),
       value: (
         <>
+          {/* the penalty %, leading — what he'll lose to popularity */}
+          <span className="font-bold text-rose-600 dark:text-rose-300">
+            −{penPct}%{penPctMax > penPctNow && <span className="text-ink-5"> → −{penPctMax}%</span>}
+          </span>
           {pctNow != null && (
-            <span className="text-ink-2">
-              {pctNow}%{pctMax != null && pctMax > pctNow && <span className="text-ink-5"> → {pctMax}%</span>}
-            </span>
+            <span className="text-ink-5"> · {pctNow}% lega</span>
           )}
-          {hasPen && (
-            <>
-              <span className="text-ink-5"> · </span>
-              <span className="text-rose-600 dark:text-rose-300">−{fmt(pp, 2)}</span>
-              {ppPot - pp > 0.005 && (
-                <>
-                  <span className="text-ink-5"> → </span>
-                  <span className="text-ink-5">−{fmt(ppPot, 2)}</span>
-                </>
-              )}
-            </>
-          )}
+          {hasPen && <span className="text-rose-600 dark:text-rose-300"> · −{fmt(pp, 2)}</span>}
         </>
       ),
       tone: 'neg',
@@ -1736,9 +1750,11 @@ function FantasyPlayerRow({
 }) {
   const penNow = p.popularity_penalty_now
   const penPot = p.popularity_penalty_potential
-  const shared = p.owners.length > 0
-  const showPen = penNow > 0.005 || penPot > 0.005 || shared
-  const penRises = penPot - penNow > 0.005
+  const hasPen = penNow > 0.005 || penPot > 0.005
+  const penPctNow = Math.round(p.popularity_penalty_pct_now ?? 0)
+  const penPctMax = Math.round(p.popularity_penalty_pct_potential ?? 0)
+  const penPct = penPctNow || penPctMax
+  const showPen = penPct > 0 || hasPen
   const showMvp = p.mvp_bonus > 0.005
   const pctNow = entry ? Math.round(entry.pct_now) : null
   const pctMax = entry ? Math.round(entry.pct_potential) : null
@@ -1791,28 +1807,17 @@ function FantasyPlayerRow({
               <span
                 className="inline-flex items-center gap-1 rounded-full bg-rose-400/12 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-rose-500 dark:text-rose-300"
                 title={
-                  `Popolarità ${pctNow}%${pctMax != null && pctMax > (pctNow ?? 0) ? ` → ${pctMax}%` : ''} della lega lo schiera` +
-                  (penNow > 0.005 || penPot > 0.005 ? ` · P.P. −${fmt(penNow)} → −${fmt(penPot)}` : '')
+                  `Penalità di Popolarità −${penPct}%${penPctMax > penPctNow ? ` → −${penPctMax}%` : ''}` +
+                  (pctNow != null ? ` · popolarità ${pctNow}%${pctMax != null && pctMax > pctNow ? ` → ${pctMax}%` : ''} della lega` : '') +
+                  (hasPen ? ` · malus −${fmt(penNow)} → −${fmt(penPot)}` : '')
                 }
               >
                 <UsersGlyph className="text-rose-500 dark:text-rose-300" />
-                {pctNow != null && (
-                  <span className="text-ink-2">
-                    {pctNow}%{pctMax != null && pctMax > pctNow && <span className="text-ink-5"> → {pctMax}%</span>}
-                  </span>
-                )}
-                {(penNow > 0.005 || penPot > 0.005) && (
-                  <>
-                    <span className="text-ink-5">·</span>
-                    <span className="text-indigo-500 dark:text-indigo-300">−{fmt(penNow)}</span>
-                    {penRises && (
-                      <>
-                        <span className="text-ink-5">→</span>
-                        <span className="text-ink-5">−{fmt(penPot)}</span>
-                      </>
-                    )}
-                  </>
-                )}
+                <span className="font-bold text-rose-600 dark:text-rose-300">
+                  −{penPct}%{penPctMax > penPctNow && <span className="text-ink-5"> → −{penPctMax}%</span>}
+                </span>
+                {pctNow != null && <span className="text-ink-5">· {pctNow}% lega</span>}
+                {hasPen && <span className="text-indigo-500 dark:text-indigo-300">· −{fmt(penNow)}</span>}
               </span>
             )}
           </div>
