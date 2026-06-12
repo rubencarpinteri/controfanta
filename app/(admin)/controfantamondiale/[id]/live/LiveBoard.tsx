@@ -40,6 +40,11 @@ const ROLE_NAME: Record<string, string> = {
   A: 'Attaccante',
 }
 
+const FALLBACK_CARD_MALUS = {
+  yellow: 0.5,
+  red: 1,
+}
+
 /** Stable role ordering (P→D→C→A), so a recently-edited lineup still reads in
  * role order rather than in raw snapshot array order. */
 function sortByRole<T extends { role: string }>(players: T[]): T[] {
@@ -51,6 +56,33 @@ function sortByRole<T extends { role: string }>(players: T[]): T[] {
 function fmt(n: number | null | undefined, d = 2): string {
   if (n == null) return '—'
   return Number(n).toFixed(d)
+}
+
+function popularityPenaltyState(p: LiveSnapshotPlayer): {
+  nowPct: number
+  maxPct: number
+  activePct: number
+  hasActivePenalty: boolean
+  hasPotentialPenalty: boolean
+  label: string
+} {
+  const nowPct = Math.round(p.popularity_penalty_pct_now ?? 0)
+  const maxPct = Math.round(p.popularity_penalty_pct_potential ?? 0)
+  const hasActivePenalty = p.popularity_penalty_now > 0.005 || nowPct > 0
+  const hasPotentialPenalty = maxPct > 0 || p.popularity_penalty_potential > 0.005
+  const activePct = nowPct || (hasActivePenalty ? maxPct : 0)
+  const label = hasActivePenalty
+    ? `−${activePct}%${maxPct > nowPct ? ` → −${maxPct}%` : ''}`
+    : `0${maxPct > 0 ? `-${maxPct}%` : '%'}`
+
+  return { nowPct, maxPct, activePct, hasActivePenalty, hasPotentialPenalty, label }
+}
+
+function immunityRemovedMalus(p: LiveSnapshotPlayer): number {
+  if (!p.immunita_active) return 0
+  if (p.immunity_removed_malus > 0.005) return p.immunity_removed_malus
+
+  return p.yellow_cards * FALLBACK_CARD_MALUS.yellow + p.red_cards * FALLBACK_CARD_MALUS.red
 }
 
 function shortPlayerName(name: string): string {
@@ -1341,35 +1373,33 @@ function MvpExclusiveGlyph() {
 
 // Popularity readout for a SHARED player: the % of the lega that fields him
 // (now → potential) and, once it materialises, the P.P. voto deduction.
-// The percentage is known up-front (it's just ownership), so it shows even
-// before any penalty has accrued — the user can read the risk at a glance.
+// The percentage is known up-front (it's just ownership), so pending bench risk
+// shows as a muted 0-max range until another team actually fields him.
 // Shows the Penalità di Popolarità as a PERCENTAGE — the malus a shared player
 // will take on his score (e.g. 20% ownership → −30%). The % is bracket-derived,
-// so it's known up-front, before he's even played. The minus sign and rose tint
-// make it read unambiguously as a penalty. Ownership %, the now→max ramp and the
-// live malus amount all live in the tooltip and the detail sheet.
+// so it's known up-front, before he's even played. Ownership %, the now→max ramp
+// and the live malus amount all live in the tooltip and the detail sheet.
 function PopularityChip({ p, entry }: { p: LiveSnapshotPlayer; entry: LiveOwnershipEntry | undefined }) {
-  const penPctNow = Math.round(p.popularity_penalty_pct_now ?? 0)
-  const penPctMax = Math.round(p.popularity_penalty_pct_potential ?? 0)
-  const penPct = penPctNow || penPctMax
-  if (penPct <= 0) return null // ≤10% ownership → no penalty bracket
-  const biting = p.popularity_penalty_now > 0.005
+  const penalty = popularityPenaltyState(p)
+  if (!penalty.hasPotentialPenalty) return null // ≤10% ownership → no penalty bracket
   const pctOwnNow = entry ? Math.round(entry.pct_now) : null
   const pctOwnMax = entry ? Math.round(entry.pct_potential) : null
   const title =
-    `Penalità di Popolarità −${penPct}%` +
-    (penPctMax > penPctNow ? ` → −${penPctMax}% se il possesso sale a ${pctOwnMax}%` : '') +
+    (penalty.hasActivePenalty ? `Penalità di Popolarità ${penalty.label}` : `Rischio Penalità di Popolarità ${penalty.label}`) +
+    (!penalty.hasActivePenalty && pctOwnMax != null ? ` se il possesso sale a ${pctOwnMax}%` : '') +
     (pctOwnNow != null ? ` · popolarità ${pctOwnNow}% della lega` : '') +
-    (biting ? ` · malus attuale −${fmt(p.popularity_penalty_now, 2)}` : '')
+    (penalty.hasActivePenalty && p.popularity_penalty_now > 0.005 ? ` · malus attuale −${fmt(p.popularity_penalty_now, 2)}` : '')
   return (
     <span
       title={title}
       className={`inline-flex items-center gap-0.5 whitespace-nowrap rounded px-1 text-[8px] font-bold tabular-nums ${
-        biting ? 'bg-rose-500/20 text-rose-600 dark:text-rose-300' : 'bg-rose-400/12 text-rose-500/90 dark:text-rose-300/85'
+        penalty.hasActivePenalty
+          ? 'bg-rose-500/20 text-rose-600 dark:text-rose-300'
+          : 'bg-ink-5/10 text-ink-5'
       }`}
     >
-      <UsersGlyph className="text-rose-500 dark:text-rose-300" />
-      −{penPct}%
+      <UsersGlyph className={penalty.hasActivePenalty ? 'text-rose-500 dark:text-rose-300' : 'text-ink-5'} />
+      {penalty.label}
     </span>
   )
 }
@@ -1560,35 +1590,39 @@ function PlayerDetailSheet({
   if (p.yellow_cards > 0 && p.red_cards === 0) chips.push({ key: 'y', icon: <span className="inline-block h-3 w-2 rounded-sm bg-amber-400" />, label: 'Ammonizione', tone: 'neg' })
   if (p.red_cards > 0) chips.push({ key: 'r', icon: <span className="inline-block h-3 w-2 rounded-sm bg-rose-500" />, label: 'Espulsione', tone: 'neg' })
   if (p.mvp_bonus > 0.005) chips.push({ key: 'mvp', icon: '👑', label: 'MVP', value: `+${fmt(p.mvp_bonus, 1)}`, tone: 'mvp' })
-  const hasPen = pp > 0.005 || ppPot > 0.005
-  const penPctNow = Math.round(p.popularity_penalty_pct_now ?? 0)
-  const penPctMax = Math.round(p.popularity_penalty_pct_potential ?? 0)
-  const penPct = penPctNow || penPctMax
-  if (penPct > 0 || hasPen)
+  const penalty = popularityPenaltyState(p)
+  if (penalty.hasPotentialPenalty)
     chips.push({
       key: 'pp',
-      icon: <UsersGlyph className="text-rose-500 dark:text-rose-300" />,
+      icon: <UsersGlyph className={penalty.hasActivePenalty ? 'text-rose-500 dark:text-rose-300' : 'text-ink-5'} />,
       label: 'P.P.',
       title:
-        `Penalità di Popolarità −${penPct}%${penPctMax > penPctNow ? ` → −${penPctMax}%` : ''}` +
+        (penalty.hasActivePenalty ? `Penalità di Popolarità ${penalty.label}` : `Rischio Penalità di Popolarità ${penalty.label}`) +
         (pctNow != null ? ` · popolarità ${pctNow}%${pctMax != null && pctMax > pctNow ? ` → ${pctMax}%` : ''} della lega` : '') +
-        (hasPen ? ` · malus −${fmt(pp, 2)} → −${fmt(ppPot, 2)}` : ''),
+        (penalty.hasActivePenalty ? ` · malus −${fmt(pp, 2)} → −${fmt(ppPot, 2)}` : ''),
       value: (
         <>
           {/* the penalty %, leading — what he'll lose to popularity */}
-          <span className="font-bold text-rose-600 dark:text-rose-300">
-            −{penPct}%{penPctMax > penPctNow && <span className="text-ink-5"> → −{penPctMax}%</span>}
+          <span className={`font-bold ${penalty.hasActivePenalty ? 'text-rose-600 dark:text-rose-300' : 'text-ink-5'}`}>
+            {penalty.label}
           </span>
           {pctNow != null && (
             <span className="text-ink-5"> · {pctNow}% lega</span>
           )}
-          {hasPen && <span className="text-rose-600 dark:text-rose-300"> · −{fmt(pp, 2)}</span>}
+          {penalty.hasActivePenalty && <span className="text-rose-600 dark:text-rose-300"> · −{fmt(pp, 2)}</span>}
         </>
       ),
       tone: 'neg',
     })
 
   const others = p.owners
+  const hasStarterOwners = others.some((o) => o.status === 'titolare')
+  const hasBenchOwners = others.some((o) => o.status !== 'titolare')
+  const ownersHeading = hasStarterOwners && !hasBenchOwners
+    ? 'Schierato anche da'
+    : !hasStarterOwners && hasBenchOwners
+      ? 'Presente, ma in panchina, anche da'
+      : 'Presente anche in altre squadre'
 
   return (
     <div className="rounded-2xl border border-hairline bg-glass-1 p-3.5 shadow-1">
@@ -1648,30 +1682,55 @@ function PlayerDetailSheet({
           </div>
         ) : (
           <>
-            <p className="mb-1 px-0.5 text-[9px] font-bold uppercase tracking-wider text-ink-5">Schierato anche da</p>
+            <p className="mb-1 px-0.5 text-[9px] font-bold uppercase tracking-wider text-ink-5">{ownersHeading}</p>
             <div className="space-y-0.5">
               {others.map((o) => {
                 const titolare = o.status === 'titolare'
+                const showBenchRisk =
+                  !titolare &&
+                  penalty.hasPotentialPenalty &&
+                  !penalty.hasActivePenalty &&
+                  ppPot > 0.005
+                const cardMalusIfSub = immunityRemovedMalus(p)
+                const potentialPenalty =
+                  p.popularity_penalty_potential_without_immunity ??
+                  Math.max(0, ppPot - (cardMalusIfSub * penalty.maxPct) / 100)
+                const eventualScore =
+                  p.final_score_potential_without_immunity ??
+                  ((p.display_voto_total ?? p.raw_subtotal) - cardMalusIfSub - potentialPenalty)
                 return (
-                  <div key={o.fantasy_team_id} className="flex items-center gap-2 py-1">
-                    <span
-                      className={`flex h-[22px] w-[22px] items-center justify-center rounded-full text-[9px] font-bold text-white ${
-                        titolare ? 'bg-indigo-500' : 'bg-ink-5/70'
-                      }`}
-                    >
-                      {o.team_name.slice(0, 2).toUpperCase()}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-[13px] text-ink-1">{o.team_name}</span>
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                        titolare
-                          ? 'bg-indigo-400/12 text-indigo-500 dark:text-indigo-300'
-                          : 'bg-ink-5/8 text-ink-5'
-                      }`}
-                    >
-                      {titolare ? <PitchGlyph className="text-indigo-500/80 dark:text-indigo-300/80" /> : <BenchGlyph className="text-ink-5" />}
-                      {titolare ? 'titolare' : 'panchina'}
-                    </span>
+                  <div key={o.fantasy_team_id} className="py-1">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`flex h-[22px] w-[22px] items-center justify-center rounded-full text-[9px] font-bold text-white ${
+                          titolare ? 'bg-indigo-500' : 'bg-ink-5/70'
+                        }`}
+                      >
+                        {o.team_name.slice(0, 2).toUpperCase()}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-[13px] text-ink-1">{o.team_name}</span>
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                          titolare
+                            ? 'bg-indigo-400/12 text-indigo-500 dark:text-indigo-300'
+                            : 'bg-ink-5/8 text-ink-5'
+                        }`}
+                      >
+                        {titolare ? <PitchGlyph className="text-indigo-500/80 dark:text-indigo-300/80" /> : <BenchGlyph className="text-ink-5" />}
+                        {titolare ? 'titolare' : 'panchina'}
+                      </span>
+                    </div>
+                    {showBenchRisk && (
+                      <div className="ml-[30px] mt-1 rounded-lg bg-ink-5/8 px-2.5 py-1.5 text-[10.5px] leading-snug text-ink-4">
+                        Se entra: P.P. <span className="font-bold text-rose-600 dark:text-rose-300">−{fmt(potentialPenalty, 2)}</span>
+                        {cardMalusIfSub > 0.005 && (
+                          <>
+                            {' '}e Immunità persa: cartellino <span className="font-bold text-amber-600 dark:text-amber-300">−{fmt(cardMalusIfSub, 1)}</span>:
+                          </>
+                        )}
+                        {' '}Voto eventuale <span className={`font-bold tabular-nums ${totalVotoColor(eventualScore)}`}>{fmt(eventualScore, 2)}</span>.
+                      </div>
+                    )}
                   </div>
                 )
               })}
@@ -1752,11 +1811,8 @@ function FantasyPlayerRow({
 }) {
   const penNow = p.popularity_penalty_now
   const penPot = p.popularity_penalty_potential
-  const hasPen = penNow > 0.005 || penPot > 0.005
-  const penPctNow = Math.round(p.popularity_penalty_pct_now ?? 0)
-  const penPctMax = Math.round(p.popularity_penalty_pct_potential ?? 0)
-  const penPct = penPctNow || penPctMax
-  const showPen = penPct > 0 || hasPen
+  const penalty = popularityPenaltyState(p)
+  const showPen = penalty.hasPotentialPenalty
   const showMvp = p.mvp_bonus > 0.005
   const pctNow = entry ? Math.round(entry.pct_now) : null
   const pctMax = entry ? Math.round(entry.pct_potential) : null
@@ -1807,19 +1863,23 @@ function FantasyPlayerRow({
             )}
             {showPen && (
               <span
-                className="inline-flex items-center gap-1 rounded-full bg-rose-400/12 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-rose-500 dark:text-rose-300"
+                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums ${
+                  penalty.hasActivePenalty
+                    ? 'bg-rose-400/12 text-rose-500 dark:text-rose-300'
+                    : 'bg-ink-5/10 text-ink-5'
+                }`}
                 title={
-                  `Penalità di Popolarità −${penPct}%${penPctMax > penPctNow ? ` → −${penPctMax}%` : ''}` +
+                  (penalty.hasActivePenalty ? `Penalità di Popolarità ${penalty.label}` : `Rischio Penalità di Popolarità ${penalty.label}`) +
                   (pctNow != null ? ` · popolarità ${pctNow}%${pctMax != null && pctMax > pctNow ? ` → ${pctMax}%` : ''} della lega` : '') +
-                  (hasPen ? ` · malus −${fmt(penNow)} → −${fmt(penPot)}` : '')
+                  (penalty.hasActivePenalty ? ` · malus −${fmt(penNow)} → −${fmt(penPot)}` : '')
                 }
               >
-                <UsersGlyph className="text-rose-500 dark:text-rose-300" />
-                <span className="font-bold text-rose-600 dark:text-rose-300">
-                  −{penPct}%{penPctMax > penPctNow && <span className="text-ink-5"> → −{penPctMax}%</span>}
+                <UsersGlyph className={penalty.hasActivePenalty ? 'text-rose-500 dark:text-rose-300' : 'text-ink-5'} />
+                <span className={`font-bold ${penalty.hasActivePenalty ? 'text-rose-600 dark:text-rose-300' : 'text-ink-5'}`}>
+                  {penalty.label}
                 </span>
                 {pctNow != null && <span className="text-ink-5">· {pctNow}% lega</span>}
-                {hasPen && <span className="text-indigo-500 dark:text-indigo-300">· −{fmt(penNow)}</span>}
+                {penalty.hasActivePenalty && <span className="text-indigo-500 dark:text-indigo-300">· −{fmt(penNow)}</span>}
               </span>
             )}
           </div>

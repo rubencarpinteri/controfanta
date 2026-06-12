@@ -84,6 +84,9 @@ export type LiveSnapshotPlayer = {
   immunita_active: boolean
   popularity_penalty_now: number
   popularity_penalty_potential: number
+  popularity_penalty_potential_without_immunity: number | null
+  final_score_potential_without_immunity: number | null
+  immunity_removed_malus: number
   /** Bracket penalty % (ownership-derived) — known up-front, even pre-match.
    *  e.g. 20% ownership → 30 here. The amount above is this % of |raw_subtotal|. */
   popularity_penalty_pct_now: number
@@ -786,6 +789,12 @@ export async function computeLiveRoundSnapshot(
 
       let popularity_penalty_now = 0
       let popularity_penalty_potential = 0
+      let popularity_penalty_potential_without_immunity: number | null = null
+      let final_score_potential_without_immunity: number | null = null
+      const immunity_removed_malus = immunitaActive && stats
+        ? Math.abs((stats.yellow_cards ?? 0) * config.football.yellow_card) +
+          Math.abs((stats.red_cards ?? 0) * config.football.red_card)
+        : 0
       let mvp_bonus = 0
       let final_score_now = 0
       const matchHomeScore = matchForPlayer?.home_score ?? 0
@@ -821,6 +830,15 @@ export async function computeLiveRoundSnapshot(
         )
         popularity_penalty_now = finNow.popularity_penalty_amount
         popularity_penalty_potential = finMax.popularity_penalty_amount
+        if (immunitaActive && immunity_removed_malus > 0) {
+          const finMaxWithoutImmunity = finalizePlayerForLega(
+            { raw_subtotal: rawSubtotal - immunity_removed_malus, is_mvp: isMvpOf(lp.player_id) },
+            own?.pct_potential ?? 0,
+            config,
+          )
+          popularity_penalty_potential_without_immunity = finMaxWithoutImmunity.popularity_penalty_amount
+          final_score_potential_without_immunity = finMaxWithoutImmunity.final_score
+        }
         mvp_bonus = finNow.mvp_bonus_amount
         final_score_now = finNow.final_score
         if (counts) players_total += finNow.final_score
@@ -866,6 +884,9 @@ export async function computeLiveRoundSnapshot(
         immunita_active: immunitaActive,
         popularity_penalty_now,
         popularity_penalty_potential,
+        popularity_penalty_potential_without_immunity,
+        final_score_potential_without_immunity,
+        immunity_removed_malus,
         popularity_penalty_pct_now,
         popularity_penalty_pct_potential,
         mvp_bonus,
