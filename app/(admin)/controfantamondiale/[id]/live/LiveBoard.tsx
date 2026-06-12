@@ -1149,18 +1149,18 @@ function FantasyPlayerRow({
 
       <LivePlayerDot state={liveState} />
 
-      <span className="shrink-0 w-12 overflow-hidden rounded-md border border-hairline bg-surface-2 text-center tabular-nums shadow-sm">
+      <span className="shrink-0 w-16 overflow-hidden rounded-lg border border-hairline bg-surface-2 text-center tabular-nums shadow-sm">
         {v.kind === 'score' ? (
           <>
-            <span className="block border-b border-hairline px-1 py-0.5 text-[11px] font-bold leading-none text-ink-2">
+            <span className="block border-b border-hairline px-1.5 py-1 text-[14px] font-bold leading-none text-ink-2">
               {v.base}
             </span>
-            <span className={`block px-1 py-0.5 text-[11px] font-black leading-none ${v.totalCls}`}>
+            <span className={`block px-1.5 py-1 text-[15px] font-black leading-none ${v.totalCls}`}>
               {v.total}
             </span>
           </>
         ) : (
-          <span className={`block px-1 py-1.5 text-[11px] font-bold leading-none ${v.cls}`}>{v.text}</span>
+          <span className={`block px-1.5 py-2.5 text-[14px] font-bold leading-none ${v.cls}`}>{v.text}</span>
         )}
       </span>
     </div>
