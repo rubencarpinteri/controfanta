@@ -11,6 +11,7 @@ import type {
   LiveSnapshotMatch,
   LiveSnapshotRealPlayer,
   LiveOwnerRef,
+  LiveOwnershipEntry,
 } from '@/domain/fantamondiale/engine/liveSnapshot'
 
 const POLL_MS = 35_000
@@ -23,12 +24,20 @@ const ROLE_COLOR: Record<string, string> = {
 }
 const ROLE_ORDER = ['P', 'D', 'C', 'A'] as const
 
-// Solid role colors for the pitch role dot (kept in sync with ROLE_COLOR).
+// Solid role colors — now used for the thin card outline (kept in sync with
+// ROLE_COLOR). Conveys the role at a glance without a dot on the flag.
 const ROLE_DOT: Record<string, string> = {
   P: '#f59e0b',
   D: '#34d399',
   C: '#818cf8',
   A: '#fb7185',
+}
+
+const ROLE_NAME: Record<string, string> = {
+  P: 'Portiere',
+  D: 'Difensore',
+  C: 'Centrocampista',
+  A: 'Attaccante',
 }
 
 /** Stable role ordering (P→D→C→A), so a recently-edited lineup still reads in
@@ -60,11 +69,21 @@ function fmtMatchDate(iso: string): string {
   return new Date(iso).toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
-// Default match focus: the first live (in-progress) match if any are playing,
-// otherwise the first match of the round.
+// Default match focus: a live (in-progress) match if any are playing, otherwise
+// the NEXT match still to be played (earliest upcoming kickoff). Only when the
+// whole round is over do we fall back to the last finished match.
 function defaultMatchId(matches: LiveSnapshotMatch[]): string | null {
   const live = matches.find((m) => m.status === 'in_progress')
-  return (live ?? matches[0])?.match_id ?? null
+  if (live) return live.match_id
+  const upcoming = matches
+    .filter((m) => m.status === 'scheduled')
+    .sort((a, b) => new Date(a.kickoff_at).getTime() - new Date(b.kickoff_at).getTime())[0]
+  if (upcoming) return upcoming.match_id
+  // All finished — focus the most recent kickoff.
+  const lastFinished = [...matches].sort(
+    (a, b) => new Date(b.kickoff_at).getTime() - new Date(a.kickoff_at).getTime(),
+  )[0]
+  return (lastFinished ?? matches[0])?.match_id ?? null
 }
 
 // A team that never submitted a lineup arrives in the snapshot with no formation
@@ -246,6 +265,7 @@ export function LiveBoard({
           totalTeams={snapshot.teams.length}
           previewMode={previewMode}
           liveField={liveField}
+          ownership={snapshot.ownership}
         />
         <StandingsPanel
           teams={snapshot.teams}
@@ -302,6 +322,7 @@ export function LiveBoard({
                 previewMode={previewMode}
                 liveCounts={teamLiveCounts(team, liveField)}
                 liveField={liveField}
+                ownership={snapshot.ownership}
                 onToggle={() =>
                   setSelectedTeamId(
                     selectedTeamId === team.fantasy_team_id ? null : team.fantasy_team_id,
@@ -392,9 +413,9 @@ function MatchChip({ match: m, selected = false }: { match: LiveSnapshotMatch; s
       {/* status + date + time */}
       <div className="flex items-center gap-1.5">
         <MatchStatusBadge status={m.status} minute={m.minute} minuteAdded={m.minute_added} />
-        <span className="text-[9px] text-ink-5 tabular-nums capitalize">{fmtMatchDate(m.kickoff_at)}</span>
+        <span className="text-[10px] font-semibold text-ink-3 tabular-nums capitalize">{fmtMatchDate(m.kickoff_at)}</span>
         {m.status === 'scheduled' && (
-          <span className="text-[9px] text-ink-5 tabular-nums">· {fmtKickoff(m.kickoff_at)}</span>
+          <span className="text-[10px] font-semibold text-ink-3 tabular-nums">· {fmtKickoff(m.kickoff_at)}</span>
         )}
       </div>
 
@@ -512,6 +533,7 @@ function CenterPanel({
   totalTeams,
   previewMode,
   liveField,
+  ownership,
 }: {
   match: LiveSnapshotMatch | null
   team: LiveSnapshotTeam | null
@@ -520,13 +542,14 @@ function CenterPanel({
   totalTeams: number
   previewMode: boolean
   liveField: Map<string, LiveFieldState>
+  ownership: Record<string, LiveOwnershipEntry>
 }) {
   if (activeView === 'team' && team) {
     const isMine = team.fantasy_team_id === myTeamId
     if (previewMode && !isMine) {
       return <MaskedTeamPanel team={team} />
     }
-    return <TeamDetailPanel team={team} isMine={isMine} liveCounts={teamLiveCounts(team, liveField)} liveField={liveField} />
+    return <TeamDetailPanel team={team} isMine={isMine} liveCounts={teamLiveCounts(team, liveField)} liveField={liveField} ownership={ownership} />
   }
   if (match) {
     return <MatchDetailPanel match={match} totalTeams={totalTeams} />
@@ -582,7 +605,7 @@ function MatchDetailPanel({
               <span className="text-[16px] font-bold text-ink-5">vs</span>
             )}
             <MatchStatusBadge status={m.status} minute={m.minute} minuteAdded={m.minute_added} />
-            <span className="text-[10px] text-ink-5 tabular-nums capitalize">
+            <span className="text-[11px] font-semibold text-ink-2 tabular-nums capitalize">
               {fmtMatchDate(m.kickoff_at)}{m.status === 'scheduled' ? ` · ${fmtKickoff(m.kickoff_at)}` : ''}
             </span>
           </div>
@@ -696,7 +719,7 @@ function MatchSideLineup({
 }
 
 function RealPlayerPlaceholder() {
-  return <div aria-hidden className="min-h-[43px] rounded-md border border-transparent px-2 py-1 opacity-0" />
+  return <div aria-hidden className="h-[50px] rounded-md border border-transparent px-2 py-1 opacity-0" />
 }
 
 // Resolve a player's displayed voto: split base/total, or a no-play marker.
@@ -776,7 +799,7 @@ function RealPlayerRow({
 
   return (
     <div
-      className={`flex min-h-[45px] items-center gap-1 rounded-md border px-1.5 py-1 sm:gap-1.5 sm:px-2 ${
+      className={`flex h-[50px] items-center gap-1 overflow-hidden rounded-md border px-1.5 py-1 sm:gap-1.5 sm:px-2 ${
         exclusiveMvp
           ? 'border-[#f01c9c]/70 bg-[#f01c9c]/15 shadow-sm shadow-[#f01c9c]/25'
           : 'border-hairline bg-glass-2'
@@ -786,7 +809,7 @@ function RealPlayerRow({
       <span className={`text-[10px] font-bold ${ROLE_COLOR[p.role] ?? 'text-ink-4'}`}>{p.role}</span>
 
       <span className="min-w-0 flex-1">
-        <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+        <span className="flex flex-nowrap items-center gap-x-1.5 overflow-hidden">
           <span className="truncate text-[12.5px] font-semibold text-ink-1 sm:text-[13.5px]" title={p.name}>
             {shortPlayerName(p.name)}
           </span>
@@ -799,14 +822,13 @@ function RealPlayerRow({
             </span>
           )}
           {p.subbed_off_minute != null && (
-            <span className="shrink-0 text-[8px] font-semibold text-rose-500 dark:text-rose-400" title="Sostituito">
+            <span className="shrink-0 rounded bg-rose-400/12 px-1 text-[10px] font-bold tabular-nums text-rose-600 dark:text-rose-300" title="Sostituito">
               ↓{p.subbed_off_minute}&apos;
             </span>
           )}
           {p.subbed_on_minute != null && (
-            <span className="shrink-0 text-[8px] font-semibold text-emerald-500 dark:text-emerald-400" title="Entrato">
+            <span className="shrink-0 rounded bg-emerald-400/12 px-1 text-[10px] font-bold tabular-nums text-emerald-600 dark:text-emerald-300" title="Entrato">
               ↑{p.subbed_on_minute}&apos;
-              {depth > 0 && p.replaced_player_name ? '' : ''}
             </span>
           )}
           <BonusMalusIcons p={p} />
@@ -945,22 +967,24 @@ function TeamDetailPanel({
   isMine,
   liveCounts,
   liveField,
+  ownership,
 }: {
   team: LiveSnapshotTeam
   isMine: boolean
   liveCounts: { field: number; bench: number }
   liveField: Map<string, LiveFieldState>
+  ownership: Record<string, LiveOwnershipEntry>
 }) {
   const notFielded = isNotFielded(team)
   const [view, setView] = useState<TeamLineupView>('pitch')
 
   return (
     <div
-      className={`rounded-xl border bg-glass-1 overflow-hidden ${
+      className={`rounded-xl border bg-glass-1 ${
         isMine ? 'border-indigo-500/40' : 'border-hairline'
       }`}
     >
-      <TeamDetailHeader team={team} isMine={isMine} liveCounts={liveCounts} notFielded={notFielded} />
+      <TeamDetailHeader team={team} isMine={isMine} liveCounts={liveCounts} notFielded={notFielded} sticky />
 
       {notFielded ? (
         <div className="m-3 rounded-lg border border-rose-500/30 bg-rose-500/8 p-4 text-center">
@@ -978,9 +1002,9 @@ function TeamDetailPanel({
             <TeamViewToggle view={view} onChange={setView} />
           </div>
           {view === 'list' ? (
-            <TeamListBody team={team} liveField={liveField} />
+            <TeamListBody team={team} liveField={liveField} ownership={ownership} />
           ) : (
-            <FantasyPitch team={team} liveField={liveField} />
+            <FantasyPitch team={team} liveField={liveField} ownership={ownership} />
           )}
           <LineupLegend />
         </div>
@@ -998,15 +1022,19 @@ function TeamDetailHeader({
   isMine,
   liveCounts,
   notFielded,
+  sticky = false,
 }: {
   team: LiveSnapshotTeam
   isMine: boolean
   liveCounts: { field: number; bench: number }
   notFielded: boolean
+  sticky?: boolean
 }) {
   return (
     <div
-      className={`flex items-center gap-2 border-b px-4 py-3 ${
+      className={`flex items-center gap-2 rounded-t-xl border-b px-4 py-3 ${
+        sticky ? 'sticky top-[44px] z-10 bg-surface-1 backdrop-blur-xl' : ''
+      } ${
         isMine
           ? 'border-indigo-500/40 bg-gradient-to-r from-indigo-500/22 via-indigo-500/8 to-transparent'
           : 'border-hairline bg-gradient-to-r from-accent/18 via-accent/6 to-transparent'
@@ -1065,6 +1093,15 @@ function LineupLegend() {
   return (
     <div className="mt-1 rounded-xl border border-hairline bg-glass-1 px-3 py-2.5">
       <p className="mb-1.5 text-[9px] font-bold uppercase tracking-wider text-ink-5">Legenda</p>
+      <div className="mb-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[10px] text-ink-4">
+        <span className="mr-0.5 text-ink-5">Bordo carta = ruolo:</span>
+        {(['P', 'D', 'C', 'A'] as const).map((r) => (
+          <span key={r} className="flex items-center gap-1">
+            <span className="inline-block h-3 w-4 rounded-[3px] border-[1.5px]" style={{ borderColor: ROLE_DOT[r] }} />
+            {ROLE_NAME[r]}
+          </span>
+        ))}
+      </div>
       <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-[10px] text-ink-4">
         <span className="flex items-center gap-1"><span aria-hidden>⚽</span>gol</span>
         <span className="flex items-center gap-1"><span aria-hidden>👟</span>assist</span>
@@ -1075,7 +1112,7 @@ function LineupLegend() {
         <span className="flex items-center gap-1"><span aria-hidden>👑</span>MVP</span>
         <span className="flex items-center gap-1">
           <span className="inline-flex items-center text-rose-500 dark:text-rose-300"><UsersGlyph /></span>
-          P.P. — Penalità di Popolarità (<span className="font-semibold text-rose-500 dark:text-rose-300">adesso</span> → <span className="text-ink-5">massima</span>)
+P.P. — Popolarità (% della lega che lo schiera) e Penalità (<span className="font-semibold text-rose-500 dark:text-rose-300">adesso</span> → <span className="text-ink-5">massima</span>)
         </span>
         <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-lime-400 shadow-[0_0_5px_1px] shadow-lime-400/70" />in campo ora</span>
         <span className="flex items-center gap-1"><span className="text-[#f01c9c]"><DiamondGlyph /></span>esclusiva</span>
@@ -1090,9 +1127,11 @@ function LineupLegend() {
 function TeamListBody({
   team,
   liveField,
+  ownership,
 }: {
   team: LiveSnapshotTeam
   liveField: Map<string, LiveFieldState>
+  ownership: Record<string, LiveOwnershipEntry>
 }) {
   const fielded = team.players.filter((p) => p.counts)
   const bench = team.players.filter((p) => !p.counts)
@@ -1104,7 +1143,7 @@ function TeamListBody({
         return (
           <div key={role} className="space-y-1">
             {rolePlayers.map((p) => (
-              <FantasyPlayerRow key={p.player_id} p={p} liveState={liveField.get(p.player_id)} />
+              <FantasyPlayerRow key={p.player_id} p={p} entry={ownership[p.player_id]} liveState={liveField.get(p.player_id)} />
             ))}
           </div>
         )
@@ -1120,7 +1159,7 @@ function TeamListBody({
         <div className="border-t border-hairline pt-2.5 space-y-1">
           <p className="text-[8px] font-bold uppercase tracking-wider text-ink-5 px-1">Panchina</p>
           {sortByRole(bench).map((p) => (
-            <FantasyPlayerRow key={p.player_id} p={p} muted liveState={liveField.get(p.player_id)} />
+            <FantasyPlayerRow key={p.player_id} p={p} entry={ownership[p.player_id]} muted liveState={liveField.get(p.player_id)} />
           ))}
         </div>
       )}
@@ -1138,9 +1177,11 @@ function TeamListBody({
 function FantasyPitch({
   team,
   liveField,
+  ownership,
 }: {
   team: LiveSnapshotTeam
   liveField: Map<string, LiveFieldState>
+  ownership: Record<string, LiveOwnershipEntry>
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const fielded = team.players.filter((p) => p.counts)
@@ -1177,6 +1218,7 @@ function FantasyPitch({
               <FantasyPitchChip
                 key={p.player_id}
                 p={p}
+                entry={ownership[p.player_id]}
                 liveState={liveField.get(p.player_id)}
                 selected={p.player_id === selectedId}
                 onSelect={() => toggle(p.player_id)}
@@ -1189,6 +1231,7 @@ function FantasyPitch({
       {selected && (
         <PlayerDetailSheet
           p={selected}
+          entry={ownership[selected.player_id]}
           teamName={team.name}
           liveState={liveField.get(selected.player_id)}
           onClose={() => setSelectedId(null)}
@@ -1217,12 +1260,11 @@ function FantasyPitch({
   )
 }
 
-// Round national-team crest with a role dot, and a green ring when the player is
-// on the pitch right now in a live match.
+// Round national-team crest. The role is now conveyed by the card outline, so
+// the only overlay here is a lime ring when the player is on the pitch right now.
 function PlayerCrest({ p, live, size }: { p: LiveSnapshotPlayer; live: boolean; size: number }) {
   const t = p.national_team
   const src = t?.logo_url || t?.flag_url
-  const dot = Math.max(8, Math.round(size * 0.34))
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       <span
@@ -1237,11 +1279,6 @@ function PlayerCrest({ p, live, size }: { p: LiveSnapshotPlayer; live: boolean; 
           </span>
         )}
       </span>
-      <span
-        className="absolute -bottom-[2px] -right-[2px] rounded-full"
-        style={{ width: dot, height: dot, background: ROLE_DOT[p.role] ?? '#94a3b8', border: '1.5px solid var(--glass-3)' }}
-        title={p.role}
-      />
     </div>
   )
 }
@@ -1274,6 +1311,47 @@ function MvpExclusiveGlyph() {
       <span aria-hidden>👑</span>
       <DiamondGlyph className="text-white" />
       <span aria-hidden>✨</span>
+    </span>
+  )
+}
+
+// Popularity readout for a SHARED player: the % of the lega that fields him
+// (now → potential) and, once it materialises, the P.P. voto deduction.
+// The percentage is known up-front (it's just ownership), so it shows even
+// before any penalty has accrued — the user can read the risk at a glance.
+function PopularityChip({
+  entry,
+  ppNow,
+  ppMax,
+}: {
+  entry: LiveOwnershipEntry | undefined
+  ppNow: number
+  ppMax: number
+}) {
+  if (!entry) return null
+  const pctNow = Math.round(entry.pct_now)
+  const pctMax = Math.round(entry.pct_potential)
+  const hasPen = ppNow > 0.005 || ppMax > 0.005
+  const title =
+    `Popolarità ${pctNow}%${pctMax > pctNow ? ` → ${pctMax}%` : ''} della lega lo schiera` +
+    (hasPen
+      ? ` · Penalità di Popolarità −${fmt(ppNow, 2)}${ppMax - ppNow > 0.005 ? ` → −${fmt(ppMax, 2)}` : ''}`
+      : '')
+  return (
+    <span
+      className="inline-flex items-center gap-0.5 rounded bg-rose-400/10 px-1 text-[8px] font-semibold tabular-nums"
+      title={title}
+    >
+      <UsersGlyph className="text-rose-500 dark:text-rose-300" />
+      <span className="text-ink-3">
+        {pctNow}%{pctMax > pctNow && <span className="text-ink-5">→{pctMax}%</span>}
+      </span>
+      {hasPen && (
+        <span className="text-rose-600 dark:text-rose-300">
+          −{fmt(ppNow, 1)}
+          {ppMax - ppNow > 0.005 && <span className="text-ink-5">→−{fmt(ppMax, 1)}</span>}
+        </span>
+      )}
     </span>
   )
 }
@@ -1336,11 +1414,13 @@ function OwnershipMini({ owners, isMvp = false }: { owners: LiveOwnerRef[]; isMv
 
 function FantasyPitchChip({
   p,
+  entry,
   liveState,
   selected,
   onSelect,
 }: {
   p: LiveSnapshotPlayer
+  entry: LiveOwnershipEntry | undefined
   liveState?: LiveFieldState
   selected: boolean
   onSelect: () => void
@@ -1348,16 +1428,19 @@ function FantasyPitchChip({
   const v = computeVoto(p)
   const ppNow = p.popularity_penalty_now
   const ppMax = p.popularity_penalty_potential
-  const showPop = ppNow > 0.005 || ppMax > 0.005
   const isMvp = p.mvp_bonus > 0.005
   const exclusiveMvp = p.owners.length === 0 && isMvp
+  const shared = p.owners.length > 0
+  const roleColor = ROLE_DOT[p.role] ?? '#94a3b8'
 
   return (
     <button
       type="button"
       onClick={onSelect}
-      className={`flex min-h-[116px] min-w-0 flex-col items-center gap-1 rounded-xl border bg-glass-3 px-1 py-1.5 text-center shadow-sm transition-colors ${
-        selected ? 'border-accent ring-1 ring-accent' : 'border-hairline'
+      title={ROLE_NAME[p.role] ?? p.role}
+      style={{ borderColor: roleColor, borderWidth: 1.5 }}
+      className={`flex min-h-[116px] min-w-0 flex-col items-center gap-1 rounded-xl border-solid bg-glass-3 px-1 py-1.5 text-center shadow-sm transition-all ${
+        selected ? 'bg-accent/10 ring-2 ring-accent' : ''
       }`}
     >
       <PlayerCrest p={p} live={liveState === 'field'} size={28} />
@@ -1381,25 +1464,11 @@ function FantasyPitchChip({
         )}
       </span>
 
-      {/* single meta strip pinned to the bottom — glyphs, P.P. and ownership all
-          on one wrapping line so every card keeps the same structure & height */}
+      {/* single meta strip pinned to the bottom — glyphs, popularity and ownership
+          all on one wrapping line so every card keeps the same structure & height */}
       <span className="mt-auto flex w-full flex-wrap items-center justify-center gap-x-1 gap-y-0.5 pt-0.5">
         <PitchGlyphs p={p} hideMvp={exclusiveMvp} />
-        {showPop && (
-          <span
-            className="inline-flex items-center gap-0.5 rounded bg-rose-400/12 px-1 text-[8px] font-semibold tabular-nums"
-            title={`Penalità di Popolarità — adesso −${fmt(ppNow, 2)} → massima −${fmt(ppMax, 2)}`}
-          >
-            <UsersGlyph className="text-rose-500 dark:text-rose-300" />
-            <span className="text-rose-600 dark:text-rose-300">−{fmt(ppNow, 1)}</span>
-            {ppMax - ppNow > 0.005 && (
-              <>
-                <span className="text-ink-5">→</span>
-                <span className="text-ink-5">−{fmt(ppMax, 1)}</span>
-              </>
-            )}
-          </span>
-        )}
+        {shared && <PopularityChip entry={entry} ppNow={ppNow} ppMax={ppMax} />}
         <OwnershipMini owners={p.owners} isMvp={isMvp} />
       </span>
     </button>
@@ -1419,12 +1488,15 @@ function BenchChip({
   onSelect: () => void
 }) {
   const v = computeVoto(p)
+  const roleColor = ROLE_DOT[p.role] ?? '#94a3b8'
   return (
     <button
       type="button"
       onClick={onSelect}
-      className={`flex min-w-0 items-center gap-1.5 rounded-lg border bg-glass-2 px-1.5 py-1.5 text-left transition-colors ${
-        selected ? 'border-accent ring-1 ring-accent' : 'border-hairline'
+      title={ROLE_NAME[p.role] ?? p.role}
+      style={{ borderColor: roleColor, borderWidth: 1.5 }}
+      className={`flex min-w-0 items-center gap-1.5 rounded-lg border-solid bg-glass-2 px-1.5 py-1.5 text-left transition-all ${
+        selected ? 'bg-accent/10 ring-2 ring-accent' : ''
       }`}
     >
       <PlayerCrest p={p} live={liveState === 'field'} size={18} />
@@ -1441,19 +1513,23 @@ function BenchChip({
 // its value, and the rival teams (with titolare/panchina) or an exclusive call.
 function PlayerDetailSheet({
   p,
+  entry,
   teamName,
   liveState,
   onClose,
 }: {
   p: LiveSnapshotPlayer
+  entry: LiveOwnershipEntry | undefined
   teamName: string
   liveState?: LiveFieldState
   onClose: () => void
 }) {
   const v = computeVoto(p)
-  const roleName = { P: 'Portiere', D: 'Difensore', C: 'Centrocampista', A: 'Attaccante' }[p.role] ?? p.role
+  const roleName = ROLE_NAME[p.role] ?? p.role
   const pp = p.popularity_penalty_now
   const ppPot = p.popularity_penalty_potential
+  const pctNow = entry ? Math.round(entry.pct_now) : null
+  const pctMax = entry ? Math.round(entry.pct_potential) : null
 
   const chips: { key: string; icon: ReactNode; label: string; value?: ReactNode; title?: string; tone: 'pos' | 'neg' | 'mvp' }[] = []
   if (p.goals > 0) chips.push({ key: 'g', icon: '⚽', label: p.goals > 1 ? `Gol ×${p.goals}` : 'Gol', tone: 'pos' })
@@ -1465,19 +1541,33 @@ function PlayerDetailSheet({
   if (p.yellow_cards > 0 && p.red_cards === 0) chips.push({ key: 'y', icon: <span className="inline-block h-3 w-2 rounded-sm bg-amber-400" />, label: 'Ammonizione', tone: 'neg' })
   if (p.red_cards > 0) chips.push({ key: 'r', icon: <span className="inline-block h-3 w-2 rounded-sm bg-rose-500" />, label: 'Espulsione', tone: 'neg' })
   if (p.mvp_bonus > 0.005) chips.push({ key: 'mvp', icon: '👑', label: 'MVP', value: `+${fmt(p.mvp_bonus, 1)}`, tone: 'mvp' })
-  if (pp > 0.005 || ppPot > 0.005)
+  const hasPen = pp > 0.005 || ppPot > 0.005
+  const shared = p.owners.length > 0
+  if (shared || hasPen)
     chips.push({
       key: 'pp',
       icon: <UsersGlyph className="text-rose-500 dark:text-rose-300" />,
       label: 'P.P.',
-      title: `Penalità di Popolarità — adesso −${fmt(pp, 2)} → massima −${fmt(ppPot, 2)}`,
+      title:
+        `Popolarità ${pctNow}%${pctMax != null && pctMax > (pctNow ?? 0) ? ` → ${pctMax}%` : ''} della lega lo schiera` +
+        (hasPen ? ` · Penalità di Popolarità −${fmt(pp, 2)} → −${fmt(ppPot, 2)}` : ''),
       value: (
         <>
-          <span className="text-rose-600 dark:text-rose-300">−{fmt(pp, 2)}</span>
-          {ppPot - pp > 0.005 && (
+          {pctNow != null && (
+            <span className="text-ink-2">
+              {pctNow}%{pctMax != null && pctMax > pctNow && <span className="text-ink-5"> → {pctMax}%</span>}
+            </span>
+          )}
+          {hasPen && (
             <>
-              <span className="text-ink-5"> → </span>
-              <span className="text-ink-5">−{fmt(ppPot, 2)}</span>
+              <span className="text-ink-5"> · </span>
+              <span className="text-rose-600 dark:text-rose-300">−{fmt(pp, 2)}</span>
+              {ppPot - pp > 0.005 && (
+                <>
+                  <span className="text-ink-5"> → </span>
+                  <span className="text-ink-5">−{fmt(ppPot, 2)}</span>
+                </>
+              )}
             </>
           )}
         </>
@@ -1638,18 +1728,23 @@ function LivePlayerDot({ state }: { state: LiveFieldState | undefined }) {
 
 function FantasyPlayerRow({
   p,
+  entry,
   muted = false,
   liveState,
 }: {
   p: LiveSnapshotPlayer
+  entry?: LiveOwnershipEntry
   muted?: boolean
   liveState?: LiveFieldState
 }) {
   const penNow = p.popularity_penalty_now
   const penPot = p.popularity_penalty_potential
-  const showPen = penNow > 0.005 || penPot > 0.005
+  const shared = p.owners.length > 0
+  const showPen = penNow > 0.005 || penPot > 0.005 || shared
   const penRises = penPot - penNow > 0.005
   const showMvp = p.mvp_bonus > 0.005
+  const pctNow = entry ? Math.round(entry.pct_now) : null
+  const pctMax = entry ? Math.round(entry.pct_potential) : null
 
   const v = computeVoto(p)
 
@@ -1695,26 +1790,34 @@ function FantasyPlayerRow({
                 <span aria-hidden>★</span>MVP +{fmt(p.mvp_bonus, 1)}
               </span>
             )}
-            {showPen &&
-              (penNow > 0.005 ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-rose-400/12 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-rose-500 dark:text-rose-300">
-                  <span>Penalità</span>
-                  <span className="text-indigo-500 dark:text-indigo-300">−{fmt(penNow)}</span>
-                  {penRises && (
-                    <>
-                      <span className="text-ink-5">→</span>
-                      <span className="text-ink-5">−{fmt(penPot)}</span>
-                    </>
-                  )}
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 rounded-full bg-rose-400/8 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-rose-500/80 dark:text-rose-300/80">
-                  <span>Rischio penalità</span>
-                  <span className="text-indigo-500 dark:text-indigo-300">0</span>
-                  <span className="text-ink-5">→</span>
-                  <span className="text-ink-5">−{fmt(penPot)}</span>
-                </span>
-              ))}
+            {showPen && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full bg-rose-400/12 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-rose-500 dark:text-rose-300"
+                title={
+                  `Popolarità ${pctNow}%${pctMax != null && pctMax > (pctNow ?? 0) ? ` → ${pctMax}%` : ''} della lega lo schiera` +
+                  (penNow > 0.005 || penPot > 0.005 ? ` · P.P. −${fmt(penNow)} → −${fmt(penPot)}` : '')
+                }
+              >
+                <UsersGlyph className="text-rose-500 dark:text-rose-300" />
+                {pctNow != null && (
+                  <span className="text-ink-2">
+                    {pctNow}%{pctMax != null && pctMax > pctNow && <span className="text-ink-5"> → {pctMax}%</span>}
+                  </span>
+                )}
+                {(penNow > 0.005 || penPot > 0.005) && (
+                  <>
+                    <span className="text-ink-5">·</span>
+                    <span className="text-indigo-500 dark:text-indigo-300">−{fmt(penNow)}</span>
+                    {penRises && (
+                      <>
+                        <span className="text-ink-5">→</span>
+                        <span className="text-ink-5">−{fmt(penPot)}</span>
+                      </>
+                    )}
+                  </>
+                )}
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -1756,7 +1859,7 @@ function OwnerPills({
   const isExclusiveStarter =
     totalTeams != null && owners.length === 1 && owners[0]?.status === 'titolare'
   return (
-    <div className={`${compact ? 'mt-0.5' : 'mt-1'} flex min-w-0 flex-wrap items-center gap-1`}>
+    <div className={`flex min-w-0 items-center gap-1 ${compact ? 'mt-0.5 flex-nowrap overflow-hidden' : 'mt-1 flex-wrap'}`}>
       <span
         className={`${compact ? 'text-[9px]' : 'text-[10px]'} font-medium ${
           isExclusiveStarter ? 'font-black text-[#f01c9c]' : 'text-ink-5'
@@ -2095,6 +2198,7 @@ function MobileTeamCard({
   previewMode,
   liveCounts,
   liveField,
+  ownership,
   onToggle,
 }: {
   team: LiveSnapshotTeam
@@ -2105,23 +2209,24 @@ function MobileTeamCard({
   previewMode: boolean
   liveCounts: { field: number; bench: number }
   liveField: Map<string, LiveFieldState>
+  ownership: Record<string, LiveOwnershipEntry>
   onToggle: () => void
 }) {
   const notFielded = isNotFielded(team)
   const [view, setView] = useState<TeamLineupView>('pitch')
   return (
     <div
-      className={`rounded-xl border bg-glass-1 overflow-hidden ${
+      className={`rounded-xl border bg-glass-1 ${expanded ? '' : 'overflow-hidden'} ${
         isMine ? 'border-indigo-500/30' : 'border-hairline'
       }`}
     >
       <button
         onClick={onToggle}
-        className={`w-full flex items-center gap-2 px-3 py-2.5 border-b ${
+        className={`w-full flex items-center gap-2 rounded-t-xl px-3 py-2.5 border-b ${
           expanded
             ? isMine
-              ? 'border-indigo-500/40 bg-gradient-to-r from-indigo-500/22 via-indigo-500/8 to-transparent'
-              : 'border-hairline bg-gradient-to-r from-accent/18 via-accent/6 to-transparent'
+              ? 'sticky top-[44px] z-10 border-indigo-500/40 bg-surface-1 bg-gradient-to-r from-indigo-500/22 via-indigo-500/8 to-transparent backdrop-blur-xl'
+              : 'sticky top-[44px] z-10 border-hairline bg-surface-1 bg-gradient-to-r from-accent/18 via-accent/6 to-transparent backdrop-blur-xl'
             : 'border-hairline bg-glass-2'
         }`}
       >
@@ -2177,9 +2282,9 @@ function MobileTeamCard({
                 <TeamViewToggle view={view} onChange={setView} />
               </div>
               {view === 'list' ? (
-                <div className="space-y-2"><TeamListBody team={team} liveField={liveField} /></div>
+                <div className="space-y-2"><TeamListBody team={team} liveField={liveField} ownership={ownership} /></div>
               ) : (
-                <FantasyPitch team={team} liveField={liveField} />
+                <FantasyPitch team={team} liveField={liveField} ownership={ownership} />
               )}
               <LineupLegend />
             </>
