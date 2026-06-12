@@ -22,6 +22,14 @@ const ROLE_COLOR: Record<string, string> = {
 }
 const ROLE_ORDER = ['P', 'D', 'C', 'A'] as const
 
+/** Stable role ordering (P→D→C→A), so a recently-edited lineup still reads in
+ * role order rather than in raw snapshot array order. */
+function sortByRole<T extends { role: string }>(players: T[]): T[] {
+  return [...players].sort(
+    (a, b) => ROLE_ORDER.indexOf(a.role as never) - ROLE_ORDER.indexOf(b.role as never),
+  )
+}
+
 function fmt(n: number | null | undefined, d = 2): string {
   if (n == null) return '—'
   return Number(n).toFixed(d)
@@ -1604,7 +1612,7 @@ function MobileTeamCard({
             <MaskedPlayerRows count={team.players.filter((p) => p.counts).length} />
           ) : (
             <>
-              {team.players.filter((p) => p.counts).map((p) => (
+              {sortByRole(team.players.filter((p) => p.counts)).map((p) => (
                 <FantasyPlayerRow key={p.player_id} p={p} liveState={liveField.get(p.player_id)} />
               ))}
               {team.coach && (
@@ -1615,7 +1623,7 @@ function MobileTeamCard({
               {team.players.filter((p) => !p.counts).length > 0 && (
                 <>
                   <p className="text-[8px] font-bold uppercase tracking-wider text-ink-5 px-1 pt-1">Panchina</p>
-                  {team.players.filter((p) => !p.counts).map((p) => (
+                  {sortByRole(team.players.filter((p) => !p.counts)).map((p) => (
                     <FantasyPlayerRow key={p.player_id} p={p} muted liveState={liveField.get(p.player_id)} />
                   ))}
                 </>
