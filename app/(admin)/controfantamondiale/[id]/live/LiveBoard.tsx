@@ -113,7 +113,7 @@ function LiveDots({ field, bench }: { field: number; bench: number }) {
       {Array.from({ length: field }).map((_, i) => (
         <span
           key={`f${i}`}
-          className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_7px_2px] shadow-emerald-400/70"
+          className="h-2.5 w-2.5 animate-pulse rounded-full bg-lime-400 shadow-[0_0_7px_2px] shadow-lime-400/70"
         />
       ))}
       {Array.from({ length: bench }).map((_, i) => (
@@ -979,8 +979,7 @@ function TeamDetailPanel({
         </div>
       ) : (
         <div className="p-3 space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <LineupLegend />
+          <div className="flex justify-center">
             <TeamViewToggle view={view} onChange={setView} />
           </div>
           {view === 'list' ? (
@@ -988,6 +987,7 @@ function TeamDetailPanel({
           ) : (
             <FantasyPitch team={team} liveField={liveField} />
           )}
+          <LineupLegend />
         </div>
       )}
     </div>
@@ -1013,8 +1013,8 @@ function TeamDetailHeader({
     <div
       className={`flex items-center gap-2 border-b px-4 py-3 ${
         isMine
-          ? 'border-indigo-500/30 bg-gradient-to-r from-indigo-500/22 via-indigo-500/10 to-transparent'
-          : 'border-hairline bg-gradient-to-r from-accent/15 via-accent/5 to-transparent'
+          ? 'border-indigo-500/40 bg-gradient-to-r from-indigo-500/45 via-indigo-500/20 to-transparent'
+          : 'border-hairline bg-gradient-to-r from-accent/35 via-accent/14 to-transparent'
       }`}
     >
       <span
@@ -1065,17 +1065,27 @@ function TeamViewToggle({ view, onChange }: { view: TeamLineupView; onChange: (v
   )
 }
 
+// Full glyph legend, shown at the bottom of the team view (after the bench).
 function LineupLegend() {
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-[9px] text-ink-5">
-      <span className="flex items-center gap-1">
-        <span className="rounded-full bg-amber-400/15 px-1 text-[8px] font-semibold text-amber-500 dark:text-amber-300">★ MVP</span>
-        bonus
-      </span>
-      <span className="flex items-center gap-1">
-        <span className="rounded-full bg-rose-400/12 px-1 text-[8px] font-semibold text-rose-500 dark:text-rose-300">pop</span>
-        malus popolarità (ora ▸ max)
-      </span>
+    <div className="mt-1 rounded-xl border border-hairline bg-glass-1 px-3 py-2.5">
+      <p className="mb-1.5 text-[9px] font-bold uppercase tracking-wider text-ink-5">Legenda</p>
+      <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-[10px] text-ink-4">
+        <span className="flex items-center gap-1"><span aria-hidden>⚽</span>gol</span>
+        <span className="flex items-center gap-1"><span aria-hidden>👟</span>assist</span>
+        <span className="flex items-center gap-1"><span aria-hidden>🧤</span>porta inviolata (P.I.)</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-3 w-2 rounded-sm bg-amber-400" />ammonizione</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-3 w-2 rounded-sm bg-rose-500" />espulsione</span>
+        <span className="flex items-center gap-1"><span aria-hidden>🥅</span>autogol</span>
+        <span className="flex items-center gap-1"><span aria-hidden>👑</span>MVP</span>
+        <span className="flex items-center gap-1">
+          <span className="inline-flex items-center text-rose-500 dark:text-rose-300"><UsersGlyph /></span>
+          pop — Penalità di Popolarità (<span className="font-semibold text-rose-500 dark:text-rose-300">adesso</span> → <span className="text-ink-5">massima</span>)
+        </span>
+        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-lime-400 shadow-[0_0_5px_1px] shadow-lime-400/70" />in campo ora</span>
+        <span className="flex items-center gap-1"><span className="text-[#f01c9c]"><DiamondGlyph /></span>esclusiva</span>
+        <span className="flex items-center gap-1"><span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-indigo-500 text-[7px] font-bold text-white">XX</span>rivale titolare · <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-ink-5/70 text-[7px] font-bold text-white">XX</span>rivale panchina</span>
+      </div>
     </div>
   )
 }
@@ -1140,10 +1150,9 @@ function FantasyPitch({
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const fielded = team.players.filter((p) => p.counts)
   const bench = team.players.filter((p) => !p.counts)
-  // Attack on top, GK at the bottom — mirrors the Formazione pitch. Each role
-  // is its own grid row so N players always lay out as N columns (a 4-man
-  // midfield never wraps to 3+1).
-  const rows = (['A', 'C', 'D', 'P'] as const)
+  // GK on top, attack at the bottom. Each role is its own grid row so N players
+  // always lay out as N columns (a 4-man midfield never wraps to 3+1).
+  const rows = (['P', 'D', 'C', 'A'] as const)
     .map((role) => sortByRole(fielded.filter((p) => p.role === role)))
     .filter((r) => r.length > 0)
   const selected = team.players.find((p) => p.player_id === selectedId) ?? null
@@ -1222,7 +1231,7 @@ function PlayerCrest({ p, live, size }: { p: LiveSnapshotPlayer; live: boolean; 
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       <span
-        className={`block overflow-hidden rounded-full ${live ? 'ring-2 ring-emerald-400' : ''}`}
+        className={`block overflow-hidden rounded-full ${live ? 'ring-2 ring-lime-400' : ''}`}
         style={{ width: size, height: size }}
       >
         {src ? (
@@ -1323,7 +1332,9 @@ function FantasyPitchChip({
   onSelect: () => void
 }) {
   const v = computeVoto(p)
-  const pp = p.popularity_penalty_now
+  const ppNow = p.popularity_penalty_now
+  const ppMax = p.popularity_penalty_potential
+  const showPop = ppNow > 0.005 || ppMax > 0.005
   const hasGlyphs =
     p.mvp_bonus > 0.005 ||
     p.goals > 0 || p.assists > 0 || p.penalties_saved > 0 || p.clean_sheet_bonus > 0 ||
@@ -1365,13 +1376,20 @@ function FantasyPitchChip({
         </span>
       )}
 
-      {/* P.P. */}
-      {pp > 0.005 && (
+      {/* pop — Penalità di Popolarità (adesso colored → massima grey) */}
+      {showPop && (
         <span
-          className="inline-flex items-center gap-0.5 rounded bg-rose-400/12 px-1 text-[8px] font-semibold tabular-nums text-rose-600 dark:text-rose-300"
-          title={`Penalità di Popolarità −${fmt(pp, 2)}`}
+          className="inline-flex items-center gap-0.5 rounded bg-rose-400/12 px-1 text-[8px] font-semibold tabular-nums"
+          title={`Penalità di Popolarità — adesso −${fmt(ppNow, 2)} → massima −${fmt(ppMax, 2)}`}
         >
-          <UsersGlyph />−{fmt(pp, 1)}
+          <UsersGlyph className="text-rose-500 dark:text-rose-300" />
+          <span className="text-rose-600 dark:text-rose-300">−{fmt(ppNow, 1)}</span>
+          {ppMax - ppNow > 0.005 && (
+            <>
+              <span className="text-ink-5">→</span>
+              <span className="text-ink-5">−{fmt(ppMax, 1)}</span>
+            </>
+          )}
         </span>
       )}
 
@@ -1429,7 +1447,7 @@ function PlayerDetailSheet({
   const pp = p.popularity_penalty_now
   const ppPot = p.popularity_penalty_potential
 
-  const chips: { key: string; icon: ReactNode; label: string; value?: string; tone: 'pos' | 'neg' | 'mvp' }[] = []
+  const chips: { key: string; icon: ReactNode; label: string; value?: ReactNode; title?: string; tone: 'pos' | 'neg' | 'mvp' }[] = []
   if (p.goals > 0) chips.push({ key: 'g', icon: '⚽', label: p.goals > 1 ? `Gol ×${p.goals}` : 'Gol', tone: 'pos' })
   if (p.assists > 0) chips.push({ key: 'a', icon: '👟', label: p.assists > 1 ? `Assist ×${p.assists}` : 'Assist', tone: 'pos' })
   if (p.clean_sheet_bonus > 0) chips.push({ key: 'cs', icon: '🧤', label: 'Porta inviolata', value: `+${fmt(p.clean_sheet_bonus, 1)}`, tone: 'pos' })
@@ -1443,8 +1461,19 @@ function PlayerDetailSheet({
     chips.push({
       key: 'pp',
       icon: <UsersGlyph className="text-rose-500 dark:text-rose-300" />,
-      label: 'P.P.',
-      value: `−${fmt(pp, 2)}${ppPot - pp > 0.005 ? ` ▸ −${fmt(ppPot, 2)}` : ''}`,
+      label: 'pop',
+      title: `Penalità di Popolarità — adesso −${fmt(pp, 2)} → massima −${fmt(ppPot, 2)}`,
+      value: (
+        <>
+          <span className="text-rose-600 dark:text-rose-300">−{fmt(pp, 2)}</span>
+          {ppPot - pp > 0.005 && (
+            <>
+              <span className="text-ink-5"> → </span>
+              <span className="text-ink-5">−{fmt(ppPot, 2)}</span>
+            </>
+          )}
+        </>
+      ),
       tone: 'neg',
     })
 
@@ -1458,7 +1487,7 @@ function PlayerDetailSheet({
           <div className="truncate text-[14px] font-bold text-ink-1">{p.name}</div>
           <div className="text-[11px] text-ink-4">
             {roleName}
-            {liveState === 'field' && <span className="text-emerald-500 dark:text-emerald-400"> · in campo</span>}
+            {liveState === 'field' && <span className="text-lime-500 dark:text-lime-400"> · in campo</span>}
           </div>
         </div>
         {v.kind === 'score' ? (
@@ -1478,6 +1507,7 @@ function PlayerDetailSheet({
           chips.map((c) => (
             <span
               key={c.key}
+              title={c.title}
               className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11.5px] ${
                 c.tone === 'neg'
                   ? 'bg-rose-400/10 text-rose-600 dark:text-rose-300'
@@ -1591,7 +1621,7 @@ function LivePlayerDot({ state }: { state: LiveFieldState | undefined }) {
       title={state === 'field' ? 'In campo ora' : 'In panchina (allenatore)'}
       className={`h-2.5 w-2.5 shrink-0 animate-pulse rounded-full ${
         state === 'field'
-          ? 'bg-emerald-400 shadow-[0_0_7px_2px] shadow-emerald-400/70'
+          ? 'bg-lime-400 shadow-[0_0_7px_2px] shadow-lime-400/70'
           : 'bg-ink-5/55 shadow-[0_0_5px_1px] shadow-ink-5/30'
       }`}
     />
@@ -2079,14 +2109,18 @@ function MobileTeamCard({
     >
       <button
         onClick={onToggle}
-        className="w-full flex items-center gap-2 px-3 py-2.5 bg-glass-2 border-b border-hairline"
+        className={`w-full flex items-center gap-2 px-3 py-2.5 border-b ${
+          isMine
+            ? 'border-indigo-500/40 bg-gradient-to-r from-indigo-500/45 via-indigo-500/20 to-transparent'
+            : 'border-hairline bg-gradient-to-r from-accent/35 via-accent/14 to-transparent'
+        }`}
       >
         <span className="w-5 text-center text-[11px] font-bold text-ink-5">{rank}</span>
         <div className="flex-1 min-w-0 text-left">
           <div className="flex items-center gap-1.5">
-            <span className="text-[13px] font-semibold text-ink-1 truncate">{team.name}</span>
+            <span className="text-[13.5px] font-extrabold tracking-tight text-ink-1 truncate">{team.name}</span>
             {isMine && (
-              <span className="shrink-0 rounded-full bg-indigo-500/15 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-indigo-300">
+              <span className="shrink-0 rounded-full bg-indigo-500 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-white">
                 Tu
               </span>
             )}
@@ -2129,8 +2163,7 @@ function MobileTeamCard({
             <MaskedPlayerRows count={team.players.filter((p) => p.counts).length} />
           ) : (
             <>
-              <div className="flex items-center justify-between gap-2">
-                <LineupLegend />
+              <div className="flex justify-center">
                 <TeamViewToggle view={view} onChange={setView} />
               </div>
               {view === 'list' ? (
@@ -2138,6 +2171,7 @@ function MobileTeamCard({
               ) : (
                 <FantasyPitch team={team} liveField={liveField} />
               )}
+              <LineupLegend />
             </>
           )}
         </div>
