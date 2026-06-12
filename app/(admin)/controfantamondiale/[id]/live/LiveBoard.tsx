@@ -22,6 +22,14 @@ const ROLE_COLOR: Record<string, string> = {
 }
 const ROLE_ORDER = ['P', 'D', 'C', 'A'] as const
 
+// Solid role colors for the pitch role dot (kept in sync with ROLE_COLOR).
+const ROLE_DOT: Record<string, string> = {
+  P: '#f59e0b',
+  D: '#34d399',
+  C: '#818cf8',
+  A: '#fb7185',
+}
+
 /** Stable role ordering (P→D→C→A), so a recently-edited lineup still reads in
  * role order rather than in raw snapshot array order. */
 function sortByRole<T extends { role: string }>(players: T[]): T[] {
@@ -684,6 +692,30 @@ function RealPlayerPlaceholder() {
   return <div aria-hidden className="min-h-[43px] rounded-md border border-transparent px-2 py-1 opacity-0" />
 }
 
+// Resolve a player's displayed voto: split base/total, or a no-play marker.
+// Shared by the list row and the pitch chip so the two can never diverge.
+type VotoDisplay =
+  | { kind: 'score'; base: string; total: string; totalCls: string }
+  | { kind: 'marker'; text: string; cls: string }
+
+function computeVoto(p: LiveSnapshotPlayer): VotoDisplay {
+  const penNow = p.popularity_penalty_now
+  // A voto exists only when the engine produced a base rating. A player who was
+  // on the pitch but has no rating yet is S.V. (senza voto) — never show 0.0.
+  const baseVoto = p.display_voto_base ?? p.voto_base ?? p.rating
+  if (baseVoto != null) {
+    const totalNum = (p.display_voto_total ?? p.final_score_now) + p.mvp_bonus - penNow
+    return {
+      kind: 'score',
+      base: fmt(baseVoto, 1),
+      total: fmt(totalNum, 1),
+      totalCls: totalVotoColor(totalNum),
+    }
+  }
+  if (p.status === 'played') return { kind: 'marker', text: 'S.V.', cls: 'text-amber-500 dark:text-amber-400' }
+  return { kind: 'marker', text: p.status === 'pending' ? '–' : '✕', cls: 'text-ink-5' }
+}
+
 function totalVotoColor(voto: number): string {
   if (voto >= 10) return 'text-[#374DF5]'
   if (voto >= 9) return 'text-[#00ADC4]'
@@ -923,36 +955,16 @@ function TeamDetailPanel({
   liveCounts: { field: number; bench: number }
   liveField: Map<string, LiveFieldState>
 }) {
-  const fielded = team.players.filter((p) => p.counts)
-  const bench = team.players.filter((p) => !p.counts)
   const notFielded = isNotFielded(team)
+  const [view, setView] = useState<TeamLineupView>('list')
 
   return (
     <div
       className={`rounded-xl border bg-glass-1 overflow-hidden ${
-        isMine ? 'border-indigo-500/30' : 'border-hairline'
+        isMine ? 'border-indigo-500/40' : 'border-hairline'
       }`}
     >
-      {/* header */}
-      <div className="bg-glass-2 border-b border-hairline px-4 py-2.5 flex items-center gap-2">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[14px] font-bold text-ink-1 truncate">{team.name}</span>
-            {isMine && (
-              <span className="shrink-0 rounded-full bg-indigo-500/15 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-indigo-300">
-                Tu
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-ink-5">{notFielded ? 'Formazione non schierata' : team.formation ?? '—'}</span>
-            <LiveDots field={liveCounts.field} bench={liveCounts.bench} />
-          </div>
-        </div>
-        <span className="text-[22px] font-black tabular-nums text-emerald-400">
-          {fmt(team.live_total, 1)}
-        </span>
-      </div>
+      <TeamDetailHeader team={team} isMine={isMine} liveCounts={liveCounts} notFielded={notFielded} />
 
       {notFielded ? (
         <div className="m-3 rounded-lg border border-rose-500/30 bg-rose-500/8 p-4 text-center">
@@ -965,50 +977,356 @@ function TeamDetailPanel({
           </p>
         </div>
       ) : (
-      <div className="p-3 space-y-3">
-        {/* legend: what the chips mean */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-[9px] text-ink-5">
-          <span className="flex items-center gap-1">
-            <span className="rounded-full bg-amber-400/15 px-1 text-[8px] font-semibold text-amber-500 dark:text-amber-300">★ MVP</span>
-            bonus
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="rounded-full bg-rose-400/12 px-1 text-[8px] font-semibold text-rose-500 dark:text-rose-300">pop</span>
-            malus popolarità (ora ▸ max)
-          </span>
-        </div>
-
-        {/* starters grouped by role */}
-        {ROLE_ORDER.map((role) => {
-          const rolePlayers = fielded.filter((p) => p.role === role)
-          if (!rolePlayers.length) return null
-          return (
-            <div key={role} className="space-y-1">
-              {rolePlayers.map((p) => (
-                <FantasyPlayerRow key={p.player_id} p={p} liveState={liveField.get(p.player_id)} />
-              ))}
-            </div>
-          )
-        })}
-
-        {/* coach */}
-        {team.coach && (
-          <div className="border-t border-hairline pt-2">
-            <CoachRow coach={team.coach} />
+        <div className="p-3 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <LineupLegend />
+            <TeamViewToggle view={view} onChange={setView} />
           </div>
-        )}
+          {view === 'list' ? (
+            <TeamListBody team={team} liveField={liveField} />
+          ) : (
+            <FantasyPitch team={team} liveField={liveField} />
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
-        {/* bench */}
-        {bench.length > 0 && (
-          <div className="border-t border-hairline pt-2.5 space-y-1">
-            <p className="text-[8px] font-bold uppercase tracking-wider text-ink-5 px-1">Panchina</p>
-            {bench.map((p) => (
-              <FantasyPlayerRow key={p.player_id} p={p} muted liveState={liveField.get(p.player_id)} />
+type TeamLineupView = 'list' | 'pitch'
+
+// Distinct, team-identifying header bar — indigo-tinted gradient (stronger for
+// "my team") so the opened team reads clearly apart from the glass-2 player rows.
+function TeamDetailHeader({
+  team,
+  isMine,
+  liveCounts,
+  notFielded,
+}: {
+  team: LiveSnapshotTeam
+  isMine: boolean
+  liveCounts: { field: number; bench: number }
+  notFielded: boolean
+}) {
+  return (
+    <div
+      className={`flex items-center gap-2 border-b px-4 py-3 ${
+        isMine
+          ? 'border-indigo-500/30 bg-gradient-to-r from-indigo-500/22 via-indigo-500/10 to-transparent'
+          : 'border-hairline bg-gradient-to-r from-accent/15 via-accent/5 to-transparent'
+      }`}
+    >
+      <span
+        aria-hidden
+        className={`h-8 w-1 shrink-0 rounded-full ${isMine ? 'bg-indigo-500' : 'bg-accent/70'}`}
+      />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className="truncate text-[15px] font-extrabold tracking-tight text-ink-1">{team.name}</span>
+          {isMine && (
+            <span className="shrink-0 rounded-full bg-indigo-500 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-white">
+              Tu
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-ink-4">
+            {notFielded ? 'Formazione non schierata' : team.formation ?? '—'}
+          </span>
+          <LiveDots field={liveCounts.field} bench={liveCounts.bench} />
+        </div>
+      </div>
+      <span className="text-[22px] font-black tabular-nums text-emerald-500 dark:text-emerald-400">
+        {fmt(team.live_total, 1)}
+      </span>
+    </div>
+  )
+}
+
+function TeamViewToggle({ view, onChange }: { view: TeamLineupView; onChange: (v: TeamLineupView) => void }) {
+  return (
+    <div className="flex shrink-0 gap-0.5 rounded-full border border-hairline bg-glass-1 p-0.5">
+      {([
+        { v: 'list' as const, label: 'Lista' },
+        { v: 'pitch' as const, label: 'Campo' },
+      ]).map((opt) => (
+        <button
+          key={opt.v}
+          onClick={() => onChange(opt.v)}
+          className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide transition-colors ${
+            view === opt.v ? 'bg-accent text-white shadow-sm' : 'text-ink-4 hover:text-ink-2'
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function LineupLegend() {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-[9px] text-ink-5">
+      <span className="flex items-center gap-1">
+        <span className="rounded-full bg-amber-400/15 px-1 text-[8px] font-semibold text-amber-500 dark:text-amber-300">★ MVP</span>
+        bonus
+      </span>
+      <span className="flex items-center gap-1">
+        <span className="rounded-full bg-rose-400/12 px-1 text-[8px] font-semibold text-rose-500 dark:text-rose-300">pop</span>
+        malus popolarità (ora ▸ max)
+      </span>
+    </div>
+  )
+}
+
+// Shared list body — role-grouped titolari, coach, then bench. Used by both the
+// desktop detail panel and the mobile expanded card.
+function TeamListBody({
+  team,
+  liveField,
+}: {
+  team: LiveSnapshotTeam
+  liveField: Map<string, LiveFieldState>
+}) {
+  const fielded = team.players.filter((p) => p.counts)
+  const bench = team.players.filter((p) => !p.counts)
+  return (
+    <>
+      {ROLE_ORDER.map((role) => {
+        const rolePlayers = fielded.filter((p) => p.role === role)
+        if (!rolePlayers.length) return null
+        return (
+          <div key={role} className="space-y-1">
+            {rolePlayers.map((p) => (
+              <FantasyPlayerRow key={p.player_id} p={p} liveState={liveField.get(p.player_id)} />
+            ))}
+          </div>
+        )
+      })}
+
+      {team.coach && (
+        <div className="border-t border-hairline pt-2">
+          <CoachRow coach={team.coach} />
+        </div>
+      )}
+
+      {bench.length > 0 && (
+        <div className="border-t border-hairline pt-2.5 space-y-1">
+          <p className="text-[8px] font-bold uppercase tracking-wider text-ink-5 px-1">Panchina</p>
+          {sortByRole(bench).map((p) => (
+            <FantasyPlayerRow key={p.player_id} p={p} muted liveState={liveField.get(p.player_id)} />
+          ))}
+        </div>
+      )}
+    </>
+  )
+}
+
+// ─────────────────────────────────────────────
+// Campetto (pitch) view — read-only, attack on top → GK at bottom.
+// Each fielded player is a compact-rich chip showing voto base/total, the
+// live football bonus/malus glyphs, MVP & popularity pills, and ownership —
+// the same data the list row carries, laid out on the field.
+// ─────────────────────────────────────────────
+
+function FantasyPitch({
+  team,
+  liveField,
+}: {
+  team: LiveSnapshotTeam
+  liveField: Map<string, LiveFieldState>
+}) {
+  const fielded = team.players.filter((p) => p.counts)
+  const bench = team.players.filter((p) => !p.counts)
+  // Attack rendered on top, GK at the bottom — mirrors the Formazione pitch.
+  const rows = (['A', 'C', 'D'] as const)
+    .map((role) => fielded.filter((p) => p.role === role))
+    .filter((r) => r.length > 0)
+  const gk = fielded.filter((p) => p.role === 'P')
+  const totalTeams = undefined // owner count badge shown as "in N" inside the chip
+
+  return (
+    <div className="space-y-2">
+      <div
+        className="relative flex flex-col gap-3 overflow-hidden rounded-2xl border border-hairline px-1.5 py-4 shadow-1"
+        style={{ background: 'linear-gradient(170deg, #3a8f57, #2f7a49)' }}
+      >
+        {/* mowing stripes + field lines */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-50"
+          style={{ background: 'repeating-linear-gradient(180deg, transparent 0 38px, rgba(255,255,255,0.08) 38px 76px)' }}
+        />
+        <div className="pointer-events-none absolute left-4 right-4 top-1/2 h-px" style={{ background: 'rgba(255,255,255,0.3)' }} />
+        <div className="pointer-events-none absolute left-1/2 top-1/2 h-[64px] w-[64px] -translate-x-1/2 -translate-y-1/2 rounded-full border" style={{ borderColor: 'rgba(255,255,255,0.3)' }} />
+        <div className="pointer-events-none absolute left-1/2 top-1 h-[26px] w-[84px] -translate-x-1/2 rounded-b-[10px] border border-t-0" style={{ borderColor: 'rgba(255,255,255,0.3)' }} />
+        <div className="pointer-events-none absolute bottom-1 left-1/2 h-[26px] w-[84px] -translate-x-1/2 rounded-t-[10px] border border-b-0" style={{ borderColor: 'rgba(255,255,255,0.3)' }} />
+
+        {rows.map((row, i) => (
+          <div key={i} className="relative z-[1] flex flex-wrap items-start justify-center gap-1">
+            {sortByRole(row).map((p) => (
+              <FantasyPitchChip key={p.player_id} p={p} liveState={liveField.get(p.player_id)} totalTeams={totalTeams} />
+            ))}
+          </div>
+        ))}
+        {gk.length > 0 && (
+          <div className="relative z-[1] flex justify-center">
+            {gk.map((p) => (
+              <FantasyPitchChip key={p.player_id} p={p} liveState={liveField.get(p.player_id)} totalTeams={totalTeams} />
             ))}
           </div>
         )}
       </div>
+
+      {team.coach && <CoachRow coach={team.coach} />}
+
+      {bench.length > 0 && (
+        <div className="space-y-1">
+          <p className="px-1 text-[8px] font-bold uppercase tracking-wider text-ink-5">Panchina</p>
+          <div className="flex flex-wrap gap-1.5">
+            {sortByRole(bench).map((p) => (
+              <BenchChip key={p.player_id} p={p} liveState={liveField.get(p.player_id)} />
+            ))}
+          </div>
+        </div>
       )}
+    </div>
+  )
+}
+
+function FantasyPitchChip({
+  p,
+  liveState,
+  totalTeams,
+}: {
+  p: LiveSnapshotPlayer
+  liveState?: LiveFieldState
+  totalTeams?: number
+}) {
+  const v = computeVoto(p)
+  const penNow = p.popularity_penalty_now
+  const penPot = p.popularity_penalty_potential
+  const showPen = penNow > 0.005 || penPot > 0.005
+  const penRises = penPot - penNow > 0.005
+  const showMvp = p.mvp_bonus > 0.005
+
+  return (
+    <div className="flex w-[70px] flex-col items-center gap-1 rounded-xl border border-hairline bg-glass-3 px-1 pb-1.5 pt-1.5 shadow-sm sm:w-[84px]">
+      <div className="relative">
+        <TeamCrest
+          name={p.national_team?.name ?? ''}
+          logoUrl={p.national_team?.logo_url ?? null}
+          flagUrl={p.national_team?.flag_url ?? null}
+          fifaCode={p.national_team?.fifa_code ?? ''}
+          size={26}
+        />
+        <span
+          className="absolute -bottom-[2px] -right-[3px] h-[9px] w-[9px] rounded-full"
+          style={{ background: ROLE_DOT[p.role] ?? '#94a3b8', border: '1.5px solid var(--glass-3)' }}
+        />
+        {liveState && (
+          <span className="absolute -left-[4px] -top-[4px]">
+            <LivePlayerDot state={liveState} />
+          </span>
+        )}
+      </div>
+
+      <div className="flex w-full items-center justify-center gap-0.5">
+        <span className="max-w-[64px] truncate text-[11px] font-bold leading-tight text-ink-1">
+          {shortPlayerName(p.name)}
+        </span>
+        {p.via === 'sub' && (
+          <span className="shrink-0 rounded bg-emerald-400/15 px-0.5 text-[7px] font-bold uppercase text-emerald-600 dark:text-emerald-300">sub</span>
+        )}
+      </div>
+
+      {/* voto base ▸ total */}
+      <div className="w-full overflow-hidden rounded-md border border-hairline bg-surface-2 text-center tabular-nums shadow-sm">
+        {v.kind === 'score' ? (
+          <>
+            <span className="block border-b border-hairline px-1 py-0.5 text-[11px] font-bold leading-none text-ink-2">{v.base}</span>
+            <span className={`block px-1 py-0.5 text-[13px] font-black leading-none ${v.totalCls}`}>{v.total}</span>
+          </>
+        ) : (
+          <span className={`block px-1 py-1 text-[12px] font-bold leading-none ${v.cls}`}>{v.text}</span>
+        )}
+      </div>
+
+      {/* football bonus/malus glyphs */}
+      <BonusMalusIcons p={p} />
+
+      {/* MVP / popularity */}
+      {(showMvp || showPen) && (
+        <div className="flex w-full flex-wrap items-center justify-center gap-0.5">
+          {showMvp && (
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-400/15 px-1 py-px text-[8px] font-semibold tabular-nums text-amber-600 dark:text-amber-300">
+              ★+{fmt(p.mvp_bonus, 1)}
+            </span>
+          )}
+          {showPen && (
+            <span
+              className="inline-flex items-center gap-0.5 rounded-full bg-rose-400/12 px-1 py-px text-[8px] font-semibold tabular-nums text-rose-600 dark:text-rose-300"
+              title={`Penalità popolarità ora −${fmt(penNow)}${penRises ? ` ▸ fino a −${fmt(penPot)}` : ''}`}
+            >
+              pop −{fmt(penNow)}{penRises && <span className="text-ink-5">▸{fmt(penPot)}</span>}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* ownership */}
+      <OwnerCount owners={p.owners} totalTeams={totalTeams} />
+    </div>
+  )
+}
+
+// Compact ownership badge for the pitch chip: "in N" with the owning team names
+// in a tooltip; glows magenta when exclusively owned by a single starter.
+function OwnerCount({ owners, totalTeams }: { owners: LiveOwnerRef[]; totalTeams?: number }) {
+  if (!owners.length) return null
+  const exclusiveStarter = owners.length === 1 && owners[0]?.status === 'titolare'
+  const label = totalTeams ? `in ${owners.length}/${totalTeams}` : `in ${owners.length}`
+  const title = owners
+    .map((o) => `${o.team_name} — ${o.status === 'titolare' ? 'titolare' : 'panchina'}`)
+    .join('\n')
+  return (
+    <span
+      title={title}
+      className={`inline-flex items-center gap-0.5 rounded-full px-1 py-px text-[8px] font-bold ${
+        exclusiveStarter
+          ? 'bg-[#f01c9c]/12 text-[#f01c9c]'
+          : 'bg-ink-5/8 text-ink-5'
+      }`}
+    >
+      {label}
+      <PitchGlyph className={exclusiveStarter ? 'text-[#f01c9c]' : 'text-ink-5'} />
+    </span>
+  )
+}
+
+// Small bench chip for the pitch view — crest, surname, voto/marker, glyphs.
+function BenchChip({ p, liveState }: { p: LiveSnapshotPlayer; liveState?: LiveFieldState }) {
+  const v = computeVoto(p)
+  return (
+    <div className="flex min-w-0 items-center gap-1.5 rounded-lg border border-hairline bg-glass-2 px-1.5 py-1 opacity-80">
+      <div className="relative shrink-0">
+        <TeamCrest
+          name={p.national_team?.name ?? ''}
+          logoUrl={p.national_team?.logo_url ?? null}
+          flagUrl={p.national_team?.flag_url ?? null}
+          fifaCode={p.national_team?.fifa_code ?? ''}
+          size={16}
+          className="w-4"
+        />
+        <span
+          className="absolute -bottom-[2px] -right-[2px] h-[7px] w-[7px] rounded-full"
+          style={{ background: ROLE_DOT[p.role] ?? '#94a3b8', border: '1px solid var(--glass-2)' }}
+        />
+      </div>
+      <span className="max-w-[88px] truncate text-[11px] font-semibold text-ink-2">{shortPlayerName(p.name)}</span>
+      {liveState && <LivePlayerDot state={liveState} />}
+      <span className={`shrink-0 text-[11px] font-bold tabular-nums ${v.kind === 'score' ? v.totalCls : v.cls}`}>
+        {v.kind === 'score' ? v.total : v.text}
+      </span>
     </div>
   )
 }
@@ -1084,20 +1402,7 @@ function FantasyPlayerRow({
   const penRises = penPot - penNow > 0.005
   const showMvp = p.mvp_bonus > 0.005
 
-  // A voto exists only when the engine produced a base rating. A player who was
-  // on the pitch but has no rating yet is S.V. (senza voto) — never show 0.0.
-  const baseVoto = p.display_voto_base ?? p.voto_base ?? p.rating
-  const hasVoto = baseVoto != null
-  const v = hasVoto
-    ? {
-        kind: 'score' as const,
-        base: fmt(baseVoto, 1),
-        total: fmt((p.display_voto_total ?? p.final_score_now) + p.mvp_bonus - penNow, 1),
-        totalCls: totalVotoColor((p.display_voto_total ?? p.final_score_now) + p.mvp_bonus - penNow),
-      }
-    : p.status === 'played'
-      ? { kind: 'marker' as const, text: 'S.V.', cls: 'text-amber-500 dark:text-amber-400' }
-      : { kind: 'marker' as const, text: p.status === 'pending' ? '–' : '✕', cls: 'text-ink-5' }
+  const v = computeVoto(p)
 
   return (
     <div
@@ -1554,6 +1859,7 @@ function MobileTeamCard({
   onToggle: () => void
 }) {
   const notFielded = isNotFielded(team)
+  const [view, setView] = useState<TeamLineupView>('list')
   return (
     <div
       className={`rounded-xl border bg-glass-1 overflow-hidden ${
@@ -1612,21 +1918,14 @@ function MobileTeamCard({
             <MaskedPlayerRows count={team.players.filter((p) => p.counts).length} />
           ) : (
             <>
-              {sortByRole(team.players.filter((p) => p.counts)).map((p) => (
-                <FantasyPlayerRow key={p.player_id} p={p} liveState={liveField.get(p.player_id)} />
-              ))}
-              {team.coach && (
-                <div className="border-t border-hairline pt-2">
-                  <CoachRow coach={team.coach} />
-                </div>
-              )}
-              {team.players.filter((p) => !p.counts).length > 0 && (
-                <>
-                  <p className="text-[8px] font-bold uppercase tracking-wider text-ink-5 px-1 pt-1">Panchina</p>
-                  {sortByRole(team.players.filter((p) => !p.counts)).map((p) => (
-                    <FantasyPlayerRow key={p.player_id} p={p} muted liveState={liveField.get(p.player_id)} />
-                  ))}
-                </>
+              <div className="flex items-center justify-between gap-2">
+                <LineupLegend />
+                <TeamViewToggle view={view} onChange={setView} />
+              </div>
+              {view === 'list' ? (
+                <div className="space-y-2"><TeamListBody team={team} liveField={liveField} /></div>
+              ) : (
+                <FantasyPitch team={team} liveField={liveField} />
               )}
             </>
           )}
