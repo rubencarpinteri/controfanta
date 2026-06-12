@@ -7,7 +7,15 @@ function needsLiveSnapshotShapeRefresh(snapshot: LiveRoundSnapshot | null): bool
   return Boolean(
     snapshot?.matches.some((match) =>
       match.players.some((player) => !Object.hasOwn(player, 'display_voto_base')),
-    ),
+    ) ||
+      snapshot?.teams.some((team) =>
+        team.players.some(
+          (player) =>
+            !Object.hasOwn(player, 'replacement_pending') ||
+            !Object.hasOwn(player, 'replacement_candidate') ||
+            !Object.hasOwn(player, 'bench_order'),
+        ),
+      ),
   )
 }
 

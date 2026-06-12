@@ -58,6 +58,8 @@ export type LiveSnapshotPlayer = {
   name: string
   role: FMRole
   via: 'starter' | 'sub' | 'bench'
+  /** Bench priority from the submitted lineup; null for starters. */
+  bench_order: number | null
   national_team: LiveTeamRef | null
   status: PlayState
   /** Is this player in the fielded-now set (i.e. counts toward live_total)? */
@@ -77,6 +79,8 @@ export type LiveSnapshotPlayer = {
    * Null when not a played-short starter.
    */
   replacement_pending: boolean | null
+  /** First same-role bench candidate who can still fill this empty slot. */
+  replacement_candidate: { player_id: string; name: string } | null
   rating: number | null
   /** Calibrated fantasy voto before football bonus/malus and ownership effects. */
   voto_base: number | null
@@ -717,6 +721,8 @@ export async function computeLiveRoundSnapshot(
   const replacedByByTeam = new Map<string, Map<string, string>>()
   // Played-short starter ids whose slot may still be filled by a pending sub.
   const pendingShortByTeam = new Map<string, Set<string>>()
+  // Played-short starter id -> the first same-role bench candidate still pending.
+  const replacementCandidateByTeam = new Map<string, Map<string, string>>()
   // Recompute the "now" fielded with via info for display.
   for (const lineup of lineups) {
     const startersNow: SubStarter[] = []
@@ -758,13 +764,19 @@ export async function computeLiveRoundSnapshot(
     // if every same-role bench player's match is over, the team plays short.
     const usedSet = new Set(now.benchUsed)
     const pending = new Set<string>()
+    const candidates = new Map<string, string>()
+    const benchByOrder = [...benchNow].sort((a, b) => a.bench_order - b.bench_order)
     for (const slot of now.emptySlots) {
-      const hasPendingCandidate = benchNow.some(
+      const candidate = benchByOrder.find(
         (b) => b.role === slot.role && !usedSet.has(b.player_id) && stateOf(b.player_id) === 'pending',
       )
-      if (hasPendingCandidate) pending.add(slot.starter_player_id)
+      if (candidate) {
+        pending.add(slot.starter_player_id)
+        candidates.set(slot.starter_player_id, candidate.player_id)
+      }
     }
     pendingShortByTeam.set(lineup.fantasy_team_id, pending)
+    replacementCandidateByTeam.set(lineup.fantasy_team_id, candidates)
   }
 
   const teamsOut: LiveSnapshotTeam[] = (teams ?? []).map((team) => {
@@ -773,6 +785,7 @@ export async function computeLiveRoundSnapshot(
     const subFor = subForByTeam.get(team.id) ?? new Map<string, string>()
     const replacedBy = replacedByByTeam.get(team.id) ?? new Map<string, string>()
     const pendingShort = pendingShortByTeam.get(team.id) ?? new Set<string>()
+    const replacementCandidate = replacementCandidateByTeam.get(team.id) ?? new Map<string, string>()
     const playerRef = (pid: string | undefined): { player_id: string; name: string } | null => {
       if (!pid) return null
       const pl = playerById.get(pid)
@@ -916,6 +929,7 @@ export async function computeLiveRoundSnapshot(
         name: player.name,
         role: player.role as FMRole,
         via,
+        bench_order: lp.is_starter ? null : (lp.bench_order ?? 999),
         national_team: (player.fm_national_team as LiveTeamRef | null) ?? null,
         status: stateOf(lp.player_id),
         counts,
@@ -924,6 +938,10 @@ export async function computeLiveRoundSnapshot(
         replacement_pending:
           lp.is_starter && !counts && !replacedBy.has(lp.player_id)
             ? pendingShort.has(lp.player_id)
+            : null,
+        replacement_candidate:
+          lp.is_starter && !counts && !replacedBy.has(lp.player_id)
+            ? playerRef(replacementCandidate.get(lp.player_id))
             : null,
         rating: stats?.rating != null ? Number(stats.rating) : null,
         voto_base: raw?.voto_base ?? null,

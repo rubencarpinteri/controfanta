@@ -19,9 +19,9 @@ const RATING_FLASH_MS = 15_000
 
 // ─────────────────────────────────────────────
 // Rating-change flash — when a player's fetched voto moves between snapshots,
-// his box gets a wave-gradient pulse for 15s (green up / red down). The board
-// tracks the previous value per player and publishes the active flashes via
-// context, so any player box can opt in by player_id.
+// his box gets a subtle 15s green/red tint that fades away. The board tracks
+// the previous value per player and publishes the active flashes via context,
+// so any player box can opt in by player_id.
 // ─────────────────────────────────────────────
 
 type FlashDir = 'up' | 'down'
@@ -100,10 +100,9 @@ function useFlash(playerId: string): FlashDir | undefined {
   return useContext(RatingFlashContext).get(playerId)
 }
 
-// The sweeping pixelated overlay. The parent box must be `relative
-// overflow-hidden` so the band is clipped to the card's rounded corners.
-function RatingWave({ dir }: { dir: FlashDir }) {
-  return <span aria-hidden className={`rating-wave ${dir === 'up' ? 'rating-wave-up' : 'rating-wave-down'}`} />
+function flashTintClass(dir: FlashDir | undefined): string {
+  if (!dir) return ''
+  return dir === 'up' ? 'rating-flash-up' : 'rating-flash-down'
 }
 
 const ROLE_ORDER = ['P', 'D', 'C', 'A'] as const
@@ -134,6 +133,10 @@ function sortByRole<T extends { role: string }>(players: T[]): T[] {
   return [...players].sort(
     (a, b) => ROLE_ORDER.indexOf(a.role as never) - ROLE_ORDER.indexOf(b.role as never),
   )
+}
+
+function sortBenchByPriority<T extends { bench_order?: number | null; name: string }>(players: T[]): T[] {
+  return [...players].sort((a, b) => (a.bench_order ?? 999) - (b.bench_order ?? 999) || a.name.localeCompare(b.name))
 }
 
 function fmt(n: number | null | undefined, d = 2): string {
@@ -919,6 +922,7 @@ function RealPlayerRow({
   const exclusiveStarter = p.owners.length === 1 && p.owners[0]?.status === 'titolare'
   const exclusiveMvp = exclusiveStarter && p.is_mvp
   const flash = useFlash(p.player_id)
+  const flashClass = flashTintClass(flash)
   // Subbed off and not back on → no longer on the pitch. Dimmed so it's obvious
   // he left the field (his replacement is chained directly below at depth+1).
   const subbedOff = p.subbed_off_minute != null
@@ -929,10 +933,9 @@ function RealPlayerRow({
         exclusiveMvp
           ? 'border-[#f01c9c]/70 bg-[#f01c9c]/15 shadow-sm shadow-[#f01c9c]/25'
           : 'border-hairline bg-glass-2'
-      } ${muted ? 'opacity-60' : subbedOff ? 'opacity-55' : ''} ${depth > 0 ? 'ml-2 sm:ml-3' : ''}`}
+      } ${muted ? 'opacity-60' : subbedOff ? 'opacity-55' : ''} ${depth > 0 ? 'ml-2 sm:ml-3' : ''} ${flashClass}`}
     >
       <RoleNail role={p.role} />
-      {flash && <RatingWave dir={flash} />}
       {depth > 0 && <span className="self-center text-[10px] text-emerald-500 dark:text-emerald-400">↳</span>}
 
       <span className="min-w-0 flex-1">
@@ -1294,9 +1297,25 @@ function TeamListBody({
       {bench.length > 0 && (
         <div className="border-t border-hairline pt-2.5 space-y-1">
           <p className="text-[8px] font-bold uppercase tracking-wider text-ink-5 px-1">Panchina</p>
-          {sortByRole(bench).map((p) => (
-            <FantasyPlayerRow key={p.player_id} p={p} entry={ownership[p.player_id]} muted liveState={liveField.get(p.player_id)} />
-          ))}
+          {ROLE_ORDER.map((role) => {
+            const roleBench = sortBenchByPriority(bench.filter((p) => p.role === role))
+            if (!roleBench.length) return null
+            return (
+              <div key={role} className="grid grid-cols-[18px_minmax(0,1fr)] gap-1.5">
+                <div
+                  className="flex items-center justify-center rounded-md border border-white/20 text-[10px] font-black text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.14)]"
+                  style={{ background: ROLE_DOT[role] }}
+                >
+                  {role}
+                </div>
+                <div className="min-w-0 space-y-1">
+                {roleBench.map((p) => (
+                  <FantasyPlayerRow key={p.player_id} p={p} entry={ownership[p.player_id]} muted liveState={liveField.get(p.player_id)} />
+                ))}
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
     </>
@@ -1327,6 +1346,11 @@ function FantasyPitch({
   // A titolare who didn't play and had no eligible same-role sub leaves a hole.
   // We render an explicit ghost slot in his role row so the gap is never silent.
   const playedShort = team.players.filter((p) => !p.counts && p.via === 'starter' && !p.replaced_by)
+  const pendingReplacementByCandidate = new Map(
+    playedShort
+      .filter((p) => p.replacement_pending && p.replacement_candidate)
+      .map((p) => [p.replacement_candidate!.player_id, p.name]),
+  )
   // GK on top, attack at the bottom. Each role is its own grid row so N players
   // always lay out as N columns (a 4-man midfield never wraps to 3+1).
   type PitchSlot =
@@ -1392,19 +1416,34 @@ function FantasyPitch({
       {team.coach && <CoachRow coach={team.coach} />}
 
       {bench.length > 0 && (
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <p className="px-1 text-[9px] font-bold uppercase tracking-wider text-ink-5">Panchina</p>
-          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
-            {sortByRole(bench).map((p) => (
-              <BenchChip
-                key={p.player_id}
-                p={p}
-                liveState={liveField.get(p.player_id)}
-                selected={p.player_id === selectedId}
-                onSelect={() => toggle(p.player_id)}
-              />
-            ))}
-          </div>
+          {ROLE_ORDER.map((role) => {
+            const roleBench = sortBenchByPriority(bench.filter((p) => p.role === role))
+            if (!roleBench.length) return null
+            return (
+              <div key={role} className="grid grid-cols-[18px_minmax(0,1fr)] items-stretch gap-1.5">
+                <div
+                  className="flex items-center justify-center rounded-md border border-white/20 text-[10px] font-black text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.14)]"
+                  style={{ background: ROLE_DOT[role] }}
+                >
+                  {role}
+                </div>
+                <div className="grid min-w-0 grid-cols-1 gap-1.5 sm:grid-cols-2">
+                  {roleBench.map((p) => (
+                    <BenchChip
+                      key={p.player_id}
+                      p={p}
+                      pendingFor={pendingReplacementByCandidate.get(p.player_id)}
+                      liveState={liveField.get(p.player_id)}
+                      selected={p.player_id === selectedId}
+                      onSelect={() => toggle(p.player_id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
@@ -1592,37 +1631,46 @@ function OwnershipMini({ owners, isMvp = false }: { owners: LiveOwnerRef[]; isMv
 }
 
 // Empty slot on the pitch: a titolare who didn't play and isn't (yet) replaced.
-// Keeps his flag + name (struck through) so it's clearly HIS slot, with a big ✕
-// over the crest and a glowing "Non ha giocato" badge. If a same-role sub is
-// still to play the slot may yet fill (pending); otherwise the team plays short.
+// Keeps his muted flag + struck-through name so it's clearly HIS slot, then
+// moves the X below the name instead of covering the crest.
 function GhostPitchSlot({ p }: { p: LiveSnapshotPlayer }) {
   const pending = p.replacement_pending === true
   return (
     <div
       title={
         pending
-          ? `${p.name} non ha giocato — in attesa di un subentrante di ruolo`
+          ? `${p.name} non ha giocato — ${p.replacement_candidate ? `se gioca entra ${p.replacement_candidate.name}` : 'in attesa di un subentrante di ruolo'}`
           : `${p.name} non ha giocato — nessun subentrante di ruolo, si gioca in inferiorità`
       }
-      className="relative flex min-h-[116px] min-w-0 flex-col items-center gap-1 overflow-hidden rounded-[12px] border border-dashed border-white/40 bg-black/15 px-1 py-1.5 text-center"
+      className="relative flex min-h-[126px] min-w-0 flex-col items-center gap-1 overflow-hidden rounded-[12px] border border-dashed border-white/35 bg-black/30 px-1 py-1.5 text-center grayscale"
     >
       <RoleNail role={p.role} />
-      <div className="relative">
-        <span className="opacity-45 grayscale">
+      <div className="opacity-45">
           <PlayerCrest p={p} live={false} size={28} />
-        </span>
-        <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[22px] font-black leading-none text-rose-300 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">
-          ✕
-        </span>
       </div>
-      <span className="w-full truncate text-[11px] font-bold leading-tight text-white/75 line-through decoration-white/45">
+      <span className="w-full truncate text-[11px] font-bold leading-tight text-white/70 line-through decoration-white/55 decoration-2">
         {shortPlayerName(p.name)}
       </span>
-      <span className="mt-auto rounded bg-rose-400/25 px-1.5 py-0.5 text-[7.5px] font-bold uppercase tracking-wide text-rose-100 shadow-[0_0_8px_1px] shadow-rose-400/50">
+      <span aria-hidden className="-mt-0.5 text-[13px] font-black leading-none text-white/65">
+        ✕
+      </span>
+      <span className="mt-auto rounded-md bg-white/14 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-white/80 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)]">
         Non ha giocato
       </span>
       {pending && (
-        <span className="text-[7.5px] font-semibold leading-tight text-amber-200/90">in attesa subentro</span>
+        <span
+          className="w-full rounded-md bg-white/16 px-1 py-1 text-[9.5px] font-black leading-[1.05] text-white/90 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.16)]"
+          title={p.replacement_candidate ? `Se gioca entra ${p.replacement_candidate.name}` : 'In attesa di un subentrante di ruolo'}
+        >
+          {p.replacement_candidate ? (
+            <>
+              <span className="block uppercase tracking-wide">1° Cambio:</span>
+              <span className="block truncate normal-case">{shortPlayerName(p.replacement_candidate.name)}</span>
+            </>
+          ) : (
+            'in attesa subentro'
+          )}
+        </span>
       )}
     </div>
   )
@@ -1645,6 +1693,7 @@ function FantasyPitchChip({
   const isMvp = p.mvp_bonus > 0.005
   const exclusiveMvp = p.owners.length === 0 && isMvp
   const flash = useFlash(p.player_id)
+  const flashClass = flashTintClass(flash)
 
   return (
     <button
@@ -1652,10 +1701,9 @@ function FantasyPitchChip({
       onClick={onSelect}
       className={`relative flex min-h-[116px] min-w-0 flex-col items-center gap-1 overflow-hidden rounded-[12px] border bg-glass-3 px-1 py-1.5 text-center shadow-sm transition-all ${
         selected ? 'border-accent bg-accent/10 ring-2 ring-accent' : 'border-hairline'
-      }`}
+      } ${flashClass}`}
     >
       <RoleNail role={p.role} />
-      {flash && <RatingWave dir={flash} />}
       <PlayerCrest p={p} live={liveState === 'field'} size={28} />
 
       <span className="flex w-full items-center justify-center gap-0.5">
@@ -1701,30 +1749,44 @@ function FantasyPitchChip({
 // Bench chip — compact, selectable; same crest/voto/ownership language.
 function BenchChip({
   p,
+  pendingFor,
   liveState,
   selected,
   onSelect,
 }: {
   p: LiveSnapshotPlayer
+  pendingFor?: string
   liveState?: LiveFieldState
   selected: boolean
   onSelect: () => void
 }) {
   const v = computeVoto(p)
   const flash = useFlash(p.player_id)
+  const flashClass = flashTintClass(flash)
+  const pendingTitle = pendingFor ? `Se gioca subentra per ${pendingFor}` : ROLE_NAME[p.role] ?? p.role
   return (
     <button
       type="button"
       onClick={onSelect}
-      title={ROLE_NAME[p.role] ?? p.role}
+      title={pendingTitle}
       className={`relative flex min-w-0 items-center gap-1.5 overflow-hidden rounded-lg border bg-glass-2 py-1.5 pl-5 pr-1.5 text-left transition-all ${
-        selected ? 'border-accent bg-accent/10 ring-2 ring-accent' : 'border-hairline'
-      }`}
+        selected
+          ? 'border-accent bg-accent/10 ring-2 ring-accent'
+          : pendingFor
+            ? 'border-amber-400/70 bg-amber-400/10 ring-1 ring-amber-300/40'
+            : 'border-hairline'
+      } ${flashClass}`}
     >
       <RoleNail role={p.role} />
-      {flash && <RatingWave dir={flash} />}
       <PlayerCrest p={p} live={liveState === 'field'} size={20} />
-      <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-ink-2">{shortPlayerName(p.name)}</span>
+      <span className="flex min-w-0 flex-1 flex-col leading-tight">
+        <span className="truncate text-[12px] font-semibold text-ink-2">{shortPlayerName(p.name)}</span>
+        {pendingFor && (
+          <span className="truncate text-[8px] font-black uppercase tracking-wide text-amber-600 dark:text-amber-300">
+            entra se gioca
+          </span>
+        )}
+      </span>
       <OwnershipMini owners={p.owners} />
       <span className={`shrink-0 text-[12px] font-bold tabular-nums ${v.kind === 'score' ? v.totalCls : v.cls}`}>
         {v.kind === 'score' ? v.total : v.text}
@@ -1994,15 +2056,15 @@ function FantasyPlayerRow({
 
   const v = computeVoto(p)
   const flash = useFlash(p.player_id)
+  const flashClass = flashTintClass(flash)
 
   return (
     <div
       className={`relative flex min-h-[54px] items-center gap-2 overflow-hidden rounded-md border border-hairline bg-glass-2 py-1.5 pl-5 pr-2 ${
         muted ? 'opacity-55' : ''
-      }`}
+      } ${flashClass}`}
     >
       <RoleNail role={p.role} />
-      {flash && <RatingWave dir={flash} />}
       <TeamCrest
         name={p.national_team?.name ?? ''}
         logoUrl={p.national_team?.logo_url ?? null}
@@ -2030,7 +2092,7 @@ function FantasyPlayerRow({
                 p.replaced_by
                   ? `Non ha giocato — sostituito da ${p.replaced_by.name}`
                   : p.replacement_pending
-                    ? 'Non ha giocato — in attesa di un subentrante di ruolo'
+                    ? `Non ha giocato — ${p.replacement_candidate ? `se gioca entra ${p.replacement_candidate.name}` : 'in attesa di un subentrante di ruolo'}`
                     : 'Non ha giocato — nessun subentrante di ruolo, si gioca in inferiorità'
               }
             >
@@ -2038,7 +2100,7 @@ function FantasyPlayerRow({
               {p.replaced_by
                 ? ` → ${shortPlayerName(p.replaced_by.name)}`
                 : p.replacement_pending
-                  ? ' · in attesa subentro'
+                  ? ` · ${p.replacement_candidate ? `se gioca ${shortPlayerName(p.replacement_candidate.name)}` : 'in attesa subentro'}`
                   : ' · in inferiorità'}
             </span>
           )}

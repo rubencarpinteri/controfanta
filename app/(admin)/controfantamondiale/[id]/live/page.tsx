@@ -19,7 +19,9 @@ function needsLiveSnapshotShapeRefresh(snapshot: LiveRoundSnapshot | null): bool
             !Object.hasOwn(player, 'immunita_active') ||
             !Object.hasOwn(player, 'sub_for') ||
             !Object.hasOwn(player, 'replaced_by') ||
-            !Object.hasOwn(player, 'replacement_pending'),
+            !Object.hasOwn(player, 'replacement_pending') ||
+            !Object.hasOwn(player, 'replacement_candidate') ||
+            !Object.hasOwn(player, 'bench_order'),
         ),
       ),
   )
