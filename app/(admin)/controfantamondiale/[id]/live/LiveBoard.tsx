@@ -706,16 +706,17 @@ function RealPlayerRow({
   const storedTotalVoto = p.display_voto_total ?? p.voto
   const v = votoDisplay(storedBaseVoto, storedTotalVoto, p.minutes_played, p.play_state, matchStatus)
 
-  // Exclusively owned (single team in the lega) AND best in the fixture — the
-  // jackpot moment of the format. The whole row lights up magenta.
-  const exclusive = p.owners.length === 1
-  const exclusiveMvp = exclusive && p.is_mvp
+  // Exclusively owned (single team in the lega, fielded as a starter) AND best
+  // in the fixture — the jackpot moment of the format. The whole row lights up
+  // magenta. A lone owner who only benched him doesn't trigger it.
+  const exclusiveStarter = p.owners.length === 1 && p.owners[0]?.status === 'titolare'
+  const exclusiveMvp = exclusiveStarter && p.is_mvp
 
   return (
     <div
       className={`flex min-h-[45px] items-center gap-1 rounded-md border px-1.5 py-1 sm:gap-1.5 sm:px-2 ${
         exclusiveMvp
-          ? 'border-fuchsia-500/60 bg-fuchsia-500/15 shadow-sm shadow-fuchsia-500/20'
+          ? 'border-[#f01c9c]/70 bg-[#f01c9c]/15 shadow-sm shadow-[#f01c9c]/25'
           : 'border-hairline bg-glass-2'
       } ${muted ? 'opacity-60' : ''} ${depth > 0 ? 'ml-2 sm:ml-3' : ''}`}
     >
@@ -1142,14 +1143,17 @@ function OwnerPills({
   compact?: boolean
 }) {
   if (!owners.length) return null
-  // Exclusive ownership — rostered by exactly one team in the whole lega. This
-  // is the trademark moment of the format, so the "in 1/N" badge glows magenta.
-  const isExclusive = totalTeams != null && owners.length === 1
+  // Exclusive ownership — rostered by exactly one team in the whole lega AND
+  // fielded as a starter (titolare). The trademark moment of the format, so the
+  // "in 1/N" badge glows magenta. A lone owner who only benched him stays grey
+  // until he's actually on the field.
+  const isExclusiveStarter =
+    totalTeams != null && owners.length === 1 && owners[0]?.status === 'titolare'
   return (
     <div className={`${compact ? 'mt-0.5' : 'mt-1'} flex min-w-0 flex-wrap items-center gap-1`}>
       <span
         className={`${compact ? 'text-[9px]' : 'text-[10px]'} font-medium ${
-          isExclusive ? 'font-black text-fuchsia-500 dark:text-fuchsia-400' : 'text-ink-5'
+          isExclusiveStarter ? 'font-black text-[#f01c9c]' : 'text-ink-5'
         }`}
       >
         {totalTeams ? `in ${owners.length}/${totalTeams}` : 'anche in'}

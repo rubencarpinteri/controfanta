@@ -795,15 +795,11 @@ export async function computeLiveRoundSnapshot(
               (stats?.minutes_played ?? 0) >= config.football.clean_sheet.min_minutes
             ? config.football.clean_sheet.D
             : 0
-      // Display split: the clean-sheet bonus is folded into the shown BASE voto
-      // (so a keeper at 0-0 reads e.g. 7.3, not 6.3 + a separate icon), and the
-      // bonus column shows only the OTHER football bonuses. The total must equal
-      // raw_subtotal — adding the full football_bonus back would double-count the
-      // clean sheet, which already lives in displayVotoBase.
-      const displayVotoBase =
-        adjustedRaw && adjustedRaw.voto_base != null
-          ? rawSubtotal - adjustedRaw.football_bonus + adjustedRaw.football_malus + cleanSheetBonus
-          : null
+      // Display split: BASE = voto_base (rating-derived, NO bonuses), TOTAL =
+      // raw_subtotal (base + all football bonus/malus). The clean sheet, goals,
+      // etc. live only in the total and are surfaced as icons — never folded
+      // into the base. So a 0-0 keeper reads e.g. 6.1 base · 7.1 total.
+      const displayVotoBase = adjustedRaw?.voto_base ?? null
       const displayVotoTotal = displayVotoBase != null ? rawSubtotal : null
 
       if (adjustedRaw) {
@@ -938,12 +934,11 @@ export async function computeLiveRoundSnapshot(
               : 0
         const footballBonus = raw?.football_bonus ?? 0
         const footballMalus = raw?.football_malus ?? 0
-        // Clean sheet is folded into the displayed BASE voto; the total equals
-        // raw_subtotal. Re-adding the full football_bonus would count the clean
-        // sheet twice (it is already inside displayVotoBase).
-        const displayVotoBase =
-          voto != null ? voto - footballBonus + footballMalus + cleanSheetBonus : null
-        const displayVotoTotal = displayVotoBase != null ? voto : null
+        // BASE = voto_base (rating-derived, NO bonuses); TOTAL = raw_subtotal
+        // (base + football bonus/malus). Clean sheet / goals live only in the
+        // total and show as icons — never folded into the base.
+        const displayVotoBase = votoBase
+        const displayVotoTotal = voto
         return {
           player_id: pid,
           name: player.name,
