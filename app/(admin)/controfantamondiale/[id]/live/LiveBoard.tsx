@@ -54,6 +54,12 @@ function fmtKickoff(iso: string): string {
   return new Date(iso).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
 }
 
+// Short date for the match list, e.g. "ven 13 giu". Used so users can tell when
+// a match was played or is scheduled, not just the kickoff time.
+function fmtMatchDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' })
+}
+
 // Default match focus: the first live (in-progress) match if any are playing,
 // otherwise the first match of the round.
 function defaultMatchId(matches: LiveSnapshotMatch[]): string | null {
@@ -383,11 +389,12 @@ function MatchChip({ match: m, selected = false }: { match: LiveSnapshotMatch; s
 
   return (
     <div className="space-y-1.5">
-      {/* status + time */}
+      {/* status + date + time */}
       <div className="flex items-center gap-1.5">
         <MatchStatusBadge status={m.status} minute={m.minute} minuteAdded={m.minute_added} />
+        <span className="text-[9px] text-ink-5 tabular-nums capitalize">{fmtMatchDate(m.kickoff_at)}</span>
         {m.status === 'scheduled' && (
-          <span className="text-[9px] text-ink-5 tabular-nums">{fmtKickoff(m.kickoff_at)}</span>
+          <span className="text-[9px] text-ink-5 tabular-nums">· {fmtKickoff(m.kickoff_at)}</span>
         )}
       </div>
 
@@ -575,9 +582,9 @@ function MatchDetailPanel({
               <span className="text-[16px] font-bold text-ink-5">vs</span>
             )}
             <MatchStatusBadge status={m.status} minute={m.minute} minuteAdded={m.minute_added} />
-            {m.status === 'scheduled' && (
-              <span className="text-[10px] text-ink-5 tabular-nums">{fmtKickoff(m.kickoff_at)}</span>
-            )}
+            <span className="text-[10px] text-ink-5 tabular-nums capitalize">
+              {fmtMatchDate(m.kickoff_at)}{m.status === 'scheduled' ? ` · ${fmtKickoff(m.kickoff_at)}` : ''}
+            </span>
           </div>
           <div className="flex flex-1 flex-col items-center gap-1.5">
             <TeamCrest
@@ -607,7 +614,6 @@ function MatchDetailPanel({
               />
             ))}
           </div>
-          <RealLineupLegend />
         </div>
       ) : (
         <div className="p-6 text-center">
@@ -930,17 +936,6 @@ function BonusIcon({
   )
 }
 
-function RealLineupLegend() {
-  return (
-    <div className="flex flex-wrap gap-x-3 gap-y-1 border-t border-hairline pt-2 text-[9px] text-ink-5">
-      <span className="flex items-center gap-1"><span className="text-emerald-500 dark:text-emerald-400">↑</span>entrato</span>
-      <span className="flex items-center gap-1"><span className="text-rose-500 dark:text-rose-400">↓</span>uscito</span>
-      <span className="flex items-center gap-1"><span className="font-black text-amber-500 dark:text-amber-300">★ MVP</span></span>
-      <span>S.V. = senza voto · ✕ = non entrato · – = in attesa</span>
-    </div>
-  )
-}
-
 // ─────────────────────────────────────────────
 // Team detail panel (desktop center)
 // ─────────────────────────────────────────────
@@ -1013,8 +1008,8 @@ function TeamDetailHeader({
     <div
       className={`flex items-center gap-2 border-b px-4 py-3 ${
         isMine
-          ? 'border-indigo-500/40 bg-gradient-to-r from-indigo-500/45 via-indigo-500/20 to-transparent'
-          : 'border-hairline bg-gradient-to-r from-accent/35 via-accent/14 to-transparent'
+          ? 'border-indigo-500/40 bg-gradient-to-r from-indigo-500/22 via-indigo-500/8 to-transparent'
+          : 'border-hairline bg-gradient-to-r from-accent/18 via-accent/6 to-transparent'
       }`}
     >
       <span
@@ -1080,7 +1075,7 @@ function LineupLegend() {
         <span className="flex items-center gap-1"><span aria-hidden>👑</span>MVP</span>
         <span className="flex items-center gap-1">
           <span className="inline-flex items-center text-rose-500 dark:text-rose-300"><UsersGlyph /></span>
-          pop — Penalità di Popolarità (<span className="font-semibold text-rose-500 dark:text-rose-300">adesso</span> → <span className="text-ink-5">massima</span>)
+          P.P. — Penalità di Popolarità (<span className="font-semibold text-rose-500 dark:text-rose-300">adesso</span> → <span className="text-ink-5">massima</span>)
         </span>
         <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-lime-400 shadow-[0_0_5px_1px] shadow-lime-400/70" />in campo ora</span>
         <span className="flex items-center gap-1"><span className="text-[#f01c9c]"><DiamondGlyph /></span>esclusiva</span>
@@ -1253,8 +1248,10 @@ function PlayerCrest({ p, live, size }: { p: LiveSnapshotPlayer; live: boolean; 
 
 // MVP crown + the football bonus/malus emoji glyphs (goals/assists carry ×N,
 // clean sheet shows the 🧤, cards are colored chips) — reused from the list row.
-function PitchGlyphs({ p }: { p: LiveSnapshotPlayer }) {
-  const showMvp = p.mvp_bonus > 0.005
+// `hideMvp` suppresses the standalone crown when it's merged into the combined
+// MVP+esclusiva glyph instead.
+function PitchGlyphs({ p, hideMvp = false }: { p: LiveSnapshotPlayer; hideMvp?: boolean }) {
+  const showMvp = p.mvp_bonus > 0.005 && !hideMvp
   return (
     <>
       {showMvp && (
@@ -1262,6 +1259,22 @@ function PitchGlyphs({ p }: { p: LiveSnapshotPlayer }) {
       )}
       <BonusMalusIcons p={p} />
     </>
+  )
+}
+
+// When a player is BOTH exclusive (owned by this team alone) AND the MVP, the
+// diamond and crown merge into one shiny gold→magenta badge — the jackpot moment.
+function MvpExclusiveGlyph() {
+  return (
+    <span
+      title="Esclusiva + MVP — solo questa squadra lo schiera, ed è il migliore in campo"
+      className="inline-flex animate-pulse items-center gap-0.5 rounded-md px-1 py-[1.5px] text-[10px] font-black leading-none text-white shadow-sm"
+      style={{ background: 'linear-gradient(90deg,#f59e0b,#f01c9c)' }}
+    >
+      <span aria-hidden>👑</span>
+      <DiamondGlyph className="text-white" />
+      <span aria-hidden>✨</span>
+    </span>
   )
 }
 
@@ -1288,8 +1301,9 @@ function DiamondGlyph({ className = '' }: { className?: string }) {
 // Pitch-chip ownership row: a magenta diamond when only this team fields the
 // player (exclusive), otherwise rival monograms colored by status — solid blue
 // = titolare, grey = panchina — so the status reads at a glance.
-function OwnershipMini({ owners }: { owners: LiveOwnerRef[] }) {
+function OwnershipMini({ owners, isMvp = false }: { owners: LiveOwnerRef[]; isMvp?: boolean }) {
   if (!owners.length) {
+    if (isMvp) return <MvpExclusiveGlyph />
     return (
       <span
         title="Esclusiva — solo questa squadra lo schiera"
@@ -1335,16 +1349,14 @@ function FantasyPitchChip({
   const ppNow = p.popularity_penalty_now
   const ppMax = p.popularity_penalty_potential
   const showPop = ppNow > 0.005 || ppMax > 0.005
-  const hasGlyphs =
-    p.mvp_bonus > 0.005 ||
-    p.goals > 0 || p.assists > 0 || p.penalties_saved > 0 || p.clean_sheet_bonus > 0 ||
-    p.penalties_missed > 0 || p.own_goals > 0 || p.red_cards > 0 || p.yellow_cards > 0
+  const isMvp = p.mvp_bonus > 0.005
+  const exclusiveMvp = p.owners.length === 0 && isMvp
 
   return (
     <button
       type="button"
       onClick={onSelect}
-      className={`flex min-w-0 flex-col items-center gap-1 rounded-xl border bg-glass-3 px-1 py-1.5 text-center shadow-sm transition-colors ${
+      className={`flex min-h-[116px] min-w-0 flex-col items-center gap-1 rounded-xl border bg-glass-3 px-1 py-1.5 text-center shadow-sm transition-colors ${
         selected ? 'border-accent ring-1 ring-accent' : 'border-hairline'
       }`}
     >
@@ -1369,31 +1381,27 @@ function FantasyPitchChip({
         )}
       </span>
 
-      {/* glyphs (only when there's something to show) */}
-      {hasGlyphs && (
-        <span className="flex min-h-[16px] items-center justify-center gap-0.5">
-          <PitchGlyphs p={p} />
-        </span>
-      )}
-
-      {/* pop — Penalità di Popolarità (adesso colored → massima grey) */}
-      {showPop && (
-        <span
-          className="inline-flex items-center gap-0.5 rounded bg-rose-400/12 px-1 text-[8px] font-semibold tabular-nums"
-          title={`Penalità di Popolarità — adesso −${fmt(ppNow, 2)} → massima −${fmt(ppMax, 2)}`}
-        >
-          <UsersGlyph className="text-rose-500 dark:text-rose-300" />
-          <span className="text-rose-600 dark:text-rose-300">−{fmt(ppNow, 1)}</span>
-          {ppMax - ppNow > 0.005 && (
-            <>
-              <span className="text-ink-5">→</span>
-              <span className="text-ink-5">−{fmt(ppMax, 1)}</span>
-            </>
-          )}
-        </span>
-      )}
-
-      <OwnershipMini owners={p.owners} />
+      {/* single meta strip pinned to the bottom — glyphs, P.P. and ownership all
+          on one wrapping line so every card keeps the same structure & height */}
+      <span className="mt-auto flex w-full flex-wrap items-center justify-center gap-x-1 gap-y-0.5 pt-0.5">
+        <PitchGlyphs p={p} hideMvp={exclusiveMvp} />
+        {showPop && (
+          <span
+            className="inline-flex items-center gap-0.5 rounded bg-rose-400/12 px-1 text-[8px] font-semibold tabular-nums"
+            title={`Penalità di Popolarità — adesso −${fmt(ppNow, 2)} → massima −${fmt(ppMax, 2)}`}
+          >
+            <UsersGlyph className="text-rose-500 dark:text-rose-300" />
+            <span className="text-rose-600 dark:text-rose-300">−{fmt(ppNow, 1)}</span>
+            {ppMax - ppNow > 0.005 && (
+              <>
+                <span className="text-ink-5">→</span>
+                <span className="text-ink-5">−{fmt(ppMax, 1)}</span>
+              </>
+            )}
+          </span>
+        )}
+        <OwnershipMini owners={p.owners} isMvp={isMvp} />
+      </span>
     </button>
   )
 }
@@ -1461,7 +1469,7 @@ function PlayerDetailSheet({
     chips.push({
       key: 'pp',
       icon: <UsersGlyph className="text-rose-500 dark:text-rose-300" />,
-      label: 'pop',
+      label: 'P.P.',
       title: `Penalità di Popolarità — adesso −${fmt(pp, 2)} → massima −${fmt(ppPot, 2)}`,
       value: (
         <>
@@ -1492,7 +1500,7 @@ function PlayerDetailSheet({
         </div>
         {v.kind === 'score' ? (
           <div className="flex items-baseline gap-1.5">
-            <span className="text-[12px] text-ink-4 tabular-nums">{v.base}</span>
+            <span className="text-[20px] font-black text-ink-1 tabular-nums">{v.base}</span>
             <span className="text-ink-5">→</span>
             <span className={`text-[20px] font-black tabular-nums ${v.totalCls}`}>{v.total}</span>
           </div>
@@ -1597,7 +1605,7 @@ function CoachRow({ coach }: { coach: LiveSnapshotTeam['coach'] }) {
               : 'bg-ink-5/10 text-ink-4'
           }`}
         >
-          {coach.live_result === 'W' ? 'Vince' : coach.live_result === 'L' ? 'Perde' : 'Pari'}
+          {coach.live_result === 'W' ? 'VITTORIA' : coach.live_result === 'L' ? 'SCONFITTA' : 'PAREGGIO'}
         </span>
       )}
       <span
@@ -2110,9 +2118,11 @@ function MobileTeamCard({
       <button
         onClick={onToggle}
         className={`w-full flex items-center gap-2 px-3 py-2.5 border-b ${
-          isMine
-            ? 'border-indigo-500/40 bg-gradient-to-r from-indigo-500/45 via-indigo-500/20 to-transparent'
-            : 'border-hairline bg-gradient-to-r from-accent/35 via-accent/14 to-transparent'
+          expanded
+            ? isMine
+              ? 'border-indigo-500/40 bg-gradient-to-r from-indigo-500/22 via-indigo-500/8 to-transparent'
+              : 'border-hairline bg-gradient-to-r from-accent/18 via-accent/6 to-transparent'
+            : 'border-hairline bg-glass-2'
         }`}
       >
         <span className="w-5 text-center text-[11px] font-bold text-ink-5">{rank}</span>
