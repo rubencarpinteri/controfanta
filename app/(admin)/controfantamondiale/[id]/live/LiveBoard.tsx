@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import Image from 'next/image'
 import { TeamCrest } from '@/components/fm/TeamCrest'
 import { CoachTierBadge } from '@/components/fm/CoachTierBadge'
 import type {
@@ -956,7 +957,7 @@ function TeamDetailPanel({
   liveField: Map<string, LiveFieldState>
 }) {
   const notFielded = isNotFielded(team)
-  const [view, setView] = useState<TeamLineupView>('list')
+  const [view, setView] = useState<TeamLineupView>('pitch')
 
   return (
     <div
@@ -1047,8 +1048,8 @@ function TeamViewToggle({ view, onChange }: { view: TeamLineupView; onChange: (v
   return (
     <div className="flex shrink-0 gap-0.5 rounded-full border border-hairline bg-glass-1 p-0.5">
       {([
-        { v: 'list' as const, label: 'Lista' },
         { v: 'pitch' as const, label: 'Campo' },
+        { v: 'list' as const, label: 'Lista' },
       ]).map((opt) => (
         <button
           key={opt.v}
@@ -1136,19 +1137,22 @@ function FantasyPitch({
   team: LiveSnapshotTeam
   liveField: Map<string, LiveFieldState>
 }) {
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const fielded = team.players.filter((p) => p.counts)
   const bench = team.players.filter((p) => !p.counts)
-  // Attack rendered on top, GK at the bottom — mirrors the Formazione pitch.
-  const rows = (['A', 'C', 'D'] as const)
-    .map((role) => fielded.filter((p) => p.role === role))
+  // Attack on top, GK at the bottom — mirrors the Formazione pitch. Each role
+  // is its own grid row so N players always lay out as N columns (a 4-man
+  // midfield never wraps to 3+1).
+  const rows = (['A', 'C', 'D', 'P'] as const)
+    .map((role) => sortByRole(fielded.filter((p) => p.role === role)))
     .filter((r) => r.length > 0)
-  const gk = fielded.filter((p) => p.role === 'P')
-  const totalTeams = undefined // owner count badge shown as "in N" inside the chip
+  const selected = team.players.find((p) => p.player_id === selectedId) ?? null
+  const toggle = (id: string) => setSelectedId((cur) => (cur === id ? null : id))
 
   return (
     <div className="space-y-2">
       <div
-        className="relative flex flex-col gap-3 overflow-hidden rounded-2xl border border-hairline px-1.5 py-4 shadow-1"
+        className="relative flex flex-col gap-2.5 overflow-hidden rounded-2xl border border-hairline px-1.5 py-4 shadow-1"
         style={{ background: 'linear-gradient(170deg, #3a8f57, #2f7a49)' }}
       >
         {/* mowing stripes + field lines */}
@@ -1158,37 +1162,151 @@ function FantasyPitch({
         />
         <div className="pointer-events-none absolute left-4 right-4 top-1/2 h-px" style={{ background: 'rgba(255,255,255,0.3)' }} />
         <div className="pointer-events-none absolute left-1/2 top-1/2 h-[64px] w-[64px] -translate-x-1/2 -translate-y-1/2 rounded-full border" style={{ borderColor: 'rgba(255,255,255,0.3)' }} />
-        <div className="pointer-events-none absolute left-1/2 top-1 h-[26px] w-[84px] -translate-x-1/2 rounded-b-[10px] border border-t-0" style={{ borderColor: 'rgba(255,255,255,0.3)' }} />
-        <div className="pointer-events-none absolute bottom-1 left-1/2 h-[26px] w-[84px] -translate-x-1/2 rounded-t-[10px] border border-b-0" style={{ borderColor: 'rgba(255,255,255,0.3)' }} />
 
         {rows.map((row, i) => (
-          <div key={i} className="relative z-[1] flex flex-wrap items-start justify-center gap-1">
-            {sortByRole(row).map((p) => (
-              <FantasyPitchChip key={p.player_id} p={p} liveState={liveField.get(p.player_id)} totalTeams={totalTeams} />
+          <div
+            key={i}
+            className="relative z-[1] mx-auto grid w-full gap-1.5"
+            style={{ gridTemplateColumns: `repeat(${row.length}, minmax(0,1fr))`, maxWidth: row.length * 88 }}
+          >
+            {row.map((p) => (
+              <FantasyPitchChip
+                key={p.player_id}
+                p={p}
+                liveState={liveField.get(p.player_id)}
+                selected={p.player_id === selectedId}
+                onSelect={() => toggle(p.player_id)}
+              />
             ))}
           </div>
         ))}
-        {gk.length > 0 && (
-          <div className="relative z-[1] flex justify-center">
-            {gk.map((p) => (
-              <FantasyPitchChip key={p.player_id} p={p} liveState={liveField.get(p.player_id)} totalTeams={totalTeams} />
-            ))}
-          </div>
-        )}
       </div>
+
+      {selected && (
+        <PlayerDetailSheet
+          p={selected}
+          teamName={team.name}
+          liveState={liveField.get(selected.player_id)}
+          onClose={() => setSelectedId(null)}
+        />
+      )}
 
       {team.coach && <CoachRow coach={team.coach} />}
 
       {bench.length > 0 && (
         <div className="space-y-1">
           <p className="px-1 text-[8px] font-bold uppercase tracking-wider text-ink-5">Panchina</p>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
             {sortByRole(bench).map((p) => (
-              <BenchChip key={p.player_id} p={p} liveState={liveField.get(p.player_id)} />
+              <BenchChip
+                key={p.player_id}
+                p={p}
+                liveState={liveField.get(p.player_id)}
+                selected={p.player_id === selectedId}
+                onSelect={() => toggle(p.player_id)}
+              />
             ))}
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// Round national-team crest with a role dot, and a green ring when the player is
+// on the pitch right now in a live match.
+function PlayerCrest({ p, live, size }: { p: LiveSnapshotPlayer; live: boolean; size: number }) {
+  const t = p.national_team
+  const src = t?.logo_url || t?.flag_url
+  const dot = Math.max(8, Math.round(size * 0.34))
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <span
+        className={`block overflow-hidden rounded-full ${live ? 'ring-2 ring-emerald-400' : ''}`}
+        style={{ width: size, height: size }}
+      >
+        {src ? (
+          <Image src={src} alt={t?.name ?? ''} width={size} height={size} className="h-full w-full object-cover" unoptimized />
+        ) : (
+          <span className="flex h-full w-full items-center justify-center bg-glass-2 font-mono text-ink-4" style={{ fontSize: Math.round(size * 0.4) }}>
+            {(t?.fifa_code ?? '').toUpperCase()}
+          </span>
+        )}
+      </span>
+      <span
+        className="absolute -bottom-[2px] -right-[2px] rounded-full"
+        style={{ width: dot, height: dot, background: ROLE_DOT[p.role] ?? '#94a3b8', border: '1.5px solid var(--glass-3)' }}
+        title={p.role}
+      />
+    </div>
+  )
+}
+
+// MVP crown + the football bonus/malus emoji glyphs (goals/assists carry ×N,
+// clean sheet shows the 🧤, cards are colored chips) — reused from the list row.
+function PitchGlyphs({ p }: { p: LiveSnapshotPlayer }) {
+  const showMvp = p.mvp_bonus > 0.005
+  return (
+    <>
+      {showMvp && (
+        <span className="text-[12px] leading-none" title={`MVP +${fmt(p.mvp_bonus, 1)}`} aria-label="MVP">👑</span>
+      )}
+      <BonusMalusIcons p={p} />
+    </>
+  )
+}
+
+// Three-people glyph for the Penalità di Popolarità (P.P.).
+function UsersGlyph({ className = '' }: { className?: string }) {
+  return (
+    <svg width="12" height="9" viewBox="0 0 16 11" className={className} aria-hidden role="img">
+      <circle cx="5" cy="3" r="2.3" fill="currentColor" />
+      <circle cx="11.5" cy="3.6" r="1.8" fill="currentColor" />
+      <path d="M0.8 10.4c0-2.3 1.9-3.6 4.2-3.6s4.2 1.3 4.2 3.6z" fill="currentColor" />
+      <path d="M9.6 10.4c0-1.7 1.1-2.9 2.7-2.9 1.6 0 2.5 1 2.5 2.9z" fill="currentColor" />
+    </svg>
+  )
+}
+
+function DiamondGlyph({ className = '' }: { className?: string }) {
+  return (
+    <svg width="11" height="11" viewBox="0 0 12 12" className={className} aria-hidden role="img">
+      <path d="M6 0.7l5 4.3-5 6.3-5-6.3z" fill="currentColor" />
+    </svg>
+  )
+}
+
+// Pitch-chip ownership row: a magenta diamond when only this team fields the
+// player (exclusive), otherwise rival monograms colored by status — solid blue
+// = titolare, grey = panchina — so the status reads at a glance.
+function OwnershipMini({ owners }: { owners: LiveOwnerRef[] }) {
+  if (!owners.length) {
+    return (
+      <span
+        title="Esclusiva — solo questa squadra lo schiera"
+        className="inline-flex h-[17px] items-center rounded-md bg-[#f01c9c]/12 px-1 text-[#f01c9c]"
+      >
+        <DiamondGlyph />
+      </span>
+    )
+  }
+  const shown = owners.slice(0, 3)
+  const extra = owners.length - 3
+  return (
+    <div className="flex h-[17px] items-center">
+      {shown.map((o, i) => (
+        <span
+          key={o.fantasy_team_id}
+          title={`${o.team_name} — ${o.status === 'titolare' ? 'titolare' : 'panchina'}`}
+          className={`flex h-[17px] w-[17px] items-center justify-center rounded-full text-[8px] font-bold text-white ${
+            o.status === 'titolare' ? 'bg-indigo-500' : 'bg-ink-5/70'
+          }`}
+          style={{ marginLeft: i ? -5 : 0, border: '1.5px solid var(--glass-3)' }}
+        >
+          {o.team_name.slice(0, 2).toUpperCase()}
+        </span>
+      ))}
+      {extra > 0 && <span className="ml-0.5 text-[9px] font-semibold text-ink-4">+{extra}</span>}
     </div>
   )
 }
@@ -1196,137 +1314,230 @@ function FantasyPitch({
 function FantasyPitchChip({
   p,
   liveState,
-  totalTeams,
+  selected,
+  onSelect,
 }: {
   p: LiveSnapshotPlayer
   liveState?: LiveFieldState
-  totalTeams?: number
+  selected: boolean
+  onSelect: () => void
 }) {
   const v = computeVoto(p)
-  const penNow = p.popularity_penalty_now
-  const penPot = p.popularity_penalty_potential
-  const showPen = penNow > 0.005 || penPot > 0.005
-  const penRises = penPot - penNow > 0.005
-  const showMvp = p.mvp_bonus > 0.005
+  const pp = p.popularity_penalty_now
+  const hasGlyphs =
+    p.mvp_bonus > 0.005 ||
+    p.goals > 0 || p.assists > 0 || p.penalties_saved > 0 || p.clean_sheet_bonus > 0 ||
+    p.penalties_missed > 0 || p.own_goals > 0 || p.red_cards > 0 || p.yellow_cards > 0
 
   return (
-    <div className="flex w-[70px] flex-col items-center gap-1 rounded-xl border border-hairline bg-glass-3 px-1 pb-1.5 pt-1.5 shadow-sm sm:w-[84px]">
-      <div className="relative">
-        <TeamCrest
-          name={p.national_team?.name ?? ''}
-          logoUrl={p.national_team?.logo_url ?? null}
-          flagUrl={p.national_team?.flag_url ?? null}
-          fifaCode={p.national_team?.fifa_code ?? ''}
-          size={26}
-        />
-        <span
-          className="absolute -bottom-[2px] -right-[3px] h-[9px] w-[9px] rounded-full"
-          style={{ background: ROLE_DOT[p.role] ?? '#94a3b8', border: '1.5px solid var(--glass-3)' }}
-        />
-        {liveState && (
-          <span className="absolute -left-[4px] -top-[4px]">
-            <LivePlayerDot state={liveState} />
-          </span>
-        )}
-      </div>
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`flex min-w-0 flex-col items-center gap-1 rounded-xl border bg-glass-3 px-1 py-1.5 text-center shadow-sm transition-colors ${
+        selected ? 'border-accent ring-1 ring-accent' : 'border-hairline'
+      }`}
+    >
+      <PlayerCrest p={p} live={liveState === 'field'} size={28} />
 
-      <div className="flex w-full items-center justify-center gap-0.5">
-        <span className="max-w-[64px] truncate text-[11px] font-bold leading-tight text-ink-1">
-          {shortPlayerName(p.name)}
-        </span>
+      <span className="flex w-full items-center justify-center gap-0.5">
+        <span className="truncate text-[11px] font-bold leading-tight text-ink-1">{shortPlayerName(p.name)}</span>
         {p.via === 'sub' && (
           <span className="shrink-0 rounded bg-emerald-400/15 px-0.5 text-[7px] font-bold uppercase text-emerald-600 dark:text-emerald-300">sub</span>
         )}
-      </div>
+      </span>
 
-      {/* voto base ▸ total */}
-      <div className="w-full overflow-hidden rounded-md border border-hairline bg-surface-2 text-center tabular-nums shadow-sm">
+      {/* voto base / total */}
+      <span className="block w-full max-w-[46px] overflow-hidden rounded-md border border-hairline bg-surface-2 tabular-nums">
         {v.kind === 'score' ? (
           <>
-            <span className="block border-b border-hairline px-1 py-0.5 text-[11px] font-bold leading-none text-ink-2">{v.base}</span>
-            <span className={`block px-1 py-0.5 text-[13px] font-black leading-none ${v.totalCls}`}>{v.total}</span>
+            <span className="block border-b border-hairline px-1 text-[10px] font-bold leading-[1.45] text-ink-2">{v.base}</span>
+            <span className={`block px-1 text-[12px] font-black leading-[1.4] ${v.totalCls}`}>{v.total}</span>
           </>
         ) : (
           <span className={`block px-1 py-1 text-[12px] font-bold leading-none ${v.cls}`}>{v.text}</span>
         )}
-      </div>
+      </span>
 
-      {/* football bonus/malus glyphs */}
-      <BonusMalusIcons p={p} />
-
-      {/* MVP / popularity */}
-      {(showMvp || showPen) && (
-        <div className="flex w-full flex-wrap items-center justify-center gap-0.5">
-          {showMvp && (
-            <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-400/15 px-1 py-px text-[8px] font-semibold tabular-nums text-amber-600 dark:text-amber-300">
-              ★+{fmt(p.mvp_bonus, 1)}
-            </span>
-          )}
-          {showPen && (
-            <span
-              className="inline-flex items-center gap-0.5 rounded-full bg-rose-400/12 px-1 py-px text-[8px] font-semibold tabular-nums text-rose-600 dark:text-rose-300"
-              title={`Penalità popolarità ora −${fmt(penNow)}${penRises ? ` ▸ fino a −${fmt(penPot)}` : ''}`}
-            >
-              pop −{fmt(penNow)}{penRises && <span className="text-ink-5">▸{fmt(penPot)}</span>}
-            </span>
-          )}
-        </div>
+      {/* glyphs (only when there's something to show) */}
+      {hasGlyphs && (
+        <span className="flex min-h-[16px] items-center justify-center gap-0.5">
+          <PitchGlyphs p={p} />
+        </span>
       )}
 
-      {/* ownership */}
-      <OwnerCount owners={p.owners} totalTeams={totalTeams} />
-    </div>
+      {/* P.P. */}
+      {pp > 0.005 && (
+        <span
+          className="inline-flex items-center gap-0.5 rounded bg-rose-400/12 px-1 text-[8px] font-semibold tabular-nums text-rose-600 dark:text-rose-300"
+          title={`Penalità di Popolarità −${fmt(pp, 2)}`}
+        >
+          <UsersGlyph />−{fmt(pp, 1)}
+        </span>
+      )}
+
+      <OwnershipMini owners={p.owners} />
+    </button>
   )
 }
 
-// Compact ownership badge for the pitch chip: "in N" with the owning team names
-// in a tooltip; glows magenta when exclusively owned by a single starter.
-function OwnerCount({ owners, totalTeams }: { owners: LiveOwnerRef[]; totalTeams?: number }) {
-  if (!owners.length) return null
-  const exclusiveStarter = owners.length === 1 && owners[0]?.status === 'titolare'
-  const label = totalTeams ? `in ${owners.length}/${totalTeams}` : `in ${owners.length}`
-  const title = owners
-    .map((o) => `${o.team_name} — ${o.status === 'titolare' ? 'titolare' : 'panchina'}`)
-    .join('\n')
-  return (
-    <span
-      title={title}
-      className={`inline-flex items-center gap-0.5 rounded-full px-1 py-px text-[8px] font-bold ${
-        exclusiveStarter
-          ? 'bg-[#f01c9c]/12 text-[#f01c9c]'
-          : 'bg-ink-5/8 text-ink-5'
-      }`}
-    >
-      {label}
-      <PitchGlyph className={exclusiveStarter ? 'text-[#f01c9c]' : 'text-ink-5'} />
-    </span>
-  )
-}
-
-// Small bench chip for the pitch view — crest, surname, voto/marker, glyphs.
-function BenchChip({ p, liveState }: { p: LiveSnapshotPlayer; liveState?: LiveFieldState }) {
+// Bench chip — compact, selectable; same crest/voto/ownership language.
+function BenchChip({
+  p,
+  liveState,
+  selected,
+  onSelect,
+}: {
+  p: LiveSnapshotPlayer
+  liveState?: LiveFieldState
+  selected: boolean
+  onSelect: () => void
+}) {
   const v = computeVoto(p)
   return (
-    <div className="flex min-w-0 items-center gap-1.5 rounded-lg border border-hairline bg-glass-2 px-1.5 py-1 opacity-80">
-      <div className="relative shrink-0">
-        <TeamCrest
-          name={p.national_team?.name ?? ''}
-          logoUrl={p.national_team?.logo_url ?? null}
-          flagUrl={p.national_team?.flag_url ?? null}
-          fifaCode={p.national_team?.fifa_code ?? ''}
-          size={16}
-          className="w-4"
-        />
-        <span
-          className="absolute -bottom-[2px] -right-[2px] h-[7px] w-[7px] rounded-full"
-          style={{ background: ROLE_DOT[p.role] ?? '#94a3b8', border: '1px solid var(--glass-2)' }}
-        />
-      </div>
-      <span className="max-w-[88px] truncate text-[11px] font-semibold text-ink-2">{shortPlayerName(p.name)}</span>
-      {liveState && <LivePlayerDot state={liveState} />}
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`flex min-w-0 items-center gap-1.5 rounded-lg border bg-glass-2 px-1.5 py-1.5 text-left transition-colors ${
+        selected ? 'border-accent ring-1 ring-accent' : 'border-hairline'
+      }`}
+    >
+      <PlayerCrest p={p} live={liveState === 'field'} size={18} />
+      <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-ink-2">{shortPlayerName(p.name)}</span>
+      <OwnershipMini owners={p.owners} />
       <span className={`shrink-0 text-[11px] font-bold tabular-nums ${v.kind === 'score' ? v.totalCls : v.cls}`}>
         {v.kind === 'score' ? v.total : v.text}
       </span>
+    </button>
+  )
+}
+
+// Tap-to-expand detail for a single player: full voto, every bonus/malus with
+// its value, and the rival teams (with titolare/panchina) or an exclusive call.
+function PlayerDetailSheet({
+  p,
+  teamName,
+  liveState,
+  onClose,
+}: {
+  p: LiveSnapshotPlayer
+  teamName: string
+  liveState?: LiveFieldState
+  onClose: () => void
+}) {
+  const v = computeVoto(p)
+  const roleName = { P: 'Portiere', D: 'Difensore', C: 'Centrocampista', A: 'Attaccante' }[p.role] ?? p.role
+  const pp = p.popularity_penalty_now
+  const ppPot = p.popularity_penalty_potential
+
+  const chips: { key: string; icon: ReactNode; label: string; value?: string; tone: 'pos' | 'neg' | 'mvp' }[] = []
+  if (p.goals > 0) chips.push({ key: 'g', icon: '⚽', label: p.goals > 1 ? `Gol ×${p.goals}` : 'Gol', tone: 'pos' })
+  if (p.assists > 0) chips.push({ key: 'a', icon: '👟', label: p.assists > 1 ? `Assist ×${p.assists}` : 'Assist', tone: 'pos' })
+  if (p.clean_sheet_bonus > 0) chips.push({ key: 'cs', icon: '🧤', label: 'Porta inviolata', value: `+${fmt(p.clean_sheet_bonus, 1)}`, tone: 'pos' })
+  if (p.penalties_saved > 0) chips.push({ key: 'ps', icon: '🧤', label: p.penalties_saved > 1 ? `Rigore parato ×${p.penalties_saved}` : 'Rigore parato', tone: 'pos' })
+  if (p.penalties_missed > 0) chips.push({ key: 'pm', icon: '❌', label: 'Rigore sbagliato', tone: 'neg' })
+  if (p.own_goals > 0) chips.push({ key: 'og', icon: '🥅', label: p.own_goals > 1 ? `Autogol ×${p.own_goals}` : 'Autogol', tone: 'neg' })
+  if (p.yellow_cards > 0 && p.red_cards === 0) chips.push({ key: 'y', icon: <span className="inline-block h-3 w-2 rounded-sm bg-amber-400" />, label: 'Ammonizione', tone: 'neg' })
+  if (p.red_cards > 0) chips.push({ key: 'r', icon: <span className="inline-block h-3 w-2 rounded-sm bg-rose-500" />, label: 'Espulsione', tone: 'neg' })
+  if (p.mvp_bonus > 0.005) chips.push({ key: 'mvp', icon: '👑', label: 'MVP', value: `+${fmt(p.mvp_bonus, 1)}`, tone: 'mvp' })
+  if (pp > 0.005 || ppPot > 0.005)
+    chips.push({
+      key: 'pp',
+      icon: <UsersGlyph className="text-rose-500 dark:text-rose-300" />,
+      label: 'P.P.',
+      value: `−${fmt(pp, 2)}${ppPot - pp > 0.005 ? ` ▸ −${fmt(ppPot, 2)}` : ''}`,
+      tone: 'neg',
+    })
+
+  const others = p.owners
+
+  return (
+    <div className="rounded-2xl border border-hairline bg-glass-1 p-3.5 shadow-1">
+      <div className="flex items-center gap-2.5">
+        <PlayerCrest p={p} live={liveState === 'field'} size={32} />
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[14px] font-bold text-ink-1">{p.name}</div>
+          <div className="text-[11px] text-ink-4">
+            {roleName}
+            {liveState === 'field' && <span className="text-emerald-500 dark:text-emerald-400"> · in campo</span>}
+          </div>
+        </div>
+        {v.kind === 'score' ? (
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-[12px] text-ink-4 tabular-nums">{v.base}</span>
+            <span className="text-ink-5">→</span>
+            <span className={`text-[20px] font-black tabular-nums ${v.totalCls}`}>{v.total}</span>
+          </div>
+        ) : (
+          <span className={`text-[14px] font-bold ${v.cls}`}>{v.text}</span>
+        )}
+        <button onClick={onClose} className="ml-1 shrink-0 text-ink-5 hover:text-ink-2" aria-label="Chiudi">✕</button>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {chips.length ? (
+          chips.map((c) => (
+            <span
+              key={c.key}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11.5px] ${
+                c.tone === 'neg'
+                  ? 'bg-rose-400/10 text-rose-600 dark:text-rose-300'
+                  : c.tone === 'mvp'
+                    ? 'bg-amber-400/12 text-amber-600 dark:text-amber-300'
+                    : 'bg-emerald-400/10 text-emerald-700 dark:text-emerald-300'
+              }`}
+            >
+              <span className="inline-flex items-center text-[12px] leading-none">{c.icon}</span>
+              {c.label}
+              {c.value && <span className="font-bold tabular-nums">{c.value}</span>}
+            </span>
+          ))
+        ) : (
+          <span className="text-[11px] text-ink-5">Nessun bonus o malus</span>
+        )}
+      </div>
+
+      <div className="mt-3 border-t border-hairline pt-2.5">
+        {others.length === 0 ? (
+          <div className="flex items-center gap-2.5 rounded-xl bg-[#f01c9c]/10 px-3 py-2.5">
+            <span className="text-[#f01c9c]"><DiamondGlyph className="h-4 w-4" /></span>
+            <div>
+              <div className="text-[12.5px] font-bold text-[#f01c9c]">Esclusiva di {teamName}</div>
+              <div className="text-[10.5px] text-ink-4">Nessun&apos;altra squadra della lega lo schiera</div>
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className="mb-1 px-0.5 text-[9px] font-bold uppercase tracking-wider text-ink-5">Schierato anche da</p>
+            <div className="space-y-0.5">
+              {others.map((o) => {
+                const titolare = o.status === 'titolare'
+                return (
+                  <div key={o.fantasy_team_id} className="flex items-center gap-2 py-1">
+                    <span
+                      className={`flex h-[22px] w-[22px] items-center justify-center rounded-full text-[9px] font-bold text-white ${
+                        titolare ? 'bg-indigo-500' : 'bg-ink-5/70'
+                      }`}
+                    >
+                      {o.team_name.slice(0, 2).toUpperCase()}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-[13px] text-ink-1">{o.team_name}</span>
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                        titolare
+                          ? 'bg-indigo-400/12 text-indigo-500 dark:text-indigo-300'
+                          : 'bg-ink-5/8 text-ink-5'
+                      }`}
+                    >
+                      {titolare ? <PitchGlyph className="text-indigo-500/80 dark:text-indigo-300/80" /> : <BenchGlyph className="text-ink-5" />}
+                      {titolare ? 'titolare' : 'panchina'}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   )
 }
@@ -1859,7 +2070,7 @@ function MobileTeamCard({
   onToggle: () => void
 }) {
   const notFielded = isNotFielded(team)
-  const [view, setView] = useState<TeamLineupView>('list')
+  const [view, setView] = useState<TeamLineupView>('pitch')
   return (
     <div
       className={`rounded-xl border bg-glass-1 overflow-hidden ${
