@@ -554,6 +554,34 @@ export async function computeLiveRoundSnapshot(
     stateByPlayer.set(pid, played ? 'played' : matchFinal ? 'not_played' : 'pending')
   }
 
+  // ── MVP per fixture = highest fantasy voto (raw_subtotal) ───────────────
+  // The MVP badge sits next to the voto and drives the MVP scoring bonus, so it
+  // must reward the best *fantasy* performer — a clean-sheet keeper or a scorer
+  // can out-voto the top-rated player. We override the ingest-time flag (which
+  // is raw SportMonks rating only) using the computed subtotal. Ties break on
+  // lower player_id so the badge is stable across live ticks. Uses the base raw
+  // (pre per-lega immunità) so the MVP is competition-wide consistent.
+  const mvpByMatch = new Map<string, string>()
+  const bestByMatch = new Map<string, number>()
+  for (const [pid, raw] of rawByPlayer) {
+    if (raw.voto_base == null) continue // s.v. can't be MVP
+    const mid = raw.real_match_id
+    const best = bestByMatch.get(mid)
+    const cur = mvpByMatch.get(mid)
+    if (
+      best == null ||
+      raw.raw_subtotal > best ||
+      (raw.raw_subtotal === best && cur != null && pid < cur)
+    ) {
+      bestByMatch.set(mid, raw.raw_subtotal)
+      mvpByMatch.set(mid, pid)
+    }
+  }
+  for (const [pid, raw] of rawByPlayer) {
+    raw.is_mvp = mvpByMatch.get(raw.real_match_id) === pid
+  }
+  const isMvpOf = (pid: string): boolean => rawByPlayer.get(pid)?.is_mvp ?? false
+
   const stateOf = (pid: string): PlayState => stateByPlayer.get(pid) ?? 'pending'
 
   // ============================================================
@@ -767,23 +795,25 @@ export async function computeLiveRoundSnapshot(
               (stats?.minutes_played ?? 0) >= config.football.clean_sheet.min_minutes
             ? config.football.clean_sheet.D
             : 0
+      // Display split: the clean-sheet bonus is folded into the shown BASE voto
+      // (so a keeper at 0-0 reads e.g. 7.3, not 6.3 + a separate icon), and the
+      // bonus column shows only the OTHER football bonuses. The total must equal
+      // raw_subtotal — adding the full football_bonus back would double-count the
+      // clean sheet, which already lives in displayVotoBase.
       const displayVotoBase =
         adjustedRaw && adjustedRaw.voto_base != null
           ? rawSubtotal - adjustedRaw.football_bonus + adjustedRaw.football_malus + cleanSheetBonus
           : null
-      const displayVotoTotal =
-        displayVotoBase != null
-          ? displayVotoBase + (adjustedRaw?.football_bonus ?? 0) - (adjustedRaw?.football_malus ?? 0)
-          : null
+      const displayVotoTotal = displayVotoBase != null ? rawSubtotal : null
 
       if (adjustedRaw) {
         const finNow = finalizePlayerForLega(
-          { raw_subtotal: rawSubtotal, is_mvp: adjustedRaw.is_mvp },
+          { raw_subtotal: rawSubtotal, is_mvp: isMvpOf(lp.player_id) },
           own?.pct_now ?? 0,
           config,
         )
         const finMax = finalizePlayerForLega(
-          { raw_subtotal: rawSubtotal, is_mvp: adjustedRaw.is_mvp },
+          { raw_subtotal: rawSubtotal, is_mvp: isMvpOf(lp.player_id) },
           own?.pct_potential ?? 0,
           config,
         )
@@ -908,10 +938,12 @@ export async function computeLiveRoundSnapshot(
               : 0
         const footballBonus = raw?.football_bonus ?? 0
         const footballMalus = raw?.football_malus ?? 0
+        // Clean sheet is folded into the displayed BASE voto; the total equals
+        // raw_subtotal. Re-adding the full football_bonus would count the clean
+        // sheet twice (it is already inside displayVotoBase).
         const displayVotoBase =
           voto != null ? voto - footballBonus + footballMalus + cleanSheetBonus : null
-        const displayVotoTotal =
-          displayVotoBase != null ? displayVotoBase + footballBonus - footballMalus : null
+        const displayVotoTotal = displayVotoBase != null ? voto : null
         return {
           player_id: pid,
           name: player.name,
@@ -927,7 +959,7 @@ export async function computeLiveRoundSnapshot(
           football_bonus: footballBonus,
           football_malus: footballMalus,
           clean_sheet_bonus: cleanSheetBonus,
-          is_mvp: stats.is_mvp ?? false,
+          is_mvp: isMvpOf(pid),
           minutes_played: stats.minutes_played ?? null,
           play_state: stateOf(pid),
           goals: stats.goals ?? 0,
