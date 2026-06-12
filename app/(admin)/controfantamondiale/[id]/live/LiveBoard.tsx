@@ -368,7 +368,7 @@ function MatchChip({ match: m, selected = false }: { match: LiveSnapshotMatch; s
     <div className="space-y-1.5">
       {/* status + time */}
       <div className="flex items-center gap-1.5">
-        <MatchStatusBadge status={m.status} minute={m.minute} />
+        <MatchStatusBadge status={m.status} minute={m.minute} minuteAdded={m.minute_added} />
         {m.status === 'scheduled' && (
           <span className="text-[9px] text-ink-5 tabular-nums">{fmtKickoff(m.kickoff_at)}</span>
         )}
@@ -451,12 +451,22 @@ function PresenceDots({
   )
 }
 
-function MatchStatusBadge({ status, minute }: { status: LiveSnapshotMatch['status']; minute: number | null }) {
+function MatchStatusBadge({
+  status,
+  minute,
+  minuteAdded,
+}: {
+  status: LiveSnapshotMatch['status']
+  minute: number | null
+  minuteAdded?: number | null
+}) {
   if (status === 'in_progress') {
+    const label =
+      minute == null ? 'LIVE' : minuteAdded ? `${minute}+${minuteAdded}'` : `${minute}'`
     return (
       <span className="inline-flex items-center gap-1 rounded bg-emerald-400/12 px-1.5 py-0.5 text-[8px] font-bold text-emerald-400">
         <span className="h-1 w-1 animate-pulse rounded-full bg-emerald-400" />
-        {minute != null ? `${minute}'` : 'LIVE'}
+        {label}
       </span>
     )
   }
@@ -547,7 +557,7 @@ function MatchDetailPanel({
             ) : (
               <span className="text-[16px] font-bold text-ink-5">vs</span>
             )}
-            <MatchStatusBadge status={m.status} minute={m.minute} />
+            <MatchStatusBadge status={m.status} minute={m.minute} minuteAdded={m.minute_added} />
             {m.status === 'scheduled' && (
               <span className="text-[10px] text-ink-5 tabular-nums">{fmtKickoff(m.kickoff_at)}</span>
             )}

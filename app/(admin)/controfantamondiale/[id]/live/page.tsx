@@ -133,7 +133,7 @@ export default async function LivePage({
   if (previewMode && !snapshot) {
     const [{ data: fantasyTeams }, { data: realMatches }, { data: nationalTeams }] = await Promise.all([
       supabase.from('fm_fantasy_team').select('id, name').eq('league_competition_id', ctx.legaCompetition.id).order('name'),
-      supabase.from('fm_real_match').select('id, home_team_id, away_team_id, home_score, away_score, status, minute, kickoff_at').eq('scoring_round_id', activeRound.id),
+      supabase.from('fm_real_match').select('id, home_team_id, away_team_id, home_score, away_score, status, minute, minute_added, kickoff_at').eq('scoring_round_id', activeRound.id),
       supabase.from('fm_national_team').select('id, name, fifa_code, logo_url, flag_url'),
     ])
     const ntById = new Map((nationalTeams ?? []).map((t) => [t.id, t]))
@@ -164,6 +164,7 @@ export default async function LivePage({
         home_score: m.home_score,
         away_score: m.away_score,
         minute: m.minute,
+        minute_added: m.minute_added,
         status: (m.status as LiveRoundSnapshot['matches'][number]['status']),
         kickoff_at: m.kickoff_at,
         players: [],

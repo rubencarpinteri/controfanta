@@ -189,6 +189,8 @@ export type LiveSnapshotMatch = {
   away_score: number | null
   /** Elapsed match minute from SportMonks, null if not started. */
   minute: number | null
+  /** Stoppage minutes on top of `minute` (e.g. 4 for 90+4); 0/null in regular play. */
+  minute_added: number | null
   status: 'scheduled' | 'in_progress' | 'finished' | 'cancelled'
   kickoff_at: string
   /** Players from fm_player pool who appeared in this match (minutes_played > 0). */
@@ -269,7 +271,7 @@ export async function computeLiveRoundSnapshot(
   // ---- 2. Matches for the round (live-tolerant: scores may be null) ------
   const { data: matches } = await supabase
     .from('fm_real_match')
-    .select('id, home_team_id, away_team_id, home_score, away_score, result, status, minute, kickoff_at')
+    .select('id, home_team_id, away_team_id, home_score, away_score, result, status, minute, minute_added, kickoff_at')
     .eq('scoring_round_id', roundId)
   const matchByTeamId = new Map<string, NonNullable<typeof matches>[number]>()
   for (const m of matches ?? []) {
@@ -997,6 +999,7 @@ export async function computeLiveRoundSnapshot(
       home_score: m.home_score,
       away_score: m.away_score,
       minute: (m as typeof m & { minute?: number | null }).minute ?? null,
+      minute_added: (m as typeof m & { minute_added?: number | null }).minute_added ?? null,
       status: m.status as LiveSnapshotMatch['status'],
       kickoff_at: (m as typeof m & { kickoff_at: string }).kickoff_at,
       players: realPlayers,

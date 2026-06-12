@@ -430,6 +430,8 @@ export async function upsertFMPlayerStats(
     minute: matchStatus === 'finished'
       ? (parsed.length_minutes > 0 ? parsed.length_minutes : null)
       : parsed.live_minute,
+    // Stoppage overflow (90+4); only meaningful while in progress.
+    minute_added: matchStatus === 'finished' ? null : (parsed.live_minute_added || null),
   }).eq('id', match.id)
 
   // 3. Resolve fm_player UUIDs by sportmonks_player_id (one query)

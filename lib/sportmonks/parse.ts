@@ -33,22 +33,33 @@ import type {
 
 // ---------- live minute ----------
 
+// Period base minute by sort_order: 1=1st half, 2=2nd half, 3/4=extra time.
+const PERIOD_BASE: Record<number, number> = { 1: 45, 2: 90, 3: 105, 4: 120 }
+
 /**
- * Current elapsed match minute, derived from the ticking period.
+ * Current elapsed match minute, split into the displayed minute and stoppage.
  *
  * SportMonks exposes a `periods` array; the period with `ticking: true` is the
- * one currently running and its `minutes` field is the live match minute
- * (already accumulated across halves, e.g. 67 in the 2nd half). Returns null
- * when no period is ticking (pre-match, half-time, or finished) — callers
- * should not fall back to fixture.length, which is the match *duration* (90)
- * and was the cause of the clock being stuck at 90'.
+ * one currently running and its `minutes` field is the live match minute,
+ * accumulated across halves AND running *past* the period boundary during
+ * stoppage (e.g. a 1st half at 48' with time_added 3 → still in the 1st half).
+ * We split that on the period base (45/90/…) so the UI can render "45+3" / "90+4":
+ *   minute = base when in stoppage (else the running minute)
+ *   added  = running minus base when in stoppage (else 0)
+ * Returns null when no period is ticking (pre-match, half-time, finished) — never
+ * fall back to fixture.length, which is the match *duration*, not the clock.
  */
-function liveMinuteFromPeriods(periods: SMPeriod[] | undefined): number | null {
+function liveMinuteFromPeriods(
+  periods: SMPeriod[] | undefined,
+): { minute: number; added: number } | null {
   if (!periods?.length) return null
   const ticking = periods.find((p) => p.ticking === true)
   if (!ticking) return null
   const m = ticking.minutes
-  return typeof m === 'number' && Number.isFinite(m) ? m : null
+  if (typeof m !== 'number' || !Number.isFinite(m)) return null
+  const base = ticking.sort_order != null ? PERIOD_BASE[ticking.sort_order] : undefined
+  if (base != null && m > base) return { minute: base, added: m - base }
+  return { minute: m, added: 0 }
 }
 
 // ---------- stat helpers ----------
@@ -342,6 +353,8 @@ export function parseFixture(fixture: SMFixture): ParsedFixture {
     result = homeScore > awayScore ? 'home_win' : homeScore < awayScore ? 'away_win' : 'draw'
   }
 
+  const live = liveMinuteFromPeriods(fixture.periods)
+
   return {
     sportmonks_fixture_id: fixture.id,
     league_id: fixture.league_id,
@@ -358,7 +371,8 @@ export function parseFixture(fixture: SMFixture): ParsedFixture {
     state_id: fixture.state_id,
     state_name: fixture.state?.name ?? null,
     length_minutes: fixture.length,
-    live_minute: liveMinuteFromPeriods(fixture.periods),
+    live_minute: live?.minute ?? null,
+    live_minute_added: live?.added ?? 0,
     home_score: homeScore,
     away_score: awayScore,
     result,

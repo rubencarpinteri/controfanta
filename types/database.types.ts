@@ -2134,6 +2134,7 @@ export type Database = {
           id: string
           kickoff_at: string
           minute: number | null
+          minute_added: number | null
           result: Database["public"]["Enums"]["fm_match_result"] | null
           scoring_round_id: string
           sportmonks_fixture_id: number | null
@@ -2151,6 +2152,7 @@ export type Database = {
           id?: string
           kickoff_at: string
           minute?: number | null
+          minute_added?: number | null
           result?: Database["public"]["Enums"]["fm_match_result"] | null
           scoring_round_id: string
           sportmonks_fixture_id?: number | null
@@ -2168,6 +2170,7 @@ export type Database = {
           id?: string
           kickoff_at?: string
           minute?: number | null
+          minute_added?: number | null
           result?: Database["public"]["Enums"]["fm_match_result"] | null
           scoring_round_id?: string
           sportmonks_fixture_id?: number | null

@@ -268,6 +268,8 @@ export type ParsedFixture = {
   length_minutes: number
   /** Live elapsed match minute from the ticking period; null when not running. */
   live_minute: number | null
+  /** Stoppage minutes on top of live_minute (e.g. 4 for 90+4); 0 in regular play. */
+  live_minute_added: number
   home_score: number | null
   away_score: number | null
   /**
