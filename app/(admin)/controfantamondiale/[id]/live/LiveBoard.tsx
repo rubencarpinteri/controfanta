@@ -1288,17 +1288,19 @@ function PlayerCrest({ p, live, size }: { p: LiveSnapshotPlayer; live: boolean; 
   )
 }
 
-// Small role "nail" tucked in the card's top-left corner — the role letter on
-// its solid role color. Reads the role at a glance and stays visible whatever
-// the card's border/selection state is (unlike the old thin role outline).
+// Role "nail" in the card's top-left corner — the role letter on its solid role
+// color. It's a plain block; the parent card's `overflow-hidden` + matching
+// border-radius clip its top-left to the SAME arc as the card, so it reads as
+// part of the corner, not a sticker on top. The letter is padded toward the
+// bottom-right so the rounded clip never eats it.
 function RoleNail({ role }: { role: string }) {
   const c = ROLE_DOT[role] ?? '#94a3b8'
   return (
     <span
       aria-hidden
       title={ROLE_NAME[role] ?? role}
-      className="absolute left-0 top-0 z-[1] grid h-[15px] w-[15px] place-items-center rounded-br-lg rounded-tl-xl text-[9px] font-black leading-none text-white"
-      style={{ background: c }}
+      className="absolute left-0 top-0 z-[1] flex items-center justify-center text-[9px] font-black leading-none text-white"
+      style={{ width: 25, height: 20, paddingTop: 5, paddingLeft: 6, background: c }}
     >
       {role}
     </span>
@@ -1449,7 +1451,7 @@ function FantasyPitchChip({
     <button
       type="button"
       onClick={onSelect}
-      className={`relative flex min-h-[116px] min-w-0 flex-col items-center gap-1 rounded-xl border bg-glass-3 px-1 py-1.5 text-center shadow-sm transition-all ${
+      className={`relative flex min-h-[116px] min-w-0 flex-col items-center gap-1 overflow-hidden rounded-[16px] border bg-glass-3 px-1 py-1.5 text-center shadow-sm transition-all ${
         selected ? 'border-accent bg-accent/10 ring-2 ring-accent' : 'border-hairline'
       }`}
     >
