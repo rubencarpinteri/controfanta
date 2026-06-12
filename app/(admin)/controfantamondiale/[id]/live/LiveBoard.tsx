@@ -1289,18 +1289,18 @@ function PlayerCrest({ p, live, size }: { p: LiveSnapshotPlayer; live: boolean; 
 }
 
 // Role "nail" in the card's top-left corner — the role letter on its solid role
-// color. It's a plain block; the parent card's `overflow-hidden` + matching
-// border-radius clip its top-left to the SAME arc as the card, so it reads as
-// part of the corner, not a sticker on top. The letter is padded toward the
-// bottom-right so the rounded clip never eats it.
+// color. The parent card's `overflow-hidden` + matching border-radius clip its
+// top-left to the SAME arc as the card (so it reads as part of the corner), and
+// the nail's own rounded bottom-right gives a smooth inner edge. The letter is
+// centered into the visible area (nudged slightly off the clipped corner).
 function RoleNail({ role }: { role: string }) {
   const c = ROLE_DOT[role] ?? '#94a3b8'
   return (
     <span
       aria-hidden
       title={ROLE_NAME[role] ?? role}
-      className="absolute left-0 top-0 z-[1] flex items-center justify-center text-[9px] font-black leading-none text-white"
-      style={{ width: 25, height: 20, paddingTop: 5, paddingLeft: 6, background: c }}
+      className="absolute left-0 top-0 z-[1] flex items-center justify-center text-[10px] font-black leading-none text-white"
+      style={{ width: 26, height: 21, paddingTop: 4, paddingLeft: 5, background: c, borderRadius: '0 0 9px 0' }}
     >
       {role}
     </span>
