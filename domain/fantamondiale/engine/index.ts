@@ -223,11 +223,11 @@ export async function runRoundEngine(roundId: string, supabase: Supabase): Promi
     }
   }
 
-  // MVP per fixture = highest fantasy voto (raw_subtotal), not raw SportMonks
-  // rating. The MVP badge sits next to the voto and drives the MVP scoring
-  // bonus, so it must reward the best fantasy performer (a clean-sheet keeper
-  // or scorer can out-voto the top-rated player). Override the ingest-time flag
-  // here, kept in sync with the live snapshot. Ties break on lower player_id.
+  // MVP per fixture = highest BASE voto (voto_base, BEFORE football bonus/malus),
+  // not raw SportMonks rating and not the bonus-inclusive subtotal. Bonuses like
+  // the clean sheet are excluded so a 0-0 keeper can't steal the badge from a
+  // higher-rated outfielder. Override the ingest-time flag here, kept in sync
+  // with the live snapshot. Ties break on lower player_id.
   {
     const bestByMatch = new Map<string, number>()
     const mvpByMatch = new Map<string, string>()
@@ -237,10 +237,10 @@ export async function runRoundEngine(roundId: string, supabase: Supabase): Promi
       const cur = mvpByMatch.get(r.real_match_id)
       if (
         best == null ||
-        r.raw_subtotal > best ||
-        (r.raw_subtotal === best && cur != null && r.player_id < cur)
+        r.voto_base > best ||
+        (r.voto_base === best && cur != null && r.player_id < cur)
       ) {
-        bestByMatch.set(r.real_match_id, r.raw_subtotal)
+        bestByMatch.set(r.real_match_id, r.voto_base)
         mvpByMatch.set(r.real_match_id, r.player_id)
       }
     }

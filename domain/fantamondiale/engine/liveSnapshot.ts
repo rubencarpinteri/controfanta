@@ -554,13 +554,13 @@ export async function computeLiveRoundSnapshot(
     stateByPlayer.set(pid, played ? 'played' : matchFinal ? 'not_played' : 'pending')
   }
 
-  // ── MVP per fixture = highest fantasy voto (raw_subtotal) ───────────────
-  // The MVP badge sits next to the voto and drives the MVP scoring bonus, so it
-  // must reward the best *fantasy* performer — a clean-sheet keeper or a scorer
-  // can out-voto the top-rated player. We override the ingest-time flag (which
-  // is raw SportMonks rating only) using the computed subtotal. Ties break on
-  // lower player_id so the badge is stable across live ticks. Uses the base raw
-  // (pre per-lega immunità) so the MVP is competition-wide consistent.
+  // ── MVP per fixture = highest BASE voto (excluding bonuses) ─────────────
+  // The MVP is the best raw performer, measured by voto_base (the rating-derived
+  // voto BEFORE football bonus/malus). Bonuses like the clean sheet are excluded
+  // on purpose: a 0-0 keeper must not steal the badge from a higher-rated
+  // outfielder just because of the PI. Ties break on lower player_id so the
+  // badge is stable across live ticks. Uses the base raw (pre per-lega immunità)
+  // so the MVP is competition-wide consistent.
   const mvpByMatch = new Map<string, string>()
   const bestByMatch = new Map<string, number>()
   for (const [pid, raw] of rawByPlayer) {
@@ -570,10 +570,10 @@ export async function computeLiveRoundSnapshot(
     const cur = mvpByMatch.get(mid)
     if (
       best == null ||
-      raw.raw_subtotal > best ||
-      (raw.raw_subtotal === best && cur != null && pid < cur)
+      raw.voto_base > best ||
+      (raw.voto_base === best && cur != null && pid < cur)
     ) {
-      bestByMatch.set(mid, raw.raw_subtotal)
+      bestByMatch.set(mid, raw.voto_base)
       mvpByMatch.set(mid, pid)
     }
   }
