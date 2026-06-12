@@ -34,25 +34,18 @@ export default async function FMCompetitionLayout({
         </span>
       </div>
 
-      {showUserTabs && (
-        <>
-          {showAdminTabs && (
-            <p className="px-1 pt-2 text-[10px] font-semibold uppercase tracking-widest text-emerald-400">
-              Giocatore
-            </p>
-          )}
-          <FMUserTabNav id={id} />
-        </>
-      )}
-      {showAdminTabs && (
-        <>
-          {showUserTabs && (
-            <p className="px-1 pt-1 text-[10px] font-semibold uppercase tracking-widest text-indigo-300">
-              Admin
-            </p>
-          )}
-          <FMTabNav id={id} isSuperAdmin={ctx.isSuperAdmin} />
-        </>
+      {showUserTabs ? (
+        // Player + admin: one player nav with admin folded into an "Admin"
+        // dropdown after "Regole", so the admin bar no longer competes for
+        // attention while still one click from every admin surface.
+        <FMUserTabNav
+          id={id}
+          isSuperAdmin={ctx.isSuperAdmin}
+          showAdmin={showAdminTabs}
+        />
+      ) : (
+        // Pure admin (not iscritto): the full admin bar is the only nav.
+        showAdminTabs && <FMTabNav id={id} isSuperAdmin={ctx.isSuperAdmin} />
       )}
 
       {children}

@@ -159,14 +159,14 @@ export function LiveBoard({
 
       {/* ── Mobile: tab bar ── */}
       <div className="lg:hidden">
-        <div className="mb-3 flex rounded-lg border border-hairline bg-glass-1 p-0.5">
+        <div className="mb-3 flex gap-1 rounded-full border border-hairline bg-glass-1 p-1 shadow-sm">
           {(['partite', 'squadre', 'classifica'] as Tab[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 rounded-md py-1.5 text-[11px] font-semibold capitalize transition-colors ${
+              className={`flex-1 rounded-full py-2 text-[13px] font-semibold capitalize tracking-tight transition-all duration-200 ${
                 activeTab === tab
-                  ? 'bg-surface-2 text-ink-1 shadow-sm'
+                  ? 'bg-surface-2 text-ink-1 shadow-md shadow-black/5 ring-1 ring-black/[0.04] dark:ring-white/[0.06]'
                   : 'text-ink-4 hover:text-ink-2'
               }`}
             >
@@ -485,8 +485,8 @@ function MatchDetailPanel({
 
       {/* real-match lineups, split by nation */}
       {m.players.length > 0 ? (
-        <div className="p-3 space-y-3">
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="p-2 space-y-3 sm:p-3">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             {sideLineups.map(({ side, lineup }) => (
               <MatchSideLineup
                 key={side}
@@ -631,16 +631,16 @@ function RealPlayerRow({
 
   return (
     <div
-      className={`flex min-h-[45px] items-center gap-1.5 rounded-md border border-hairline bg-glass-2 px-2 py-1 ${
+      className={`flex min-h-[45px] items-center gap-1 rounded-md border border-hairline bg-glass-2 px-1.5 py-1 sm:gap-1.5 sm:px-2 ${
         muted ? 'opacity-60' : ''
-      } ${depth > 0 ? 'ml-3' : ''}`}
+      } ${depth > 0 ? 'ml-2 sm:ml-3' : ''}`}
     >
       {depth > 0 && <span className="text-[10px] text-emerald-500 dark:text-emerald-400">↳</span>}
       <span className={`text-[10px] font-bold ${ROLE_COLOR[p.role] ?? 'text-ink-4'}`}>{p.role}</span>
 
       <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-1.5">
-          <span className="truncate text-[13.5px] font-semibold text-ink-1" title={p.name}>
+        <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+          <span className="truncate text-[12.5px] font-semibold text-ink-1 sm:text-[13.5px]" title={p.name}>
             {shortPlayerName(p.name)}
           </span>
           {p.is_mvp && (
@@ -670,7 +670,7 @@ function RealPlayerRow({
         </span>
       </span>
 
-      <span className="shrink-0 w-11 overflow-hidden rounded-md border border-hairline bg-surface-2 text-center tabular-nums shadow-sm">
+      <span className="shrink-0 w-9 overflow-hidden rounded-md border border-hairline bg-surface-2 text-center tabular-nums shadow-sm sm:w-11">
         {v.kind === 'score' ? (
           <>
             <span className="block border-b border-hairline px-1 py-0.5 text-[11px] font-bold leading-none text-ink-2">
@@ -1058,21 +1058,48 @@ function OwnerPills({
         return (
           <span
             key={`${owner.team_name}-${owner.status}-${i}`}
-            className={`inline-flex ${compact ? 'max-w-[118px] px-1.5 py-px text-[9px]' : 'max-w-[180px] px-2 py-0.5 text-[10px]'} items-center gap-1 rounded-full border font-semibold ${
+            className={`inline-flex ${compact ? 'max-w-[96px] px-1.5 py-px text-[9px]' : 'max-w-[180px] px-2 py-0.5 text-[10px]'} items-center gap-1 rounded-full border font-semibold ${
               isStarter
                 ? 'border-indigo-400/25 bg-indigo-400/12 text-indigo-500 dark:text-indigo-300'
                 : 'border-hairline bg-ink-5/8 text-ink-5'
             }`}
-            title={`${owner.team_name} (${isStarter ? 'titolare' : 'panchina'})`}
+            title={`${owner.team_name} — ${isStarter ? 'titolare' : 'panchina'}`}
           >
             <span className="truncate">{owner.team_name}</span>
-            <span className={isStarter ? 'text-indigo-500/80 dark:text-indigo-300/80' : 'text-ink-5'}>
-              {isStarter ? 'tit' : 'pan'}
-            </span>
+            {isStarter ? (
+              <PitchGlyph className="shrink-0 text-indigo-500/80 dark:text-indigo-300/80" />
+            ) : (
+              <BenchGlyph className="shrink-0 text-ink-5" />
+            )}
           </span>
         )
       })}
     </div>
+  )
+}
+
+// Titolare → a tiny football pitch; panchina → a bench. Replaces the old
+// "tit"/"pan" text so a glance reads the role without parsing abbreviations.
+function PitchGlyph({ className = '' }: { className?: string }) {
+  return (
+    <svg width="11" height="9" viewBox="0 0 14 11" className={className} aria-label="titolare" role="img">
+      <rect x="0.6" y="0.6" width="12.8" height="9.8" rx="1.4" fill="none" stroke="currentColor" strokeWidth="1" />
+      <line x1="7" y1="0.6" x2="7" y2="10.4" stroke="currentColor" strokeWidth="1" />
+      <circle cx="7" cy="5.5" r="1.7" fill="none" stroke="currentColor" strokeWidth="1" />
+    </svg>
+  )
+}
+
+function BenchGlyph({ className = '' }: { className?: string }) {
+  return (
+    <svg width="11" height="9" viewBox="0 0 14 11" className={className} aria-label="panchina" role="img">
+      {/* seat + backrest */}
+      <line x1="1.5" y1="4" x2="12.5" y2="4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <line x1="1.5" y1="6.2" x2="12.5" y2="6.2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      {/* legs */}
+      <line x1="3" y1="6.2" x2="3" y2="9.8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <line x1="11" y1="6.2" x2="11" y2="9.8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
   )
 }
 

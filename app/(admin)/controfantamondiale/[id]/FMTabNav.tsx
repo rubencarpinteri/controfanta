@@ -7,7 +7,9 @@ import { usePathname } from 'next/navigation'
 // `platform: true` tabs edit the shared World Cup template (fixtures, the
 // player/coach pool) and are super-admin only. The rest are the per-league
 // fantasy surfaces a league_admin owns.
-const TABS: { label: string; suffix: string; platform?: boolean }[] = [
+export type AdminTab = { label: string; suffix: string; platform?: boolean }
+
+export const ADMIN_TABS: AdminTab[] = [
   { label: 'Overview',   suffix: '' },
   { label: 'Fasi fantasy', suffix: '/phases' },
   { label: 'Turni',      suffix: '/rounds', platform: true },
@@ -23,7 +25,7 @@ const TABS: { label: string; suffix: string; platform?: boolean }[] = [
 export function FMTabNav({ id, isSuperAdmin }: { id: string; isSuperAdmin: boolean }) {
   const pathname = usePathname()
   const base = `/controfantamondiale/${id}`
-  const tabs = TABS.filter((t) => isSuperAdmin || !t.platform)
+  const tabs = ADMIN_TABS.filter((t) => isSuperAdmin || !t.platform)
 
   return (
     <div className="sticky top-0 z-10 -mx-4 mb-5 bg-surface-0/80 px-4 backdrop-blur-xl md:-mx-8 md:px-8">
