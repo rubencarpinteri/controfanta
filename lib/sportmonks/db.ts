@@ -424,7 +424,12 @@ export async function upsertFMPlayerStats(
     away_score: parsed.away_score,
     result: parsed.result,
     status: matchStatus,
-    minute: parsed.length_minutes > 0 ? parsed.length_minutes : null,
+    // Live elapsed minute from the ticking period. When finished, freeze at the
+    // match length (90/120). Stays null while scheduled or at half-time. Never
+    // use length_minutes as the live value — that is the duration, not the clock.
+    minute: matchStatus === 'finished'
+      ? (parsed.length_minutes > 0 ? parsed.length_minutes : null)
+      : parsed.live_minute,
   }).eq('id', match.id)
 
   // 3. Resolve fm_player UUIDs by sportmonks_player_id (one query)

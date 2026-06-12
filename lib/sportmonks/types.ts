@@ -180,7 +180,24 @@ export type SMFixture = {
   lineups?: SMLineupEntry[]
   events?: SMEvent[]
   statistics?: unknown[]
+  periods?: SMPeriod[]
   state?: { id: number; state: string; name: string; short_name?: string }
+}
+
+export type SMPeriod = {
+  id: number
+  fixture_id?: number
+  type_id?: number
+  /** True for the period that is currently running. */
+  ticking?: boolean | null
+  /** Wall-clock seconds elapsed in this period (SportMonks counter). */
+  counter?: number | null
+  /** Elapsed minutes within this period (e.g. 0–45 in 1st half). */
+  minutes?: number | null
+  /** Minutes added on as stoppage time. */
+  time_added?: number | null
+  /** Period sort order: 1 = 1st half, 2 = 2nd half, etc. */
+  sort_order?: number | null
 }
 
 export type SMSquadEntry = {
@@ -249,6 +266,8 @@ export type ParsedFixture = {
   state_id: number
   state_name: string | null
   length_minutes: number
+  /** Live elapsed match minute from the ticking period; null when not running. */
+  live_minute: number | null
   home_score: number | null
   away_score: number | null
   /**

@@ -27,8 +27,29 @@ import type {
   SMEvent,
   SMFixture,
   SMLineupEntry,
+  SMPeriod,
   SMStatDetail,
 } from './types'
+
+// ---------- live minute ----------
+
+/**
+ * Current elapsed match minute, derived from the ticking period.
+ *
+ * SportMonks exposes a `periods` array; the period with `ticking: true` is the
+ * one currently running and its `minutes` field is the live match minute
+ * (already accumulated across halves, e.g. 67 in the 2nd half). Returns null
+ * when no period is ticking (pre-match, half-time, or finished) — callers
+ * should not fall back to fixture.length, which is the match *duration* (90)
+ * and was the cause of the clock being stuck at 90'.
+ */
+function liveMinuteFromPeriods(periods: SMPeriod[] | undefined): number | null {
+  if (!periods?.length) return null
+  const ticking = periods.find((p) => p.ticking === true)
+  if (!ticking) return null
+  const m = ticking.minutes
+  return typeof m === 'number' && Number.isFinite(m) ? m : null
+}
 
 // ---------- stat helpers ----------
 
@@ -324,6 +345,7 @@ export function parseFixture(fixture: SMFixture): ParsedFixture {
     state_id: fixture.state_id,
     state_name: fixture.state?.name ?? null,
     length_minutes: fixture.length,
+    live_minute: liveMinuteFromPeriods(fixture.periods),
     home_score: homeScore,
     away_score: awayScore,
     result,
