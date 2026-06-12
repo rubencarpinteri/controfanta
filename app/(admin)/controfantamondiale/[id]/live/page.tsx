@@ -16,7 +16,10 @@ function needsLiveSnapshotShapeRefresh(snapshot: LiveRoundSnapshot | null): bool
             !Object.hasOwn(player, 'display_voto_total') ||
             !Object.hasOwn(player, 'clean_sheet_bonus') ||
             !Object.hasOwn(player, 'yellow_cards') ||
-            !Object.hasOwn(player, 'immunita_active'),
+            !Object.hasOwn(player, 'immunita_active') ||
+            !Object.hasOwn(player, 'sub_for') ||
+            !Object.hasOwn(player, 'replaced_by') ||
+            !Object.hasOwn(player, 'replacement_pending'),
         ),
       ),
   )

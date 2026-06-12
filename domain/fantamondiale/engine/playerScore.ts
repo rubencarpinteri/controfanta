@@ -95,7 +95,13 @@ export function scorePlayerRaw(
   const decisive = hasDecisiveEvent(stats)
   const playedEnough = stats.minutes_played >= engine.minutes_min_for_voto
 
-  if (playedEnough) {
+  if (playedEnough || decisive) {
+    // A player who played the minutes gate OR was rescued by a decisive event
+    // (goal/assist/pen) is scored. In BOTH cases we prefer the SportMonks
+    // rating-derived voto_base when SportMonks published one — a sub who comes
+    // on and scores keeps his real rating, not a flat base_score. We fall back
+    // to base_score only when SportMonks gives no rating (common for very short
+    // cameos that still produced a decisive event).
     if (stats.rating != null) {
       const slope = deriveSlope(engine)
       const raw = engine.pivot_vote + slope * (stats.rating - engine.pivot_rating)
@@ -103,8 +109,6 @@ export function scorePlayerRaw(
     } else {
       voto_base = engine.base_score
     }
-  } else if (decisive) {
-    voto_base = engine.base_score
   }
   // else: pure s.v. — voto_base stays null, no scoring.
 

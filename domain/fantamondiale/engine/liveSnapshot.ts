@@ -62,6 +62,21 @@ export type LiveSnapshotPlayer = {
   status: PlayState
   /** Is this player in the fielded-now set (i.e. counts toward live_total)? */
   counts: boolean
+  /**
+   * Fantasy-substitution linkage (for the campetto's "who replaced whom" badges):
+   *  - on a fielded sub (via === 'sub'): the non-playing titolare he came on for.
+   *  - on a non-playing titolare who was replaced: the bench sub now in his slot.
+   * Both null when not part of a substitution (or a starter played short).
+   */
+  sub_for: { player_id: string; name: string } | null
+  replaced_by: { player_id: string; name: string } | null
+  /**
+   * For a non-playing titolare with no replacement yet: true if a same-role
+   * bench candidate's match is still upcoming (he may still come on), false if
+   * every eligible candidate's match is over (the team plays short for good).
+   * Null when not a played-short starter.
+   */
+  replacement_pending: boolean | null
   rating: number | null
   /** Calibrated fantasy voto before football bonus/malus and ownership effects. */
   voto_base: number | null
@@ -694,6 +709,14 @@ export async function computeLiveRoundSnapshot(
   // Build the per-team board (sorted by live_total desc).
   // ============================================================
   const fieldedNowVia = new Map<string, Map<string, 'starter' | 'sub'>>()
+  // subForByTeam:    sub player_id     → the non-playing titolare he replaced.
+  // replacedByByTeam: titolare player_id → the bench sub now filling his slot.
+  // Both drive the campetto's "who replaced whom" badges. A titolare who played
+  // short (no eligible same-role sub) appears in neither map.
+  const subForByTeam = new Map<string, Map<string, string>>()
+  const replacedByByTeam = new Map<string, Map<string, string>>()
+  // Played-short starter ids whose slot may still be filled by a pending sub.
+  const pendingShortByTeam = new Map<string, Set<string>>()
   // Recompute the "now" fielded with via info for display.
   for (const lineup of lineups) {
     const startersNow: SubStarter[] = []
@@ -719,11 +742,42 @@ export async function computeLiveRoundSnapshot(
       lineup.fantasy_team_id,
       new Map(now.fielded.map((f) => [f.player_id, f.via])),
     )
+    const subFor = new Map<string, string>()
+    const replacedBy = new Map<string, string>()
+    for (const f of now.fielded) {
+      if (f.via === 'sub' && f.replaced_player_id) {
+        subFor.set(f.player_id, f.replaced_player_id)
+        replacedBy.set(f.replaced_player_id, f.player_id)
+      }
+    }
+    subForByTeam.set(lineup.fantasy_team_id, subFor)
+    replacedByByTeam.set(lineup.fantasy_team_id, replacedBy)
+
+    // For each unfilled slot, is a same-role bench candidate still to play? If
+    // so the substitution is merely PENDING (he'll come on once his match runs);
+    // if every same-role bench player's match is over, the team plays short.
+    const usedSet = new Set(now.benchUsed)
+    const pending = new Set<string>()
+    for (const slot of now.emptySlots) {
+      const hasPendingCandidate = benchNow.some(
+        (b) => b.role === slot.role && !usedSet.has(b.player_id) && stateOf(b.player_id) === 'pending',
+      )
+      if (hasPendingCandidate) pending.add(slot.starter_player_id)
+    }
+    pendingShortByTeam.set(lineup.fantasy_team_id, pending)
   }
 
   const teamsOut: LiveSnapshotTeam[] = (teams ?? []).map((team) => {
     const lineup = lineupByTeam.get(team.id)
     const fieldedVia = fieldedNowVia.get(team.id) ?? new Map()
+    const subFor = subForByTeam.get(team.id) ?? new Map<string, string>()
+    const replacedBy = replacedByByTeam.get(team.id) ?? new Map<string, string>()
+    const pendingShort = pendingShortByTeam.get(team.id) ?? new Set<string>()
+    const playerRef = (pid: string | undefined): { player_id: string; name: string } | null => {
+      if (!pid) return null
+      const pl = playerById.get(pid)
+      return pl ? { player_id: pid, name: pl.name } : null
+    }
     const coach = liveCoach(coachIdByTeam.get(team.id))
 
     const players: LiveSnapshotPlayer[] = []
@@ -865,6 +919,12 @@ export async function computeLiveRoundSnapshot(
         national_team: (player.fm_national_team as LiveTeamRef | null) ?? null,
         status: stateOf(lp.player_id),
         counts,
+        sub_for: playerRef(subFor.get(lp.player_id)),
+        replaced_by: playerRef(replacedBy.get(lp.player_id)),
+        replacement_pending:
+          lp.is_starter && !counts && !replacedBy.has(lp.player_id)
+            ? pendingShort.has(lp.player_id)
+            : null,
         rating: stats?.rating != null ? Number(stats.rating) : null,
         voto_base: raw?.voto_base ?? null,
         display_voto_base: displayVotoBase,

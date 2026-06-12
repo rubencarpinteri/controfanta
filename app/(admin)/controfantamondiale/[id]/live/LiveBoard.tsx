@@ -1266,12 +1266,15 @@ function TeamListBody({
   liveField: Map<string, LiveFieldState>
   ownership: Record<string, LiveOwnershipEntry>
 }) {
-  const fielded = team.players.filter((p) => p.counts)
-  const bench = team.players.filter((p) => !p.counts)
+  // Role groups keep both the fielded players AND any non-playing titolare of
+  // that role (he stays among the titolari, marked "Non ha giocato" by the row —
+  // never demoted to the bench). Bench = true reserves only.
+  const inXi = team.players.filter((p) => p.counts || (p.via === 'starter' && !p.counts))
+  const bench = team.players.filter((p) => !p.counts && p.via === 'bench')
   return (
     <>
       {ROLE_ORDER.map((role) => {
-        const rolePlayers = fielded.filter((p) => p.role === role)
+        const rolePlayers = inXi.filter((p) => p.role === role)
         if (!rolePlayers.length) return null
         return (
           <div key={role} className="space-y-1">
@@ -1318,11 +1321,22 @@ function FantasyPitch({
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const fielded = team.players.filter((p) => p.counts)
-  const bench = team.players.filter((p) => !p.counts)
+  // Bench = true reserves only. A non-playing titolare is NOT demoted here — he
+  // stays "up" as a ghost slot on the pitch (or is replaced by a sub who's on).
+  const bench = team.players.filter((p) => !p.counts && p.via === 'bench')
+  // A titolare who didn't play and had no eligible same-role sub leaves a hole.
+  // We render an explicit ghost slot in his role row so the gap is never silent.
+  const playedShort = team.players.filter((p) => !p.counts && p.via === 'starter' && !p.replaced_by)
   // GK on top, attack at the bottom. Each role is its own grid row so N players
   // always lay out as N columns (a 4-man midfield never wraps to 3+1).
+  type PitchSlot =
+    | { kind: 'player'; p: LiveSnapshotPlayer }
+    | { kind: 'ghost'; p: LiveSnapshotPlayer }
   const rows = (['P', 'D', 'C', 'A'] as const)
-    .map((role) => sortByRole(fielded.filter((p) => p.role === role)))
+    .map((role): PitchSlot[] => [
+      ...sortByRole(fielded.filter((p) => p.role === role)).map((p): PitchSlot => ({ kind: 'player', p })),
+      ...playedShort.filter((p) => p.role === role).map((p): PitchSlot => ({ kind: 'ghost', p })),
+    ])
     .filter((r) => r.length > 0)
   const selected = team.players.find((p) => p.player_id === selectedId) ?? null
   const toggle = (id: string) => setSelectedId((cur) => (cur === id ? null : id))
@@ -1347,16 +1361,20 @@ function FantasyPitch({
             className="relative z-[1] mx-auto grid w-full gap-1.5"
             style={{ gridTemplateColumns: `repeat(${row.length}, minmax(0,1fr))`, maxWidth: row.length * 88 }}
           >
-            {row.map((p) => (
-              <FantasyPitchChip
-                key={p.player_id}
-                p={p}
-                entry={ownership[p.player_id]}
-                liveState={liveField.get(p.player_id)}
-                selected={p.player_id === selectedId}
-                onSelect={() => toggle(p.player_id)}
-              />
-            ))}
+            {row.map((slot) =>
+              slot.kind === 'ghost' ? (
+                <GhostPitchSlot key={slot.p.player_id} p={slot.p} />
+              ) : (
+                <FantasyPitchChip
+                  key={slot.p.player_id}
+                  p={slot.p}
+                  entry={ownership[slot.p.player_id]}
+                  liveState={liveField.get(slot.p.player_id)}
+                  selected={slot.p.player_id === selectedId}
+                  onSelect={() => toggle(slot.p.player_id)}
+                />
+              ),
+            )}
           </div>
         ))}
       </div>
@@ -1573,6 +1591,43 @@ function OwnershipMini({ owners, isMvp = false }: { owners: LiveOwnerRef[]; isMv
   )
 }
 
+// Empty slot on the pitch: a titolare who didn't play and isn't (yet) replaced.
+// Keeps his flag + name (struck through) so it's clearly HIS slot, with a big ✕
+// over the crest and a glowing "Non ha giocato" badge. If a same-role sub is
+// still to play the slot may yet fill (pending); otherwise the team plays short.
+function GhostPitchSlot({ p }: { p: LiveSnapshotPlayer }) {
+  const pending = p.replacement_pending === true
+  return (
+    <div
+      title={
+        pending
+          ? `${p.name} non ha giocato — in attesa di un subentrante di ruolo`
+          : `${p.name} non ha giocato — nessun subentrante di ruolo, si gioca in inferiorità`
+      }
+      className="relative flex min-h-[116px] min-w-0 flex-col items-center gap-1 overflow-hidden rounded-[12px] border border-dashed border-white/40 bg-black/15 px-1 py-1.5 text-center"
+    >
+      <RoleNail role={p.role} />
+      <div className="relative">
+        <span className="opacity-45 grayscale">
+          <PlayerCrest p={p} live={false} size={28} />
+        </span>
+        <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[22px] font-black leading-none text-rose-300 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">
+          ✕
+        </span>
+      </div>
+      <span className="w-full truncate text-[11px] font-bold leading-tight text-white/75 line-through decoration-white/45">
+        {shortPlayerName(p.name)}
+      </span>
+      <span className="mt-auto rounded bg-rose-400/25 px-1.5 py-0.5 text-[7.5px] font-bold uppercase tracking-wide text-rose-100 shadow-[0_0_8px_1px] shadow-rose-400/50">
+        Non ha giocato
+      </span>
+      {pending && (
+        <span className="text-[7.5px] font-semibold leading-tight text-amber-200/90">in attesa subentro</span>
+      )}
+    </div>
+  )
+}
+
 function FantasyPitchChip({
   p,
   entry,
@@ -1606,9 +1661,19 @@ function FantasyPitchChip({
       <span className="flex w-full items-center justify-center gap-0.5">
         <span className="truncate text-[11.5px] font-bold leading-tight text-ink-1">{shortPlayerName(p.name)}</span>
         {p.via === 'sub' && (
-          <span className="shrink-0 rounded bg-emerald-400/15 px-0.5 text-[7.5px] font-bold uppercase text-emerald-600 dark:text-emerald-300">sub</span>
+          <span
+            className="shrink-0 rounded bg-emerald-400/15 px-0.5 text-[7.5px] font-bold uppercase text-emerald-600 dark:text-emerald-300"
+            title={p.sub_for ? `Subentrato per ${p.sub_for.name}` : 'Subentrato'}
+          >
+            ↑ sub
+          </span>
         )}
       </span>
+      {p.via === 'sub' && p.sub_for && (
+        <span className="block w-full truncate text-center text-[8px] font-semibold leading-tight text-emerald-600 dark:text-emerald-400" title={`Subentrato per ${p.sub_for.name}`}>
+          per {shortPlayerName(p.sub_for.name)}
+        </span>
+      )}
 
       {/* voto base / total */}
       <span className="block w-full max-w-[46px] overflow-hidden rounded-md border border-hairline bg-surface-2 tabular-nums">
@@ -1948,11 +2013,33 @@ function FantasyPlayerRow({
       />
 
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           <span className="truncate text-[13.5px] font-semibold text-ink-1">{p.name}</span>
           {p.via === 'sub' && (
-            <span className="shrink-0 rounded bg-emerald-400/15 px-1 py-px text-[8px] font-bold uppercase text-emerald-300">
-              sub
+            <span
+              className="shrink-0 rounded bg-emerald-400/15 px-1 py-px text-[8px] font-bold uppercase text-emerald-600 dark:text-emerald-300"
+              title={p.sub_for ? `Subentrato per ${p.sub_for.name}` : 'Subentrato'}
+            >
+              ↑ sub{p.sub_for ? ` · ${shortPlayerName(p.sub_for.name)}` : ''}
+            </span>
+          )}
+          {p.via === 'starter' && !p.counts && (
+            <span
+              className="shrink-0 rounded bg-rose-400/15 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-rose-600 dark:text-rose-300"
+              title={
+                p.replaced_by
+                  ? `Non ha giocato — sostituito da ${p.replaced_by.name}`
+                  : p.replacement_pending
+                    ? 'Non ha giocato — in attesa di un subentrante di ruolo'
+                    : 'Non ha giocato — nessun subentrante di ruolo, si gioca in inferiorità'
+              }
+            >
+              ✕ Non ha giocato
+              {p.replaced_by
+                ? ` → ${shortPlayerName(p.replaced_by.name)}`
+                : p.replacement_pending
+                  ? ' · in attesa subentro'
+                  : ' · in inferiorità'}
             </span>
           )}
           <BonusMalusIcons p={p} />
