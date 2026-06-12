@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import type { Route } from 'next'
 import { usePathname } from 'next/navigation'
@@ -102,7 +103,10 @@ function AdminMenu({
   tabs: AdminTab[]
 }) {
   const [open, setOpen] = useState(false)
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null)
   const ref = useRef<HTMLDivElement>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   // Active when we're on any admin surface that isn't one of the player tabs.
   const activeTab = tabs.find((t) =>
@@ -110,18 +114,38 @@ function AdminMenu({
   )
   const isActive = Boolean(activeTab)
 
+  // Position the portalled menu under the button. Recomputed on open so it
+  // tracks the button even though the menu renders at the document root
+  // (the tab row is overflow-x-auto, which would otherwise clip an absolutely
+  // positioned dropdown on both axes).
   useEffect(() => {
     if (!open) return
+    function place() {
+      const r = btnRef.current?.getBoundingClientRect()
+      if (r) setMenuPos({ top: r.bottom + 4, right: window.innerWidth - r.right })
+    }
+    place()
     function onDown(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      const t = e.target as Node
+      if (
+        ref.current && !ref.current.contains(t) &&
+        (!menuRef.current || !menuRef.current.contains(t))
+      ) setOpen(false)
     }
     document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
+    window.addEventListener('resize', place)
+    window.addEventListener('scroll', place, true)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      window.removeEventListener('resize', place)
+      window.removeEventListener('scroll', place, true)
+    }
   }, [open])
 
   return (
     <div ref={ref} className="relative shrink-0">
       <button
+        ref={btnRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={`relative inline-flex items-center gap-1 px-3.5 pb-2.5 pt-1 text-[12px] font-medium transition-colors ${
@@ -144,8 +168,12 @@ function AdminMenu({
         )}
       </button>
 
-      {open && (
-        <div className="absolute right-0 top-full z-20 mt-1 min-w-[180px] overflow-hidden rounded-xl border border-hairline bg-surface-1 py-1 shadow-xl shadow-black/10 backdrop-blur-xl">
+      {open && menuPos && typeof document !== 'undefined' && createPortal(
+        <div
+          ref={menuRef}
+          style={{ position: 'fixed', top: menuPos.top, right: menuPos.right }}
+          className="z-50 min-w-[180px] overflow-hidden rounded-xl border border-hairline bg-surface-1 py-1 shadow-xl shadow-black/10 backdrop-blur-xl"
+        >
           <p className="px-3 pb-1 pt-1.5 text-[9px] font-bold uppercase tracking-widest text-indigo-300/80">
             Amministrazione
           </p>
@@ -172,7 +200,8 @@ function AdminMenu({
               </Link>
             )
           })}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )

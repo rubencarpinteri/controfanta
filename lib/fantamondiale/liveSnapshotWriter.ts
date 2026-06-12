@@ -34,16 +34,22 @@ export async function writeLiveSnapshots(db: DB): Promise<LiveSnapshotWriteSumma
     errors: [],
   }
 
-  const nowIso = new Date().toISOString()
+  const now = new Date()
+  const nowIso = now.toISOString()
+  // Matches that flipped to finished within this window still trigger one more
+  // recompute, so the final snapshot reflects the finished state. Without this,
+  // the tick that marks a round's last live match finished excludes that round
+  // from the pass below (it's no longer scheduled/in_progress), leaving a stale
+  // snapshot frozen at e.g. "90+6 in_progress" forever.
+  const recentlyFinishedIso = new Date(now.getTime() - 20 * 60 * 1000).toISOString()
 
-  // Rounds with ≥1 match that has kicked off and isn't finished/cancelled.
-  // (After every match finishes, the round drops out and its last snapshot
-  // simply persists until the finalization engine runs.)
+  // Rounds with ≥1 match that has kicked off and isn't finished/cancelled,
+  // PLUS rounds whose last live match just finished (caught via updated_at).
   const { data: liveMatches, error: matchErr } = await db
     .from('fm_real_match')
-    .select('scoring_round_id')
+    .select('scoring_round_id, status, updated_at')
     .lte('kickoff_at', nowIso)
-    .in('status', ['scheduled', 'in_progress'])
+    .or(`status.in.(scheduled,in_progress),and(status.eq.finished,updated_at.gte.${recentlyFinishedIso})`)
   if (matchErr) {
     summary.errors.push(`live-match query: ${matchErr.message}`)
     return summary
