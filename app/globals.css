@@ -459,6 +459,46 @@ table {
   to   { opacity: 1; transform: none; }
 }
 
+/* Live rating-change pulse — a subtle electro-wave that glides left→right
+   across a player box for ~15s after his fetched voto changes. Green = rating
+   went up, red = went down. A soft luminous band (thin bright core) sweeps via
+   a GPU-composited transform for fluid 120Hz motion, with a faint inset ring
+   tinting the card. Kept deliberately understated so it never hurts legibility. */
+.rating-wave {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  border-radius: inherit;
+  overflow: hidden;
+}
+.rating-wave::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 55%;
+  background: linear-gradient(90deg, transparent 0%, var(--rw-soft) 42%, var(--rw-core) 50%, var(--rw-soft) 58%, transparent 100%);
+  transform: translate3d(-110%, 0, 0);
+  animation: ratingWave 1.9s cubic-bezier(0.45, 0, 0.2, 1) infinite;
+  will-change: transform;
+}
+@keyframes ratingWave {
+  from { transform: translate3d(-110%, 0, 0); }
+  to   { transform: translate3d(190%, 0, 0); }
+}
+.rating-wave-up {
+  --rw-soft: rgba(16, 185, 129, 0.1);
+  --rw-core: rgba(52, 211, 153, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.32);
+}
+.rating-wave-down {
+  --rw-soft: rgba(244, 63, 94, 0.1);
+  --rw-core: rgba(251, 113, 133, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(244, 63, 94, 0.32);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }

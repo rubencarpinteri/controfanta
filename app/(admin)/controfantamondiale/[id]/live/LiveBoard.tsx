@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import Image from 'next/image'
 import { TeamCrest } from '@/components/fm/TeamCrest'
 import { CoachTierBadge } from '@/components/fm/CoachTierBadge'
@@ -15,17 +15,100 @@ import type {
 } from '@/domain/fantamondiale/engine/liveSnapshot'
 
 const POLL_MS = 35_000
+const RATING_FLASH_MS = 15_000
 
-const ROLE_COLOR: Record<string, string> = {
-  P: 'text-amber-400',
-  D: 'text-emerald-400',
-  C: 'text-indigo-400',
-  A: 'text-rose-400',
+// ─────────────────────────────────────────────
+// Rating-change flash — when a player's fetched voto moves between snapshots,
+// his box gets a wave-gradient pulse for 15s (green up / red down). The board
+// tracks the previous value per player and publishes the active flashes via
+// context, so any player box can opt in by player_id.
+// ─────────────────────────────────────────────
+
+type FlashDir = 'up' | 'down'
+const RatingFlashContext = createContext<Map<string, FlashDir>>(new Map())
+
+function useRatingFlash(snapshot: LiveRoundSnapshot | null): Map<string, FlashDir> {
+  const prev = useRef<Map<string, number>>(new Map())
+  const seeded = useRef(false)
+  const timers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  const [flashes, setFlashes] = useState<Map<string, FlashDir>>(new Map())
+
+  useEffect(() => {
+    if (!snapshot) return
+    const current = new Map<string, number>()
+    for (const t of snapshot.teams) {
+      for (const p of t.players) {
+        const v = p.display_voto_base ?? p.voto_base ?? p.rating
+        if (v != null) current.set(p.player_id, Number(v))
+      }
+    }
+    for (const m of snapshot.matches) {
+      for (const p of m.players) {
+        if (current.has(p.player_id)) continue
+        const v = p.display_voto_base ?? p.voto_base ?? p.voto
+        if (v != null) current.set(p.player_id, Number(v))
+      }
+    }
+
+    // First snapshot only seeds the baseline — never flash on initial mount.
+    if (!seeded.current) {
+      prev.current = current
+      seeded.current = true
+      return
+    }
+
+    const changed: Array<[string, FlashDir]> = []
+    for (const [id, v] of current) {
+      const old = prev.current.get(id)
+      if (old != null && Math.abs(v - old) > 0.001) changed.push([id, v > old ? 'up' : 'down'])
+      prev.current.set(id, v)
+    }
+    if (!changed.length) return
+
+    setFlashes((cur) => {
+      const next = new Map(cur)
+      for (const [id, dir] of changed) next.set(id, dir)
+      return next
+    })
+    for (const [id, dir] of changed) {
+      const existing = timers.current.get(id)
+      if (existing) clearTimeout(existing)
+      void dir
+      const handle = setTimeout(() => {
+        setFlashes((cur) => {
+          const next = new Map(cur)
+          next.delete(id)
+          return next
+        })
+        timers.current.delete(id)
+      }, RATING_FLASH_MS)
+      timers.current.set(id, handle)
+    }
+  }, [snapshot])
+
+  useEffect(() => {
+    const map = timers.current
+    return () => {
+      for (const h of map.values()) clearTimeout(h)
+    }
+  }, [])
+
+  return flashes
 }
+
+function useFlash(playerId: string): FlashDir | undefined {
+  return useContext(RatingFlashContext).get(playerId)
+}
+
+// The sweeping pixelated overlay. The parent box must be `relative
+// overflow-hidden` so the band is clipped to the card's rounded corners.
+function RatingWave({ dir }: { dir: FlashDir }) {
+  return <span aria-hidden className={`rating-wave ${dir === 'up' ? 'rating-wave-up' : 'rating-wave-down'}`} />
+}
+
 const ROLE_ORDER = ['P', 'D', 'C', 'A'] as const
 
-// Solid role colors — now used for the thin card outline (kept in sync with
-// ROLE_COLOR). Conveys the role at a glance without a dot on the flag.
+// Solid role colors — drive the corner role "nail" tag on every player box.
 const ROLE_DOT: Record<string, string> = {
   P: '#f59e0b',
   D: '#34d399',
@@ -210,6 +293,7 @@ export function LiveBoard({
   )
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(myTeamId)
   const timer = useRef<ReturnType<typeof setInterval> | null>(null)
+  const flashes = useRatingFlash(snapshot)
 
   useEffect(() => {
     let cancelled = false
@@ -274,6 +358,7 @@ export function LiveBoard({
   const liveField = buildLiveFieldMap(snapshot.matches)
 
   return (
+    <RatingFlashContext.Provider value={flashes}>
     <div className="flex flex-col gap-3">
       {/* status bar */}
       <div className="flex items-center gap-2 text-[11px] text-ink-4">
@@ -377,6 +462,7 @@ export function LiveBoard({
         )}
       </div>
     </div>
+    </RatingFlashContext.Provider>
   )
 }
 
@@ -406,7 +492,7 @@ function MatchListPanel({
               m.match_id === selectedMatchId
                 ? 'border-indigo-500/40 bg-indigo-500/10'
                 : 'border-hairline bg-glass-1'
-            }`}
+            } ${m.status === 'in_progress' ? 'ring-1 ring-inset ring-lime-400/80' : ''}`}
           >
             <MatchChip match={m} />
           </button>
@@ -426,7 +512,7 @@ function MatchListPanel({
           onClick={() => onSelect(m.match_id)}
           className={`w-full border-t border-hairline px-2.5 py-2 text-left transition-colors hover:bg-glass-2 ${
             m.match_id === selectedMatchId ? 'bg-indigo-500/8' : ''
-          }`}
+          } ${m.status === 'in_progress' ? 'ring-1 ring-inset ring-lime-400/80' : ''}`}
         >
           <MatchChip match={m} selected={m.match_id === selectedMatchId} />
         </button>
@@ -467,7 +553,11 @@ function MatchChip({ match: m, selected = false }: { match: LiveSnapshotMatch; s
           </span>
         </div>
 
-        <span className="text-[14px] font-black tabular-nums text-ink-1">
+        <span
+          className={`text-[14px] font-black tabular-nums ${
+            m.status === 'in_progress' ? 'text-emerald-600 dark:text-emerald-400' : 'text-ink-1'
+          }`}
+        >
           {m.status !== 'scheduled' ? `${m.home_score ?? 0}–${m.away_score ?? 0}` : '–'}
         </span>
 
@@ -657,7 +747,7 @@ function MatchDetailPanel({
       {/* real-match lineups, split by nation */}
       {m.players.length > 0 ? (
         <div className="p-2 space-y-3 sm:p-3">
-          <div className="grid grid-cols-2 gap-2 sm:gap-4">
+          <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2 sm:gap-4">
             {sideLineups.map(({ side, lineup }) => (
               <MatchSideLineup
                 key={side}
@@ -727,8 +817,8 @@ function MatchSideLineup({
   const { xi, bench } = lineup
 
   return (
-    <div className="grid h-full grid-rows-[1fr_auto] gap-1.5">
-      <div className="space-y-1">
+    <div className="grid h-full min-w-0 grid-rows-[1fr_auto] gap-1.5">
+      <div className="min-w-0 space-y-1">
         {xi.map(({ p, depth }) => (
           <RealPlayerRow key={p.player_id} p={p} matchStatus={matchStatus} totalTeams={totalTeams} depth={depth} />
         ))}
@@ -737,7 +827,7 @@ function MatchSideLineup({
         ))}
       </div>
 
-      <div className="space-y-1 pt-1">
+      <div className="min-w-0 space-y-1 pt-1">
         <p className="px-0.5 text-center text-[8px] font-bold uppercase tracking-wider text-ink-5">Panchina</p>
         {bench.map((p) => (
           <RealPlayerRow key={p.player_id} p={p} matchStatus={matchStatus} totalTeams={totalTeams} muted />
@@ -828,31 +918,32 @@ function RealPlayerRow({
   // magenta. A lone owner who only benched him doesn't trigger it.
   const exclusiveStarter = p.owners.length === 1 && p.owners[0]?.status === 'titolare'
   const exclusiveMvp = exclusiveStarter && p.is_mvp
+  const flash = useFlash(p.player_id)
+  // Subbed off and not back on → no longer on the pitch. Dimmed so it's obvious
+  // he left the field (his replacement is chained directly below at depth+1).
+  const subbedOff = p.subbed_off_minute != null
 
   return (
     <div
-      className={`flex h-[50px] items-center gap-1 overflow-hidden rounded-md border px-1.5 py-1 sm:gap-1.5 sm:px-2 ${
+      className={`relative flex min-h-[50px] items-center gap-1 overflow-hidden rounded-md border py-1 pl-4 pr-1.5 sm:gap-1.5 sm:pl-5 sm:pr-2 ${
         exclusiveMvp
           ? 'border-[#f01c9c]/70 bg-[#f01c9c]/15 shadow-sm shadow-[#f01c9c]/25'
           : 'border-hairline bg-glass-2'
-      } ${muted ? 'opacity-60' : ''} ${depth > 0 ? 'ml-2 sm:ml-3' : ''}`}
+      } ${muted ? 'opacity-60' : subbedOff ? 'opacity-55' : ''} ${depth > 0 ? 'ml-2 sm:ml-3' : ''}`}
     >
-      {depth > 0 && <span className="text-[10px] text-emerald-500 dark:text-emerald-400">↳</span>}
-      <span className={`text-[10px] font-bold ${ROLE_COLOR[p.role] ?? 'text-ink-4'}`}>{p.role}</span>
+      <RoleNail role={p.role} />
+      {flash && <RatingWave dir={flash} />}
+      {depth > 0 && <span className="self-center text-[10px] text-emerald-500 dark:text-emerald-400">↳</span>}
 
       <span className="min-w-0 flex-1">
-        <span className="flex flex-nowrap items-center gap-x-1.5 overflow-hidden">
-          <span className="truncate text-[12.5px] font-semibold text-ink-1 sm:text-[13.5px]" title={p.name}>
-            {shortPlayerName(p.name)}
-          </span>
-          {p.is_mvp && (
-            <span
-              title="Migliore in campo"
-              className="shrink-0 rounded-full border border-amber-400/30 bg-amber-400/20 px-1.5 py-px text-[9px] font-black text-amber-600 shadow-sm dark:text-amber-200"
-            >
-              ★ MVP
-            </span>
-          )}
+        {/* Name gets its own line so it stays readable even in a narrow column;
+            sub markers, bonus/malus glyphs and MVP all wrap onto the meta line
+            below, never crowding (and truncating) the name. */}
+        <span className="block truncate text-[12.5px] font-semibold text-ink-1 sm:text-[13.5px]" title={p.name}>
+          {shortPlayerName(p.name)}
+        </span>
+
+        <span className="mt-0.5 flex flex-wrap items-center gap-x-1 gap-y-0.5">
           {p.subbed_off_minute != null && (
             <span className="shrink-0 rounded bg-rose-400/12 px-1 text-[10px] font-bold tabular-nums text-rose-600 dark:text-rose-300" title="Sostituito">
               ↓{p.subbed_off_minute}&apos;
@@ -863,15 +954,20 @@ function RealPlayerRow({
               ↑{p.subbed_on_minute}&apos;
             </span>
           )}
+          {p.is_mvp && (
+            <span
+              title="Migliore in campo"
+              className="shrink-0 rounded-full border border-amber-400/30 bg-amber-400/20 px-1.5 py-px text-[9px] font-black text-amber-600 shadow-sm dark:text-amber-200"
+            >
+              ★ MVP
+            </span>
+          )}
           <BonusMalusIcons p={p} />
-        </span>
-
-        <span className="mt-0.5 flex items-center gap-1.5">
           <OwnerPills owners={p.owners} totalTeams={totalTeams} compact />
         </span>
       </span>
 
-      <span className="shrink-0 w-9 overflow-hidden rounded-md border border-hairline bg-surface-2 text-center tabular-nums shadow-sm sm:w-11">
+      <span className="shrink-0 self-center w-9 overflow-hidden rounded-md border border-hairline bg-surface-2 text-center tabular-nums shadow-sm sm:w-11">
         {v.kind === 'score' ? (
           <>
             <span className="block border-b border-hairline px-1 py-0.5 text-[11px] font-bold leading-none text-ink-2">
@@ -1341,14 +1437,14 @@ function RoleNail({ role }: { role: string }) {
     <span
       aria-hidden
       title={ROLE_NAME[role] ?? role}
-      className="absolute left-0 top-0 z-[1] flex items-center justify-center border-b border-r border-white/25 text-[8.5px] font-black leading-none text-white shadow-sm"
+      className="absolute left-0 top-0 z-[1] flex items-center justify-center border-b border-r border-white/25 text-[7px] font-black leading-none text-white shadow-sm"
       style={{
-        width: 20,
-        height: 17,
+        width: 15,
+        height: 13,
         paddingTop: 1,
         paddingLeft: 1,
         background: `linear-gradient(145deg, ${c}, color-mix(in srgb, ${c} 70%, #020617))`,
-        borderRadius: '0 0 8px 0',
+        borderRadius: '0 0 6px 0',
       }}
     >
       {role}
@@ -1493,6 +1589,7 @@ function FantasyPitchChip({
   const v = computeVoto(p)
   const isMvp = p.mvp_bonus > 0.005
   const exclusiveMvp = p.owners.length === 0 && isMvp
+  const flash = useFlash(p.player_id)
 
   return (
     <button
@@ -1503,6 +1600,7 @@ function FantasyPitchChip({
       }`}
     >
       <RoleNail role={p.role} />
+      {flash && <RatingWave dir={flash} />}
       <PlayerCrest p={p} live={liveState === 'field'} size={28} />
 
       <span className="flex w-full items-center justify-center gap-0.5">
@@ -1548,23 +1646,18 @@ function BenchChip({
   onSelect: () => void
 }) {
   const v = computeVoto(p)
-  const roleColor = ROLE_DOT[p.role] ?? '#94a3b8'
+  const flash = useFlash(p.player_id)
   return (
     <button
       type="button"
       onClick={onSelect}
       title={ROLE_NAME[p.role] ?? p.role}
-      className={`flex min-w-0 items-center gap-1.5 rounded-lg border bg-glass-2 px-1.5 py-1.5 text-left transition-all ${
+      className={`relative flex min-w-0 items-center gap-1.5 overflow-hidden rounded-lg border bg-glass-2 py-1.5 pl-5 pr-1.5 text-left transition-all ${
         selected ? 'border-accent bg-accent/10 ring-2 ring-accent' : 'border-hairline'
       }`}
     >
-      <span
-        aria-hidden
-        className="grid h-[18px] w-[18px] shrink-0 place-items-center rounded-md text-[8.5px] font-black leading-none text-white"
-        style={{ background: roleColor }}
-      >
-        {p.role}
-      </span>
+      <RoleNail role={p.role} />
+      {flash && <RatingWave dir={flash} />}
       <PlayerCrest p={p} live={liveState === 'field'} size={20} />
       <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-ink-2">{shortPlayerName(p.name)}</span>
       <OwnershipMini owners={p.owners} />
@@ -1835,20 +1928,16 @@ function FantasyPlayerRow({
   const pctMax = entry ? Math.round(entry.pct_potential) : null
 
   const v = computeVoto(p)
+  const flash = useFlash(p.player_id)
 
   return (
     <div
-      className={`flex min-h-[54px] items-center gap-2 rounded-md border border-hairline bg-glass-2 px-2 py-1.5 ${
+      className={`relative flex min-h-[54px] items-center gap-2 overflow-hidden rounded-md border border-hairline bg-glass-2 py-1.5 pl-5 pr-2 ${
         muted ? 'opacity-55' : ''
       }`}
     >
-      <span
-        className={`grid h-[18px] w-[18px] shrink-0 place-items-center rounded text-[10px] font-bold ${
-          ROLE_COLOR[p.role] ?? 'text-ink-4'
-        } bg-ink-5/10`}
-      >
-        {p.role}
-      </span>
+      <RoleNail role={p.role} />
+      {flash && <RatingWave dir={flash} />}
       <TeamCrest
         name={p.national_team?.name ?? ''}
         logoUrl={p.national_team?.logo_url ?? null}
