@@ -251,21 +251,29 @@ export function AdminSidebar({ isAdmin, canPreview, previewing, username, league
         </div>
       </aside>
 
-      {/* ── Mobile bottom nav bar (hidden on desktop) ───────────────────── */}
-      <nav
-        className="fixed inset-x-0 bottom-0 z-50 border-t border-hairline bg-surface-1 backdrop-blur-2xl md:hidden dark:bg-glass-2"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      {/* ── Mobile theme toggle (kept reachable in portrait) ───────────── */}
+      <div
+        className="fixed right-3 z-50 md:hidden"
+        style={{ bottom: 'calc(86px + env(safe-area-inset-bottom))' }}
       >
-        <div className="flex items-stretch justify-around">
+        <ThemeToggle className="h-11 w-11 rounded-xl border-hairline-strong bg-glass-3 text-ink-2 shadow-2 backdrop-blur-2xl" />
+      </div>
+
+      {/* ── Mobile bottom nav bar (hidden on desktop) ───────────────────── */}
+      <nav className="fixed inset-x-0 bottom-0 z-50 px-3 pb-3 md:hidden" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom))' }}>
+        <div className="flex items-stretch justify-around gap-1 rounded-[24px] border border-hairline bg-glass-2 p-1.5 shadow-3 backdrop-blur-2xl">
           {visibleItems.map((item) => {
             const active = isActive(item)
             return (
               <Link
                 key={item.href}
                 href={item.href as Route}
+                aria-current={active ? 'page' : undefined}
                 className={[
-                  'flex flex-1 flex-col items-center gap-1 px-1 pt-2.5 pb-3 text-center transition-colors',
-                  active ? 'text-indigo-700 dark:text-indigo-300' : 'text-ink-4 hover:text-ink-1',
+                  'flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-[18px] px-1 text-center transition-all',
+                  active
+                    ? 'bg-glass-3 text-ink-1 shadow-[0_1px_0_rgba(255,255,255,0.55)_inset,0_10px_28px_-22px_rgba(0,0,0,0.75)] dark:shadow-[0_1px_0_rgba(255,255,255,0.10)_inset,0_10px_28px_-18px_rgba(0,0,0,0.9)]'
+                    : 'text-ink-4 hover:bg-glass-1 hover:text-ink-1',
                 ].join(' ')}
               >
                 <NavIcon name={item.icon} size={18} />
@@ -276,7 +284,7 @@ export function AdminSidebar({ isAdmin, canPreview, previewing, username, league
           <form action={logoutAction} className="flex flex-1">
             <button
               type="submit"
-              className="flex flex-1 flex-col items-center gap-1 px-1 pt-2.5 pb-3 text-ink-4 transition-colors hover:text-rose-300"
+              className="flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-[18px] px-1 text-ink-4 transition-all hover:bg-rose-500/10 hover:text-rose-400"
             >
               <NavIcon name="logout" size={18} />
               <span className="text-[10px] font-medium leading-none tracking-tight">Esci</span>

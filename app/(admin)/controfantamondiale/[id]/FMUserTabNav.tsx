@@ -10,12 +10,12 @@ import { ADMIN_TABS, type AdminTab } from './FMTabNav'
 const STATUS_POLL_MS = 45_000
 
 const TABS = [
-  { label: 'Live',           suffix: '/live' },
-  { label: 'Risultati e Classifica', suffix: '/risultati' },
-  { label: 'La Mia Rosa',    suffix: '/rosa' },
-  { label: 'Formazione',     suffix: '/formazione' },
-  { label: 'Rose Nazionali', suffix: '/nazionali' },
-  { label: 'Regole',         suffix: '/regole' },
+  { label: 'Live',       suffix: '/live' },
+  { label: 'Risultati',  suffix: '/risultati' },
+  { label: 'La Mia Rosa', suffix: '/rosa' },
+  { label: 'Formazione', suffix: '/formazione' },
+  { label: 'Nazionali',  suffix: '/nazionali' },
+  { label: 'Regole',     suffix: '/regole' },
 ]
 
 export function FMUserTabNav({
@@ -54,8 +54,8 @@ export function FMUserTabNav({
   }, [id])
 
   return (
-    <div className="sticky top-0 z-10 -mx-4 mb-5 bg-surface-0/80 px-4 backdrop-blur-xl md:-mx-8 md:px-8">
-      <div className="flex gap-0 overflow-x-auto border-b border-hairline pb-0 pt-3 scrollbar-none">
+    <div className="sticky top-0 z-10 -mx-4 mb-5 bg-surface-0/75 px-4 py-2 backdrop-blur-2xl md:-mx-8 md:px-8">
+      <div className="flex gap-1 overflow-x-auto rounded-[18px] border border-hairline bg-glass-tint p-1 shadow-1 backdrop-blur-2xl scrollbar-none">
         {TABS.map((tab) => {
           const href = `${base}${tab.suffix}`
           const isActive =
@@ -67,21 +67,26 @@ export function FMUserTabNav({
             <Link
               key={tab.suffix}
               href={href as Route}
-              className={`relative inline-flex shrink-0 items-center gap-1.5 px-3.5 pb-2.5 pt-1 text-[12px] font-medium transition-colors ${
-                isActive ? 'text-indigo-400' : 'text-ink-4 hover:text-ink-2'
+              aria-current={isActive ? 'page' : undefined}
+              className={`relative inline-flex min-h-9 shrink-0 items-center justify-center gap-1.5 rounded-[14px] px-3.5 text-[12px] font-semibold transition-all ${
+                isActive
+                  ? 'bg-glass-3 text-ink-1 shadow-[0_1px_0_rgba(255,255,255,0.55)_inset,0_8px_24px_-18px_rgba(0,0,0,0.55)] dark:shadow-[0_1px_0_rgba(255,255,255,0.10)_inset,0_10px_26px_-18px_rgba(0,0,0,0.9)]'
+                  : 'text-ink-4 hover:bg-glass-1 hover:text-ink-2'
               }`}
             >
               {isLive && playing !== null && (
                 <span
-                  className={`h-1.5 w-1.5 rounded-full ${
-                    playing ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'
+                  className={`h-2 w-2 rounded-full ring-2 ring-current/15 ${
+                    playing ? 'animate-pulse bg-emerald-400 text-emerald-400' : 'bg-rose-500 text-rose-500'
                   }`}
                   title={playing ? 'Partite in corso' : 'Nessuna partita in corso'}
                 />
               )}
               {tab.label}
-              {isActive && (
-                <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full bg-indigo-500" />
+              {isLive && isActive && (
+                <span className="rounded-full bg-emerald-500/12 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-emerald-600 dark:text-emerald-300">
+                  now
+                </span>
               )}
             </Link>
           )
@@ -148,11 +153,13 @@ function AdminMenu({
         ref={btnRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`relative inline-flex items-center gap-1 px-3.5 pb-2.5 pt-1 text-[12px] font-medium transition-colors ${
-          isActive || open ? 'text-indigo-400' : 'text-ink-4 hover:text-ink-2'
+        className={`relative inline-flex min-h-9 items-center gap-1.5 rounded-[14px] px-3.5 text-[12px] font-semibold transition-all ${
+          isActive || open
+            ? 'bg-glass-3 text-ink-1 shadow-[0_1px_0_rgba(255,255,255,0.55)_inset,0_8px_24px_-18px_rgba(0,0,0,0.55)] dark:shadow-[0_1px_0_rgba(255,255,255,0.10)_inset,0_10px_26px_-18px_rgba(0,0,0,0.9)]'
+            : 'text-ink-4 hover:bg-glass-1 hover:text-ink-2'
         }`}
       >
-        <span className="grid h-1.5 w-1.5 place-items-center rounded-full bg-indigo-400/70" aria-hidden />
+        <span className="grid h-1.5 w-1.5 place-items-center rounded-full bg-ink-4/70" aria-hidden />
         Admin
         <svg
           width="9"
@@ -163,9 +170,6 @@ function AdminMenu({
         >
           <path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-        {isActive && (
-          <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full bg-indigo-500" />
-        )}
       </button>
 
       {open && menuPos && typeof document !== 'undefined' && createPortal(
