@@ -1279,7 +1279,7 @@ function FantasyPitch({
 
       {bench.length > 0 && (
         <div className="space-y-1">
-          <p className="px-1 text-[8px] font-bold uppercase tracking-wider text-ink-5">Panchina</p>
+          <p className="px-1 text-[9px] font-bold uppercase tracking-wider text-ink-5">Panchina</p>
           <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
             {sortByRole(bench).map((p) => (
               <BenchChip
@@ -1301,15 +1301,25 @@ function FantasyPitch({
 // the only overlay here is a lime ring when the player is on the pitch right now.
 function PlayerCrest({ p, live, size }: { p: LiveSnapshotPlayer; live: boolean; size: number }) {
   const t = p.national_team
-  const src = t?.logo_url || t?.flag_url
+  const src = t?.flag_url || t?.logo_url
+  const width = Math.round(size * 1.38)
   return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
+    <div className="relative shrink-0" style={{ width, height: size }}>
       <span
-        className={`block overflow-hidden rounded-full ${live ? 'ring-2 ring-lime-400' : ''}`}
-        style={{ width: size, height: size }}
+        className={`relative grid place-items-center overflow-hidden rounded-[5px] border border-white/35 bg-surface-1 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.08)] dark:border-white/15 dark:bg-surface-2 ${
+          live ? 'ring-2 ring-lime-400' : ''
+        }`}
+        style={{ width, height: size }}
       >
         {src ? (
-          <Image src={src} alt={t?.name ?? ''} width={size} height={size} className="h-full w-full object-cover" unoptimized />
+          <Image
+            src={src}
+            alt={t?.name ?? ''}
+            fill
+            sizes={`${width}px`}
+            className="h-full w-full object-cover"
+            unoptimized
+          />
         ) : (
           <span className="flex h-full w-full items-center justify-center bg-glass-2 font-mono text-ink-4" style={{ fontSize: Math.round(size * 0.4) }}>
             {(t?.fifa_code ?? '').toUpperCase()}
@@ -1331,8 +1341,15 @@ function RoleNail({ role }: { role: string }) {
     <span
       aria-hidden
       title={ROLE_NAME[role] ?? role}
-      className="absolute left-0 top-0 z-[1] flex items-center justify-center text-[9px] font-black leading-none text-white"
-      style={{ width: 18, height: 15, paddingTop: 1, paddingLeft: 1.5, background: c, borderRadius: '0 0 6px 0' }}
+      className="absolute left-0 top-0 z-[1] flex items-center justify-center border-b border-r border-white/25 text-[8.5px] font-black leading-none text-white shadow-sm"
+      style={{
+        width: 20,
+        height: 17,
+        paddingTop: 1,
+        paddingLeft: 1,
+        background: `linear-gradient(145deg, ${c}, color-mix(in srgb, ${c} 70%, #020617))`,
+        borderRadius: '0 0 8px 0',
+      }}
     >
       {role}
     </span>
@@ -1489,9 +1506,9 @@ function FantasyPitchChip({
       <PlayerCrest p={p} live={liveState === 'field'} size={28} />
 
       <span className="flex w-full items-center justify-center gap-0.5">
-        <span className="truncate text-[11px] font-bold leading-tight text-ink-1">{shortPlayerName(p.name)}</span>
+        <span className="truncate text-[11.5px] font-bold leading-tight text-ink-1">{shortPlayerName(p.name)}</span>
         {p.via === 'sub' && (
-          <span className="shrink-0 rounded bg-emerald-400/15 px-0.5 text-[7px] font-bold uppercase text-emerald-600 dark:text-emerald-300">sub</span>
+          <span className="shrink-0 rounded bg-emerald-400/15 px-0.5 text-[7.5px] font-bold uppercase text-emerald-600 dark:text-emerald-300">sub</span>
         )}
       </span>
 
@@ -1543,15 +1560,15 @@ function BenchChip({
     >
       <span
         aria-hidden
-        className="grid h-4 w-4 shrink-0 place-items-center rounded text-[8px] font-black leading-none text-white"
+        className="grid h-[18px] w-[18px] shrink-0 place-items-center rounded-md text-[8.5px] font-black leading-none text-white"
         style={{ background: roleColor }}
       >
         {p.role}
       </span>
-      <PlayerCrest p={p} live={liveState === 'field'} size={18} />
-      <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-ink-2">{shortPlayerName(p.name)}</span>
+      <PlayerCrest p={p} live={liveState === 'field'} size={20} />
+      <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-ink-2">{shortPlayerName(p.name)}</span>
       <OwnershipMini owners={p.owners} />
-      <span className={`shrink-0 text-[11px] font-bold tabular-nums ${v.kind === 'score' ? v.totalCls : v.cls}`}>
+      <span className={`shrink-0 text-[12px] font-bold tabular-nums ${v.kind === 'score' ? v.totalCls : v.cls}`}>
         {v.kind === 'score' ? v.total : v.text}
       </span>
     </button>
@@ -1629,8 +1646,8 @@ function PlayerDetailSheet({
       <div className="flex items-center gap-2.5">
         <PlayerCrest p={p} live={liveState === 'field'} size={32} />
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[14px] font-bold text-ink-1">{p.name}</div>
-          <div className="text-[11px] text-ink-4">
+          <div className="truncate text-[15px] font-bold text-ink-1">{p.name}</div>
+          <div className="text-[12px] text-ink-4">
             {roleName}
             {liveState === 'field' && <span className="text-lime-500 dark:text-lime-400"> · in campo</span>}
           </div>
@@ -1653,7 +1670,7 @@ function PlayerDetailSheet({
             <span
               key={c.key}
               title={c.title}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11.5px] ${
+              className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] ${
                 c.tone === 'neg'
                   ? 'bg-rose-400/10 text-rose-600 dark:text-rose-300'
                   : c.tone === 'mvp'
@@ -1667,7 +1684,7 @@ function PlayerDetailSheet({
             </span>
           ))
         ) : (
-          <span className="text-[11px] text-ink-5">Nessun bonus o malus</span>
+          <span className="text-[12px] text-ink-5">Nessun bonus o malus</span>
         )}
       </div>
 
@@ -1676,13 +1693,13 @@ function PlayerDetailSheet({
           <div className="flex items-center gap-2.5 rounded-xl bg-[#f01c9c]/10 px-3 py-2.5">
             <span className="text-[#f01c9c]"><DiamondGlyph className="h-4 w-4" /></span>
             <div>
-              <div className="text-[12.5px] font-bold text-[#f01c9c]">Esclusiva di {teamName}</div>
-              <div className="text-[10.5px] text-ink-4">Nessun&apos;altra squadra della lega lo schiera</div>
+              <div className="text-[13px] font-bold text-[#f01c9c]">Esclusiva di {teamName}</div>
+              <div className="text-[11.5px] text-ink-4">Nessun&apos;altra squadra della lega lo schiera</div>
             </div>
           </div>
         ) : (
           <>
-            <p className="mb-1 px-0.5 text-[9px] font-bold uppercase tracking-wider text-ink-5">{ownersHeading}</p>
+            <p className="mb-1.5 px-0.5 text-[10px] font-bold uppercase tracking-wider text-ink-5">{ownersHeading}</p>
             <div className="space-y-0.5">
               {others.map((o) => {
                 const titolare = o.status === 'titolare'
@@ -1708,9 +1725,9 @@ function PlayerDetailSheet({
                       >
                         {o.team_name.slice(0, 2).toUpperCase()}
                       </span>
-                      <span className="min-w-0 flex-1 truncate text-[13px] text-ink-1">{o.team_name}</span>
+                      <span className="min-w-0 flex-1 truncate text-[14px] text-ink-1">{o.team_name}</span>
                       <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                           titolare
                             ? 'bg-indigo-400/12 text-indigo-500 dark:text-indigo-300'
                             : 'bg-ink-5/8 text-ink-5'
@@ -1721,7 +1738,7 @@ function PlayerDetailSheet({
                       </span>
                     </div>
                     {showBenchRisk && (
-                      <div className="ml-[30px] mt-1 rounded-lg bg-ink-5/8 px-2.5 py-1.5 text-[10.5px] leading-snug text-ink-4">
+                      <div className="ml-[30px] mt-1 rounded-lg bg-ink-5/8 px-2.5 py-1.5 text-[12px] leading-snug text-ink-4">
                         Se entra: P.P. <span className="font-bold text-rose-600 dark:text-rose-300">−{fmt(potentialPenalty, 2)}</span>
                         {cardMalusIfSub > 0.005 && (
                           <>
