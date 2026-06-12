@@ -278,6 +278,7 @@ export function LiveBoard({
                 expanded={team.fantasy_team_id === selectedTeamId}
                 previewMode={previewMode}
                 liveCounts={teamLiveCounts(team, liveField)}
+                liveField={liveField}
                 onToggle={() =>
                   setSelectedTeamId(
                     selectedTeamId === team.fantasy_team_id ? null : team.fantasy_team_id,
@@ -491,7 +492,7 @@ function CenterPanel({
     if (previewMode && !isMine) {
       return <MaskedTeamPanel team={team} />
     }
-    return <TeamDetailPanel team={team} isMine={isMine} liveCounts={teamLiveCounts(team, liveField)} />
+    return <TeamDetailPanel team={team} isMine={isMine} liveCounts={teamLiveCounts(team, liveField)} liveField={liveField} />
   }
   if (match) {
     return <MatchDetailPanel match={match} totalTeams={totalTeams} />
@@ -897,10 +898,12 @@ function TeamDetailPanel({
   team,
   isMine,
   liveCounts,
+  liveField,
 }: {
   team: LiveSnapshotTeam
   isMine: boolean
   liveCounts: { field: number; bench: number }
+  liveField: Map<string, LiveFieldState>
 }) {
   const fielded = team.players.filter((p) => p.counts)
   const bench = team.players.filter((p) => !p.counts)
@@ -964,7 +967,7 @@ function TeamDetailPanel({
           return (
             <div key={role} className="space-y-1">
               {rolePlayers.map((p) => (
-                <FantasyPlayerRow key={p.player_id} p={p} />
+                <FantasyPlayerRow key={p.player_id} p={p} liveState={liveField.get(p.player_id)} />
               ))}
             </div>
           )
@@ -982,7 +985,7 @@ function TeamDetailPanel({
           <div className="border-t border-hairline pt-2.5 space-y-1">
             <p className="text-[8px] font-bold uppercase tracking-wider text-ink-5 px-1">Panchina</p>
             {bench.map((p) => (
-              <FantasyPlayerRow key={p.player_id} p={p} muted />
+              <FantasyPlayerRow key={p.player_id} p={p} muted liveState={liveField.get(p.player_id)} />
             ))}
           </div>
         )}
@@ -1031,7 +1034,32 @@ function CoachRow({ coach }: { coach: LiveSnapshotTeam['coach'] }) {
   )
 }
 
-function FantasyPlayerRow({ p, muted = false }: { p: LiveSnapshotPlayer; muted?: boolean }) {
+// A single live-presence dot for a player row: green = on the pitch right now,
+// grey = in the real squad but benched by the coach. Nothing when his nation
+// isn't in a live match.
+function LivePlayerDot({ state }: { state: LiveFieldState | undefined }) {
+  if (!state) return null
+  return (
+    <span
+      title={state === 'field' ? 'In campo ora' : 'In panchina (allenatore)'}
+      className={`h-2.5 w-2.5 shrink-0 animate-pulse rounded-full ${
+        state === 'field'
+          ? 'bg-emerald-400 shadow-[0_0_7px_2px] shadow-emerald-400/70'
+          : 'bg-ink-5/55 shadow-[0_0_5px_1px] shadow-ink-5/30'
+      }`}
+    />
+  )
+}
+
+function FantasyPlayerRow({
+  p,
+  muted = false,
+  liveState,
+}: {
+  p: LiveSnapshotPlayer
+  muted?: boolean
+  liveState?: LiveFieldState
+}) {
   const penNow = p.popularity_penalty_now
   const penPot = p.popularity_penalty_potential
   const showPen = penNow > 0.005 || penPot > 0.005
@@ -1118,6 +1146,8 @@ function FantasyPlayerRow({ p, muted = false }: { p: LiveSnapshotPlayer; muted?:
           </div>
         )}
       </div>
+
+      <LivePlayerDot state={liveState} />
 
       <span className="shrink-0 w-12 overflow-hidden rounded-md border border-hairline bg-surface-2 text-center tabular-nums shadow-sm">
         {v.kind === 'score' ? (
@@ -1492,6 +1522,7 @@ function MobileTeamCard({
   expanded,
   previewMode,
   liveCounts,
+  liveField,
   onToggle,
 }: {
   team: LiveSnapshotTeam
@@ -1501,6 +1532,7 @@ function MobileTeamCard({
   expanded: boolean
   previewMode: boolean
   liveCounts: { field: number; bench: number }
+  liveField: Map<string, LiveFieldState>
   onToggle: () => void
 }) {
   const notFielded = isNotFielded(team)
@@ -1563,7 +1595,7 @@ function MobileTeamCard({
           ) : (
             <>
               {team.players.filter((p) => p.counts).map((p) => (
-                <FantasyPlayerRow key={p.player_id} p={p} />
+                <FantasyPlayerRow key={p.player_id} p={p} liveState={liveField.get(p.player_id)} />
               ))}
               {team.coach && (
                 <div className="border-t border-hairline pt-2">
@@ -1574,7 +1606,7 @@ function MobileTeamCard({
                 <>
                   <p className="text-[8px] font-bold uppercase tracking-wider text-ink-5 px-1 pt-1">Panchina</p>
                   {team.players.filter((p) => !p.counts).map((p) => (
-                    <FantasyPlayerRow key={p.player_id} p={p} muted />
+                    <FantasyPlayerRow key={p.player_id} p={p} muted liveState={liveField.get(p.player_id)} />
                   ))}
                 </>
               )}
