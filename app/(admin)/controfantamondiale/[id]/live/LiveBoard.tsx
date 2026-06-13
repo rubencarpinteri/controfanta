@@ -921,6 +921,12 @@ function RealPlayerRow({
   // magenta. A lone owner who only benched him doesn't trigger it.
   const exclusiveStarter = p.owners.length === 1 && p.owners[0]?.status === 'titolare'
   const exclusiveMvp = exclusiveStarter && p.is_mvp
+  // Accent spine: marks any player owned by a lega team, so he's easy to spot
+  // among the 22 on the pitch. Graded — solid when at least one team fields him
+  // as a titolare, faint when only on benches. Suppressed under the exclusive-MVP
+  // magenta treatment, which already owns the box's left edge.
+  const ownedTitolare = p.owners.some((o) => o.status === 'titolare')
+  const ownedSpine = p.owners.length > 0 && !exclusiveMvp
   const flash = useFlash(p.player_id)
   const flashClass = flashTintClass(flash)
   // Subbed off and not back on → no longer on the pitch. Dimmed so it's obvious
@@ -935,6 +941,13 @@ function RealPlayerRow({
           : 'border-hairline bg-glass-2'
       } ${muted ? 'opacity-60' : subbedOff ? 'opacity-55' : ''} ${depth > 0 ? 'ml-2 sm:ml-3' : ''} ${flashClass}`}
     >
+      {ownedSpine && (
+        <span
+          aria-hidden
+          title={ownedTitolare ? 'Schierato da una squadra della lega' : 'In rosa a una squadra della lega (panchina)'}
+          className={`absolute inset-y-0 left-0 z-[1] w-[3px] ${ownedTitolare ? 'bg-accent' : 'bg-accent/35'}`}
+        />
+      )}
       <RoleNail role={p.role} />
       {depth > 0 && <span className="self-center text-[10px] text-emerald-500 dark:text-emerald-400">↳</span>}
 
