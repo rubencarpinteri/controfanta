@@ -935,17 +935,25 @@ function RealPlayerRow({
 
   return (
     <div
-      className={`relative flex min-h-[50px] items-center gap-1 overflow-hidden rounded-md border py-1 pl-4 pr-1.5 sm:gap-1.5 sm:pl-5 sm:pr-2 ${
+      className={`relative flex min-h-[50px] items-center gap-1 overflow-hidden rounded-md border py-1 pl-[18px] pr-1.5 sm:gap-1.5 sm:pl-[22px] sm:pr-2 ${
         exclusiveMvp
           ? 'border-[#f01c9c]/70 bg-[#f01c9c]/15 shadow-sm shadow-[#f01c9c]/25'
-          : 'border-hairline bg-glass-2'
+          : ownedTitolare
+            ? 'border-accent/35 bg-accent/[0.07] shadow-sm shadow-accent/10'
+            : ownedSpine
+              ? 'border-accent/20 bg-glass-2'
+              : 'border-hairline bg-glass-2'
       } ${muted ? 'opacity-60' : subbedOff ? 'opacity-55' : ''} ${depth > 0 ? 'ml-2 sm:ml-3' : ''} ${flashClass}`}
     >
       {ownedSpine && (
         <span
           aria-hidden
           title={ownedTitolare ? 'Schierato da una squadra della lega' : 'In rosa a una squadra della lega (panchina)'}
-          className={`absolute inset-y-0 left-0 z-[1] w-[3px] ${ownedTitolare ? 'bg-accent' : 'bg-accent/35'}`}
+          className={`absolute inset-y-0 left-0 z-[1] ${
+            ownedTitolare
+              ? 'w-[5px] bg-gradient-to-b from-accent/85 via-accent to-accent/85 shadow-[4px_0_12px_-2px] shadow-accent/45'
+              : 'w-[3px] bg-gradient-to-b from-accent/25 via-accent/45 to-accent/25'
+          }`}
         />
       )}
       <RoleNail role={p.role} />
