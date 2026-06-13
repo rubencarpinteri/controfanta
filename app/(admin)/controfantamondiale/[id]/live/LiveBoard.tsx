@@ -100,8 +100,9 @@ function useFlash(playerId: string): FlashDir | undefined {
   return useContext(RatingFlashContext).get(playerId)
 }
 
-function flashTintClass(dir: FlashDir | undefined): string {
+function flashTintClass(dir: FlashDir | undefined, onInk = false): string {
   if (!dir) return ''
+  if (onInk) return dir === 'up' ? 'rating-flash-up-on-ink' : 'rating-flash-down-on-ink'
   return dir === 'up' ? 'rating-flash-up' : 'rating-flash-down'
 }
 
@@ -950,10 +951,11 @@ function RealPlayerRow({
   const ownedTitolare = p.owners.some((o) => o.status === 'titolare')
   const ownedSpine = p.owners.length > 0 && !exclusiveMvp
   const flash = useFlash(p.player_id)
-  const flashClass = flashTintClass(flash)
+  const flashClass = flashTintClass(flash, ownedTitolare && !exclusiveMvp)
   // Subbed off and not back on → no longer on the pitch. Dimmed so it's obvious
   // he left the field (his replacement is chained directly below at depth+1).
   const subbedOff = p.subbed_off_minute != null
+  const darkVotoPill = ownedTitolare && !exclusiveMvp
 
   return (
     <div
@@ -1016,7 +1018,13 @@ function RealPlayerRow({
         </span>
       </span>
 
-      <span className="shrink-0 self-center w-9 overflow-hidden rounded-md border border-hairline bg-surface-2 text-center tabular-nums shadow-sm sm:w-11">
+      <span
+        className={`shrink-0 self-center w-9 overflow-hidden rounded-md border text-center tabular-nums shadow-sm sm:w-11 ${
+          darkVotoPill
+            ? 'border-white/15 bg-[#111827]'
+            : 'border-hairline bg-surface-2'
+        }`}
+      >
         {v.kind === 'score' ? (
           p.owners.length > 0 ? (
             <>
@@ -1044,7 +1052,11 @@ function RealPlayerRow({
           <span
             className={`block px-1 py-1.5 leading-none ${
               v.text === '✕' && p.owners.length > 0
-                ? 'text-[14px] font-black text-ink-1 [text-shadow:0.35px_0_0_currentColor,-0.35px_0_0_currentColor]'
+                ? `text-[14px] font-black ${
+                    ownedTitolare && !exclusiveMvp
+                      ? 'text-white [text-shadow:0.35px_0_0_currentColor,-0.35px_0_0_currentColor]'
+                      : 'text-ink-1 [text-shadow:0.35px_0_0_currentColor,-0.35px_0_0_currentColor]'
+                  }`
                 : `text-[11px] font-bold ${v.cls}`
             }`}
           >
