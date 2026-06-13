@@ -913,7 +913,7 @@ function votoDisplay(
     return { kind: 'score', base: fmt(baseVoto, 1), total: fmt(voto, 1), totalCls: totalVotoColor(voto), totalBg: totalVotoBgColor(voto), totalOnBgCls: totalVotoOnBgTextClass(voto) }
   }
   if ((minutes ?? 0) > 0) return { kind: 'marker', text: 'S.V.', cls: 'text-amber-500 dark:text-amber-400' }
-  if (matchStatus === 'finished') return { kind: 'marker', text: '✕', cls: 'text-ink-1' }
+  if (matchStatus === 'finished') return { kind: 'marker', text: '✕', cls: 'text-ink-5' }
   return { kind: 'marker', text: '–', cls: 'text-ink-5' }
 }
 
@@ -959,13 +959,14 @@ function RealPlayerRow({
     <div
       className={`relative flex min-h-[50px] items-center gap-1 overflow-hidden rounded-md border py-1 pl-4 pr-1.5 sm:gap-1.5 sm:pl-5 sm:pr-2 ${
         exclusiveMvp
-          ? 'border-[#f01c9c]/70 bg-[#f01c9c]/15 shadow-sm shadow-[#f01c9c]/25'
+          ? 'border-[#f01c9c]/80 shadow-[0_0_16px_-2px] shadow-[#f01c9c]/55'
           : ownedTitolare
             ? 'border-ink-1/80 bg-ink-1/90 shadow-sm shadow-ink-1/20'
             : ownedSpine
               ? 'border-ink-1/25 bg-ink-1/[0.06]'
               : 'border-hairline bg-glass-2'
       } ${muted ? 'opacity-50' : subbedOff ? 'opacity-80' : ''} ${depth > 0 ? 'ml-2 sm:ml-3' : ''} ${flashClass}`}
+      style={exclusiveMvp ? { background: 'linear-gradient(100deg, rgba(245,158,11,0.20), rgba(240,28,156,0.20))' } : undefined}
     >
       <RoleNail role={p.role} />
       {depth > 0 && <span className="self-center text-[10px] text-emerald-500 dark:text-emerald-400">↳</span>}
@@ -974,7 +975,7 @@ function RealPlayerRow({
         {/* Name gets its own line so it stays readable even in a narrow column;
             sub markers, bonus/malus glyphs and MVP all wrap onto the meta line
             below, never crowding (and truncating) the name. */}
-        <span className={`block truncate text-[12.5px] font-semibold sm:text-[13.5px] ${ownedTitolare ? 'text-surface-0' : 'text-ink-1'}`} title={p.name}>
+        <span className={`block truncate text-[12.5px] font-semibold sm:text-[13.5px] ${ownedTitolare && !exclusiveMvp ? 'text-surface-0' : 'text-ink-1'}`} title={p.name}>
           {shortPlayerName(p.name)}
         </span>
 
@@ -989,22 +990,35 @@ function RealPlayerRow({
               ↑{p.subbed_on_minute}&apos;
             </span>
           )}
-          {p.is_mvp && (
+          {exclusiveMvp ? (
             <span
-              title="Migliore in campo"
-              className="shrink-0 rounded-full border border-amber-400/30 bg-amber-400/20 px-1.5 py-px text-[9px] font-black text-amber-600 shadow-sm dark:text-amber-200"
+              title="Esclusiva + MVP — solo questa squadra lo schiera, ed è il migliore in campo"
+              className="shrink-0 inline-flex animate-pulse items-center gap-1 rounded-md px-1.5 py-px text-[9px] font-black uppercase leading-none tracking-wide text-white shadow-sm"
+              style={{ background: 'linear-gradient(90deg,#f59e0b,#f01c9c)' }}
             >
-              ★ MVP
+              <span aria-hidden>👑</span>
+              <DiamondGlyph className="text-white" />
+              Esclusiva MVP
+              <span aria-hidden>✨</span>
             </span>
+          ) : (
+            p.is_mvp && (
+              <span
+                title="Migliore in campo"
+                className="shrink-0 rounded-full border border-amber-400/30 bg-amber-400/20 px-1.5 py-px text-[9px] font-black text-amber-600 shadow-sm dark:text-amber-200"
+              >
+                ★ MVP
+              </span>
+            )
           )}
-          <BonusMalusIcons p={p} inverted={ownedTitolare} />
-          <OwnerPills owners={p.owners} totalTeams={totalTeams} compact onInk={ownedTitolare} />
+          <BonusMalusIcons p={p} inverted={ownedTitolare && !exclusiveMvp} />
+          <OwnerPills owners={p.owners} totalTeams={totalTeams} compact onInk={ownedTitolare && !exclusiveMvp} />
         </span>
       </span>
 
       <span className="shrink-0 self-center w-9 overflow-hidden rounded-md border border-hairline bg-surface-2 text-center tabular-nums shadow-sm sm:w-11">
         {v.kind === 'score' ? (
-          ownedSpine ? (
+          p.owners.length > 0 ? (
             <>
               <span className="block border-b border-white/15 bg-[#1b2236] px-1 py-0.5 text-[11px] font-bold leading-none text-white">
                 {v.base}
@@ -1027,7 +1041,15 @@ function RealPlayerRow({
           </>
           )
         ) : (
-          <span className={`block px-1 py-1.5 text-[11px] font-bold leading-none ${v.cls}`}>{v.text}</span>
+          <span
+            className={`block px-1 py-1.5 leading-none ${
+              v.text === '✕' && p.owners.length > 0
+                ? 'text-[14px] font-black text-ink-1 [text-shadow:0.35px_0_0_currentColor,-0.35px_0_0_currentColor]'
+                : `text-[11px] font-bold ${v.cls}`
+            }`}
+          >
+            {v.text}
+          </span>
         )}
       </span>
     </div>
