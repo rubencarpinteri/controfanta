@@ -2247,8 +2247,10 @@ function OwnerPills({
       title={collapsible && !revealed ? 'Tocca per i nomi delle squadre' : undefined}
     >
       <span
-        className={`shrink-0 text-[#f01c9c] ${compact ? 'text-[9px]' : 'text-[10px]'} ${
-          isExclusiveStarter ? 'font-black' : 'font-bold'
+        className={`shrink-0 ${
+          isExclusiveStarter
+            ? `font-black text-[#f01c9c] ${compact ? 'text-[10px]' : 'text-[11px]'}`
+            : `font-bold text-[#6366f1] ${compact ? 'text-[9px]' : 'text-[10px]'}`
         }`}
       >
         {totalTeams ? `in ${owners.length}/${totalTeams}` : 'anche in'}
