@@ -935,7 +935,7 @@ function RealPlayerRow({
 
   return (
     <div
-      className={`relative flex min-h-[50px] items-center gap-1 overflow-hidden rounded-md border py-1 pl-[18px] pr-1.5 sm:gap-1.5 sm:pl-[22px] sm:pr-2 ${
+      className={`relative flex min-h-[50px] items-center gap-1 overflow-hidden rounded-md border py-1 pl-[22px] pr-1.5 sm:gap-1.5 sm:pl-[26px] sm:pr-2 ${
         exclusiveMvp
           ? 'border-[#f01c9c]/70 bg-[#f01c9c]/15 shadow-sm shadow-[#f01c9c]/25'
           : ownedTitolare
@@ -951,8 +951,8 @@ function RealPlayerRow({
           title={ownedTitolare ? 'Schierato da una squadra della lega' : 'In rosa a una squadra della lega (panchina)'}
           className={`absolute inset-y-0 left-0 z-[1] ${
             ownedTitolare
-              ? 'w-[5px] bg-gradient-to-b from-accent/85 via-accent to-accent/85 shadow-[4px_0_12px_-2px] shadow-accent/45'
-              : 'w-[4px] bg-gradient-to-b from-accent/45 via-accent/65 to-accent/45 shadow-[3px_0_9px_-3px] shadow-accent/25'
+              ? 'w-[7px] bg-gradient-to-b from-accent/85 via-accent to-accent/85 shadow-[5px_0_14px_-2px] shadow-accent/45'
+              : 'w-[6px] bg-gradient-to-b from-accent/45 via-accent/65 to-accent/45 shadow-[4px_0_11px_-3px] shadow-accent/25'
           }`}
         />
       )}
