@@ -868,7 +868,10 @@ function computeVoto(p: LiveSnapshotPlayer): VotoDisplay {
     }
   }
   if (p.status === 'played') return { kind: 'marker', text: 'S.V.', cls: 'text-amber-500 dark:text-amber-400' }
-  return { kind: 'marker', text: p.status === 'pending' ? '–' : '✕', cls: 'text-ink-5' }
+  if (p.status === 'pending') return { kind: 'marker', text: '–', cls: 'text-ink-5' }
+  // Didn't play (final) — make the ✕ a strong ink so it's clearly visible in the
+  // pill rather than a near-invisible light grey.
+  return { kind: 'marker', text: '✕', cls: 'text-ink-1' }
 }
 
 function totalVotoColor(voto: number): string {
@@ -910,7 +913,7 @@ function votoDisplay(
     return { kind: 'score', base: fmt(baseVoto, 1), total: fmt(voto, 1), totalCls: totalVotoColor(voto), totalBg: totalVotoBgColor(voto), totalOnBgCls: totalVotoOnBgTextClass(voto) }
   }
   if ((minutes ?? 0) > 0) return { kind: 'marker', text: 'S.V.', cls: 'text-amber-500 dark:text-amber-400' }
-  if (matchStatus === 'finished') return { kind: 'marker', text: '✕', cls: 'text-ink-5' }
+  if (matchStatus === 'finished') return { kind: 'marker', text: '✕', cls: 'text-ink-1' }
   return { kind: 'marker', text: '–', cls: 'text-ink-5' }
 }
 
