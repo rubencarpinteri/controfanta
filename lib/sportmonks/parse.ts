@@ -212,6 +212,7 @@ export function parseFixture(fixture: SMFixture): ParsedFixture {
     const yellow = readStatN(l.details, 'YELLOWCARDS')
     const red = readStatN(l.details, 'REDCARDS') + readStatN(l.details, 'YELLOWREDCARDS')
     const conceded = readStatN(l.details, 'GOALS_CONCEDED')
+    const ownGoals = readStatN(l.details, 'OWN_GOALS')
     const captain = readBool(l.details, 'CAPTAIN')
     const posId = l.position_id ?? l.player?.position_id ?? null
 
@@ -229,7 +230,7 @@ export function parseFixture(fixture: SMFixture): ParsedFixture {
       penalties_scored: 0,
       penalties_missed: 0,
       penalties_saved: 0,
-      own_goals: 0,
+      own_goals: ownGoals,
       goals_conceded: conceded,
       clean_sheet: false,
       is_captain: captain,
@@ -258,6 +259,9 @@ export function parseFixture(fixture: SMFixture): ParsedFixture {
       on.replaced_sm_id = s.off_player_id
     }
   }
+
+  // Event-derived own-goal counts, reconciled against the lineup stat below.
+  const eventOwnGoals = new Map<number, number>()
 
   // Apply event-derived counters
   for (const ev of events) {
@@ -289,7 +293,10 @@ export function parseFixture(fixture: SMFixture): ParsedFixture {
 
     if (dev === 'OWN_GOAL' && ev.player_id != null) {
       const p = byPlayer.get(ev.player_id)
-      if (p) p.own_goals += 1
+      // The per-player OWN_GOALS lineup stat is the primary source and is read
+      // into own_goals above. Only fall back to event-derived counting when the
+      // stat feed didn't report any, so we never double-count the same own goal.
+      if (p) eventOwnGoals.set(ev.player_id, (eventOwnGoals.get(ev.player_id) ?? 0) + 1)
       // Charge goals_conceded to same-team GK on pitch (only if GOALS_CONCEDED stat hasn't already captured it — best-effort)
       const gk = resolveGoalkeeperAtMinute(lineups, events, ev.participant_id, minute)
       if (gk != null && gk !== ev.player_id) {
@@ -299,6 +306,13 @@ export function parseFixture(fixture: SMFixture): ParsedFixture {
       }
       continue
     }
+  }
+
+  // Reconcile own goals: lineup OWN_GOALS stat is primary; use the event count
+  // only when it reports more (e.g. stat feed lagging behind events).
+  for (const [smId, count] of eventOwnGoals) {
+    const p = byPlayer.get(smId)
+    if (p) p.own_goals = Math.max(p.own_goals, count)
   }
 
   // Clean sheet: minutes_played >= 60 AND team conceded 0

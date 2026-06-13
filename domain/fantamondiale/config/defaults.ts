@@ -93,7 +93,7 @@ export const DEFAULT_FM_CONFIG: FMCompetitionConfig = {
     penalty_missed: -3.0,
     yellow_card: -0.5,
     red_card: -1.0,
-    own_goal: -1.0,
+    own_goal: -2.0,
     // Goals-conceded malus for GK only (−1 per goal); defenders get none. From 10'.
     goals_conceded: { P: -1.0, D: 0, def_min_minutes: 10 },
     brace_bonus: 0.5,
