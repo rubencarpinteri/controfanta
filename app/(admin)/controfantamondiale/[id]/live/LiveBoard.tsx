@@ -891,6 +891,13 @@ function totalVotoBgColor(voto: number): string {
   return '#DC0C00'
 }
 
+// Text color for the number sitting on the colored total-line: black on the
+// light/mid bands for readability, white only on the two dark bands (blue ≥10,
+// red <5) where black would be muddy.
+function totalVotoOnBgTextClass(voto: number): string {
+  return voto >= 10 || voto < 5 ? 'text-white' : 'text-black'
+}
+
 // Resolve the right-hand value: split base/total voto, or a no-play marker.
 function votoDisplay(
   baseVoto: number | null,
@@ -898,9 +905,9 @@ function votoDisplay(
   minutes: number | null,
   playState: LiveSnapshotRealPlayer['play_state'],
   matchStatus: LiveSnapshotMatch['status'],
-): { kind: 'score'; base: string; total: string; totalCls: string; totalBg: string } | { kind: 'marker'; text: string; cls: string } {
+): { kind: 'score'; base: string; total: string; totalCls: string; totalBg: string; totalOnBgCls: string } | { kind: 'marker'; text: string; cls: string } {
   if (playState === 'played' && baseVoto != null && voto != null) {
-    return { kind: 'score', base: fmt(baseVoto, 1), total: fmt(voto, 1), totalCls: totalVotoColor(voto), totalBg: totalVotoBgColor(voto) }
+    return { kind: 'score', base: fmt(baseVoto, 1), total: fmt(voto, 1), totalCls: totalVotoColor(voto), totalBg: totalVotoBgColor(voto), totalOnBgCls: totalVotoOnBgTextClass(voto) }
   }
   if ((minutes ?? 0) > 0) return { kind: 'marker', text: 'S.V.', cls: 'text-amber-500 dark:text-amber-400' }
   if (matchStatus === 'finished') return { kind: 'marker', text: '✕', cls: 'text-ink-5' }
@@ -951,11 +958,11 @@ function RealPlayerRow({
         exclusiveMvp
           ? 'border-[#f01c9c]/70 bg-[#f01c9c]/15 shadow-sm shadow-[#f01c9c]/25'
           : ownedTitolare
-            ? 'border-accent/45 bg-accent/[0.12] shadow-sm shadow-accent/15'
+            ? 'border-ink-1/80 bg-ink-1/90 shadow-sm shadow-ink-1/20'
             : ownedSpine
-              ? 'border-accent/25 bg-accent/[0.05]'
+              ? 'border-ink-1/25 bg-ink-1/[0.06]'
               : 'border-hairline bg-glass-2'
-      } ${muted ? 'opacity-60' : subbedOff ? 'opacity-55' : ''} ${depth > 0 ? 'ml-2 sm:ml-3' : ''} ${flashClass}`}
+      } ${muted ? 'opacity-50' : subbedOff ? 'opacity-80' : ''} ${depth > 0 ? 'ml-2 sm:ml-3' : ''} ${flashClass}`}
     >
       <RoleNail role={p.role} />
       {depth > 0 && <span className="self-center text-[10px] text-emerald-500 dark:text-emerald-400">↳</span>}
@@ -964,18 +971,18 @@ function RealPlayerRow({
         {/* Name gets its own line so it stays readable even in a narrow column;
             sub markers, bonus/malus glyphs and MVP all wrap onto the meta line
             below, never crowding (and truncating) the name. */}
-        <span className="block truncate text-[12.5px] font-semibold text-ink-1 sm:text-[13.5px]" title={p.name}>
+        <span className={`block truncate text-[12.5px] font-semibold sm:text-[13.5px] ${ownedTitolare ? 'text-surface-0' : 'text-ink-1'}`} title={p.name}>
           {shortPlayerName(p.name)}
         </span>
 
         <span className="mt-0.5 flex flex-wrap items-center gap-x-1 gap-y-0.5">
           {p.subbed_off_minute != null && (
-            <span className="shrink-0 rounded bg-rose-400/12 px-1 text-[10px] font-bold tabular-nums text-rose-600 dark:text-rose-300" title="Sostituito">
+            <span className="shrink-0 rounded bg-rose-500 px-1.5 py-px text-[10px] font-bold tabular-nums text-white shadow-sm" title="Sostituito">
               ↓{p.subbed_off_minute}&apos;
             </span>
           )}
           {p.subbed_on_minute != null && (
-            <span className="shrink-0 rounded bg-emerald-400/12 px-1 text-[10px] font-bold tabular-nums text-emerald-600 dark:text-emerald-300" title="Entrato">
+            <span className="shrink-0 rounded bg-emerald-500 px-1.5 py-px text-[10px] font-bold tabular-nums text-white shadow-sm" title="Entrato">
               ↑{p.subbed_on_minute}&apos;
             </span>
           )}
@@ -987,8 +994,8 @@ function RealPlayerRow({
               ★ MVP
             </span>
           )}
-          <BonusMalusIcons p={p} />
-          <OwnerPills owners={p.owners} totalTeams={totalTeams} compact />
+          <BonusMalusIcons p={p} inverted={ownedTitolare} />
+          <OwnerPills owners={p.owners} totalTeams={totalTeams} compact onInk={ownedTitolare} />
         </span>
       </span>
 
@@ -1000,7 +1007,7 @@ function RealPlayerRow({
                 {v.base}
               </span>
               <span
-                className="block px-1 py-0.5 text-[11px] font-black leading-none text-white"
+                className={`block px-1 py-0.5 text-[11px] font-black leading-none ${v.totalOnBgCls}`}
                 style={{ background: v.totalBg }}
               >
                 {v.total}
@@ -1039,9 +1046,11 @@ type BonusMalusPlayer = Pick<
   immunita_active?: boolean
 }
 
-function BonusMalusIcons({ p }: { p: BonusMalusPlayer }) {
+function BonusMalusIcons({ p, inverted = false }: { p: BonusMalusPlayer; inverted?: boolean }) {
   const items: { key: string; node: ReactNode }[] = []
-  const positiveIconClass = 'bg-ink-5/10 text-ink-2'
+  // On an inverted (solid-ink) owned row the default dark-on-faint chip vanishes,
+  // so flip to a light-on-translucent variant that reads in both themes.
+  const positiveIconClass = inverted ? 'bg-surface-0/20 text-surface-0' : 'bg-ink-5/10 text-ink-2'
   if (p.goals > 0)
     items.push({ key: 'g', node: <BonusIcon title="Gol" icon="⚽" count={p.goals} className={positiveIconClass} /> })
   if (p.assists > 0)
@@ -2201,11 +2210,17 @@ function OwnerPills({
   owners,
   totalTeams,
   compact = false,
+  onInk = false,
 }: {
   owners: LiveOwnerRef[]
   totalTeams?: number
   compact?: boolean
+  // `onInk` = rendered on the solid inverted owned-titolare panel, where the
+  // glass-tuned indigo loses contrast; switch to surface-0-based chips that read
+  // on both the black (light) and white (dark) panel.
+  onInk?: boolean
 }) {
+  const [revealed, setRevealed] = useState(false)
   if (!owners.length) return null
   // Exclusive ownership — rostered by exactly one team in the whole lega AND
   // fielded as a starter (titolare). The trademark moment of the format, so the
@@ -2213,33 +2228,64 @@ function OwnerPills({
   // until he's actually on the field.
   const isExclusiveStarter =
     totalTeams != null && owners.length === 1 && owners[0]?.status === 'titolare'
+  // Space management: in the ultra-narrow 2-column match rows we can't fit two
+  // team names. For 2+ owners we show the count + one role glyph per owner
+  // (titolare = pitch, panchina = bench); tapping the group reveals the full
+  // names inline (user-initiated, so the temporary row growth is acceptable).
+  // A single owner — or any non-compact context — keeps the named pill.
+  const multiOwner = owners.length > 1
+  const collapsible = compact && multiOwner
+  const showNames = !collapsible || revealed
   return (
-    <div className={`flex min-w-0 items-center gap-1 ${compact ? 'mt-0.5 flex-nowrap overflow-hidden' : 'mt-1 flex-wrap'}`}>
+    <div
+      className={`flex min-w-0 items-center gap-1 ${
+        compact ? (collapsible && revealed ? 'mt-0.5 flex-wrap' : 'mt-0.5 flex-nowrap') : 'mt-1 flex-wrap'
+      } ${collapsible ? 'cursor-pointer' : ''}`}
+      onClick={collapsible ? () => setRevealed((v) => !v) : undefined}
+      role={collapsible ? 'button' : undefined}
+      tabIndex={collapsible ? 0 : undefined}
+      title={collapsible && !revealed ? 'Tocca per i nomi delle squadre' : undefined}
+    >
       <span
-        className={`${compact ? 'text-[9px]' : 'text-[10px]'} font-medium ${
-          isExclusiveStarter ? 'font-black text-[#f01c9c]' : 'text-ink-5'
+        className={`shrink-0 ${compact ? 'text-[9px]' : 'text-[10px]'} font-medium ${
+          isExclusiveStarter ? 'font-black text-[#f01c9c]' : onInk ? 'text-surface-0/75' : 'text-ink-5'
         }`}
       >
         {totalTeams ? `in ${owners.length}/${totalTeams}` : 'anche in'}
       </span>
       {owners.map((owner, i) => {
         const isStarter = owner.status === 'titolare'
+        const chipCls = onInk
+          ? isStarter
+            ? 'border-surface-0/30 bg-surface-0/15 text-surface-0'
+            : 'border-surface-0/20 bg-surface-0/10 text-surface-0/75'
+          : isStarter
+            ? 'border-indigo-400/25 bg-indigo-400/12 text-indigo-500 dark:text-indigo-300'
+            : 'border-hairline bg-ink-5/8 text-ink-5'
+        const glyphCls = onInk
+          ? isStarter
+            ? 'text-surface-0/85'
+            : 'text-surface-0/70'
+          : isStarter
+            ? 'text-indigo-500/80 dark:text-indigo-300/80'
+            : 'text-ink-5'
+        const glyph = isStarter ? (
+          <PitchGlyph className={`shrink-0 ${glyphCls}`} />
+        ) : (
+          <BenchGlyph className={`shrink-0 ${glyphCls}`} />
+        )
         return (
           <span
             key={`${owner.team_name}-${owner.status}-${i}`}
-            className={`inline-flex ${compact ? 'max-w-[96px] px-1.5 py-px text-[9px]' : 'max-w-[180px] px-2 py-0.5 text-[10px]'} items-center gap-1 rounded-full border font-semibold ${
-              isStarter
-                ? 'border-indigo-400/25 bg-indigo-400/12 text-indigo-500 dark:text-indigo-300'
-                : 'border-hairline bg-ink-5/8 text-ink-5'
+            className={`inline-flex shrink-0 items-center rounded-full border font-semibold ${chipCls} ${
+              showNames
+                ? `min-w-0 gap-1 ${compact ? 'max-w-[120px] px-1.5 py-px text-[9px]' : 'max-w-[180px] px-2 py-0.5 text-[10px]'}`
+                : 'justify-center px-1 py-px'
             }`}
             title={`${owner.team_name} — ${isStarter ? 'titolare' : 'panchina'}`}
           >
-            <span className="truncate">{owner.team_name}</span>
-            {isStarter ? (
-              <PitchGlyph className="shrink-0 text-indigo-500/80 dark:text-indigo-300/80" />
-            ) : (
-              <BenchGlyph className="shrink-0 text-ink-5" />
-            )}
+            {showNames && <span className="truncate">{owner.team_name}</span>}
+            {glyph}
           </span>
         )
       })}
