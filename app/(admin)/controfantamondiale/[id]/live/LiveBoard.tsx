@@ -880,6 +880,17 @@ function totalVotoColor(voto: number): string {
   return 'text-[#DC0C00]'
 }
 
+// Same scale as totalVotoColor but as a solid background hex — used to fill the
+// total-voto line of the pill for lega-owned ("spined") players.
+function totalVotoBgColor(voto: number): string {
+  if (voto >= 10) return '#374DF5'
+  if (voto >= 9) return '#00ADC4'
+  if (voto >= 7) return '#00C424'
+  if (voto >= 6) return '#D9AF00'
+  if (voto >= 5) return '#ED7E07'
+  return '#DC0C00'
+}
+
 // Resolve the right-hand value: split base/total voto, or a no-play marker.
 function votoDisplay(
   baseVoto: number | null,
@@ -887,9 +898,9 @@ function votoDisplay(
   minutes: number | null,
   playState: LiveSnapshotRealPlayer['play_state'],
   matchStatus: LiveSnapshotMatch['status'],
-): { kind: 'score'; base: string; total: string; totalCls: string } | { kind: 'marker'; text: string; cls: string } {
+): { kind: 'score'; base: string; total: string; totalCls: string; totalBg: string } | { kind: 'marker'; text: string; cls: string } {
   if (playState === 'played' && baseVoto != null && voto != null) {
-    return { kind: 'score', base: fmt(baseVoto, 1), total: fmt(voto, 1), totalCls: totalVotoColor(voto) }
+    return { kind: 'score', base: fmt(baseVoto, 1), total: fmt(voto, 1), totalCls: totalVotoColor(voto), totalBg: totalVotoBgColor(voto) }
   }
   if ((minutes ?? 0) > 0) return { kind: 'marker', text: 'S.V.', cls: 'text-amber-500 dark:text-amber-400' }
   if (matchStatus === 'finished') return { kind: 'marker', text: '✕', cls: 'text-ink-5' }
@@ -921,10 +932,11 @@ function RealPlayerRow({
   // magenta. A lone owner who only benched him doesn't trigger it.
   const exclusiveStarter = p.owners.length === 1 && p.owners[0]?.status === 'titolare'
   const exclusiveMvp = exclusiveStarter && p.is_mvp
-  // Accent spine: marks any player owned by a lega team, so he's easy to spot
-  // among the 22 on the pitch. Graded — solid when at least one team fields him
-  // as a titolare, faint when only on benches. Suppressed under the exclusive-MVP
-  // magenta treatment, which already owns the box's left edge.
+  // Lega-ownership highlight: any player owned by a lega team gets a tinted row
+  // + a black/colored voto pill, so he's easy to spot among the 22 on the pitch.
+  // Graded — stronger tint when at least one team fields him as a titolare,
+  // faint when only on benches. Suppressed under the exclusive-MVP magenta
+  // treatment, which already owns the box.
   const ownedTitolare = p.owners.some((o) => o.status === 'titolare')
   const ownedSpine = p.owners.length > 0 && !exclusiveMvp
   const flash = useFlash(p.player_id)
@@ -935,27 +947,16 @@ function RealPlayerRow({
 
   return (
     <div
-      className={`relative flex min-h-[50px] items-center gap-1 overflow-hidden rounded-md border py-1 pl-[22px] pr-1.5 sm:gap-1.5 sm:pl-[26px] sm:pr-2 ${
+      className={`relative flex min-h-[50px] items-center gap-1 overflow-hidden rounded-md border py-1 pl-4 pr-1.5 sm:gap-1.5 sm:pl-5 sm:pr-2 ${
         exclusiveMvp
           ? 'border-[#f01c9c]/70 bg-[#f01c9c]/15 shadow-sm shadow-[#f01c9c]/25'
           : ownedTitolare
-            ? 'border-accent/35 bg-accent/[0.07] shadow-sm shadow-accent/10'
+            ? 'border-accent/45 bg-accent/[0.12] shadow-sm shadow-accent/15'
             : ownedSpine
-              ? 'border-accent/20 bg-glass-2'
+              ? 'border-accent/25 bg-accent/[0.05]'
               : 'border-hairline bg-glass-2'
       } ${muted ? 'opacity-60' : subbedOff ? 'opacity-55' : ''} ${depth > 0 ? 'ml-2 sm:ml-3' : ''} ${flashClass}`}
     >
-      {ownedSpine && (
-        <span
-          aria-hidden
-          title={ownedTitolare ? 'Schierato da una squadra della lega' : 'In rosa a una squadra della lega (panchina)'}
-          className={`absolute inset-y-0 left-0 z-[1] ${
-            ownedTitolare
-              ? 'w-[7px] bg-gradient-to-b from-accent/85 via-accent to-accent/85 shadow-[5px_0_14px_-2px] shadow-accent/45'
-              : 'w-[6px] bg-gradient-to-b from-accent/45 via-accent/65 to-accent/45 shadow-[4px_0_11px_-3px] shadow-accent/25'
-          }`}
-        />
-      )}
       <RoleNail role={p.role} />
       {depth > 0 && <span className="self-center text-[10px] text-emerald-500 dark:text-emerald-400">↳</span>}
 
@@ -993,6 +994,19 @@ function RealPlayerRow({
 
       <span className="shrink-0 self-center w-9 overflow-hidden rounded-md border border-hairline bg-surface-2 text-center tabular-nums shadow-sm sm:w-11">
         {v.kind === 'score' ? (
+          ownedSpine ? (
+            <>
+              <span className="block border-b border-white/15 bg-[#1b2236] px-1 py-0.5 text-[11px] font-bold leading-none text-white">
+                {v.base}
+              </span>
+              <span
+                className="block px-1 py-0.5 text-[11px] font-black leading-none text-white"
+                style={{ background: v.totalBg }}
+              >
+                {v.total}
+              </span>
+            </>
+          ) : (
           <>
             <span className="block border-b border-hairline px-1 py-0.5 text-[11px] font-bold leading-none text-ink-2">
               {v.base}
@@ -1001,6 +1015,7 @@ function RealPlayerRow({
               {v.total}
             </span>
           </>
+          )
         ) : (
           <span className={`block px-1 py-1.5 text-[11px] font-bold leading-none ${v.cls}`}>{v.text}</span>
         )}
