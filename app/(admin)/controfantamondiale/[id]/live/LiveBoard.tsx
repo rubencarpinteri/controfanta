@@ -10,6 +10,7 @@ import type {
   LiveSnapshotPlayer,
   LiveSnapshotMatch,
   LiveSnapshotRealPlayer,
+  LiveSnapshotGoalEvent,
   LiveOwnerRef,
   LiveOwnershipEntry,
   LiveTeamRef,
@@ -95,6 +96,11 @@ function useRatingFlash(snapshot: LiveRoundSnapshot | null): Map<string, FlashDi
   }, [])
 
   return flashes
+}
+
+function fmtGoalMinute(event: Pick<LiveSnapshotGoalEvent, 'minute' | 'extra_minute'>): string {
+  if (event.minute == null) return ''
+  return event.extra_minute ? `${event.minute}+${event.extra_minute}'` : `${event.minute}'`
 }
 
 function useFlash(playerId: string): FlashDir | undefined {
@@ -634,10 +640,10 @@ function MatchStatusBadge({
 }) {
   if (status === 'in_progress') {
     const label =
-      minute == null ? 'LIVE' : minuteAdded ? `${minute}+${minuteAdded}'` : `${minute}'`
+      minute == null ? 'HT' : minuteAdded ? `${minute}+${minuteAdded}'` : `${minute}'`
     return (
-      <span className="inline-flex items-center gap-1 rounded bg-emerald-400/12 px-1.5 py-0.5 text-[8px] font-bold text-emerald-400">
-        <span className="h-1 w-1 animate-pulse rounded-full bg-emerald-400" />
+      <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/14 px-2 py-0.5 text-[10px] font-black tabular-nums text-emerald-700 dark:text-emerald-300">
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-600 dark:bg-emerald-300" />
         {label}
       </span>
     )
@@ -723,20 +729,21 @@ function MatchDetailPanel({
       assistPool.set(a.national_team_id, arr)
     }
   }
-  type GoalEntry = { key: string; scorer: string; code: string; assist: string | null; own: boolean }
-  const goalEntries: GoalEntry[] = []
+  type GoalEntry = { key: string; minute: number | null; extra_minute: number | null; scorer: string; code: string; assist: string | null; own: boolean }
+  const fallbackGoalEntries: GoalEntry[] = []
   for (const s of m.players) {
     for (let i = 0; i < s.goals; i++) {
       const pool = assistPool.get(s.national_team_id) ?? []
-      goalEntries.push({ key: `g-${s.player_id}-${i}`, scorer: s.name, code: codeOf(s.national_team_id), assist: pool.shift() ?? null, own: false })
+      fallbackGoalEntries.push({ key: `g-${s.player_id}-${i}`, minute: null, extra_minute: null, scorer: s.name, code: codeOf(s.national_team_id), assist: pool.shift() ?? null, own: false })
     }
   }
   for (const o of m.players) {
     for (let i = 0; i < o.own_goals; i++) {
       const benefitsTeamId = o.national_team_id === m.home_team_id ? m.away_team_id : m.home_team_id
-      goalEntries.push({ key: `og-${o.player_id}-${i}`, scorer: o.name, code: codeOf(benefitsTeamId), assist: null, own: true })
+      fallbackGoalEntries.push({ key: `og-${o.player_id}-${i}`, minute: null, extra_minute: null, scorer: o.name, code: codeOf(benefitsTeamId), assist: null, own: true })
     }
   }
+  const goalEntries: GoalEntry[] = m.goal_events?.length ? m.goal_events : fallbackGoalEntries
   const hasGoalEvents = goalEntries.length > 0
 
   return (
@@ -784,6 +791,11 @@ function MatchDetailPanel({
             {goalEntries.map((e) => (
               <span key={e.key} className={`inline-flex items-center gap-1 ${e.own ? 'text-rose-500 dark:text-rose-300' : ''}`}>
                 <span aria-hidden>{e.own ? '🥅' : '⚽'}</span>
+                {e.minute != null && (
+                  <span className="rounded bg-ink-5/12 px-1 text-[8px] font-black tabular-nums text-ink-4">
+                    {fmtGoalMinute(e)}
+                  </span>
+                )}
                 {shortPlayerName(e.scorer)}
                 <span className="rounded bg-ink-5/12 px-1 text-[8px] font-bold tracking-wide text-ink-4">
                   {e.own ? `A.G. ${e.code}` : e.code}
@@ -938,6 +950,8 @@ function RealMatchPitch({ m, totalTeams }: { m: LiveSnapshotMatch; totalTeams: n
   // Subentrati = came on as a sub (or otherwise logged minutes without starting).
   const subs = (players: LiveSnapshotRealPlayer[]) =>
     players.filter((p) => !p.is_starter && (p.subbed_on_minute != null || (p.minutes_played ?? 0) > 0))
+  const bench = (players: LiveSnapshotRealPlayer[]) =>
+    players.filter((p) => !p.is_starter && p.subbed_on_minute == null && (p.minutes_played ?? 0) === 0)
 
   // GK at each team's own end; rows go P→D→C→A for the home half and mirror
   // (A→C→D→P) for the away half so the two attacks meet at the halfway line.
@@ -949,10 +963,11 @@ function RealMatchPitch({ m, totalTeams }: { m: LiveSnapshotMatch; totalTeams: n
     .filter((row) => row.length > 0)
   const homeSubs = subs(homeAll)
   const awaySubs = subs(awayAll)
+  const homeBench = bench(homeAll)
+  const awayBench = bench(awayAll)
 
-  // One CSS-grid row per role line: N equal columns that SHRINK to fit the pitch
-  // width and never wrap, so the module reads correctly — all defenders on one
-  // line, all attackers on one line — on any screen size.
+  // One CSS-grid row per role line: N equal columns that shrink to fit the pitch
+  // width and never wrap, so the module reads correctly on mobile.
   const renderRow = (row: LiveSnapshotRealPlayer[], teamRef: LiveTeamRef, key: string) => (
     <div
       key={key}
@@ -967,20 +982,22 @@ function RealMatchPitch({ m, totalTeams }: { m: LiveSnapshotMatch; totalTeams: n
 
   return (
     <div className="space-y-2">
-      <div className="relative flex flex-col gap-2.5 overflow-hidden rounded-2xl border border-black/10 dark:border-white/10 px-1.5 py-4 shadow-1">
-        {/* field base — light turf in light mode, charcoal in dark mode */}
-        <div className="pointer-events-none absolute inset-0 dark:hidden" style={{ background: 'linear-gradient(180deg, #eef1f6, #e4e8ef 50%, #eef1f6)' }} />
-        <div className="pointer-events-none absolute inset-0 hidden dark:block" style={{ background: 'linear-gradient(180deg, #20232b, #2a2e38 50%, #20232b)' }} />
-        {/* mowing stripes */}
-        <div className="pointer-events-none absolute inset-0 dark:hidden" style={{ background: 'repeating-linear-gradient(180deg, transparent 0 38px, rgba(0,0,0,0.028) 38px 76px)' }} />
-        <div className="pointer-events-none absolute inset-0 hidden opacity-60 dark:block" style={{ background: 'repeating-linear-gradient(180deg, transparent 0 38px, rgba(255,255,255,0.04) 38px 76px)' }} />
-        {/* field lines */}
-        <div className="pointer-events-none absolute left-4 right-4 top-1/2 h-px bg-black/15 dark:bg-white/20" />
-        <div className="pointer-events-none absolute left-1/2 top-1/2 h-[72px] w-[72px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-black/15 dark:border-white/20" />
+      <div className="rounded-2xl">
+        <div className="relative flex flex-col gap-2.5 overflow-hidden rounded-2xl border border-black/10 px-1.5 py-4 shadow-1 dark:border-white/10">
+          {/* field base — soft turf in light mode, charcoal in dark mode */}
+          <div className="pointer-events-none absolute inset-0 dark:hidden" style={{ background: 'linear-gradient(180deg, #e7f8e1, #d3efc8 50%, #e7f8e1)' }} />
+          <div className="pointer-events-none absolute inset-0 hidden dark:block" style={{ background: 'linear-gradient(180deg, #20232b, #2a2e38 50%, #20232b)' }} />
+          {/* mowing stripes */}
+          <div className="pointer-events-none absolute inset-0 dark:hidden" style={{ background: 'repeating-linear-gradient(180deg, transparent 0 38px, rgba(33,116,57,0.07) 38px 76px)' }} />
+          <div className="pointer-events-none absolute inset-0 hidden opacity-45 dark:block" style={{ background: 'repeating-linear-gradient(180deg, transparent 0 38px, rgba(255,255,255,0.028) 38px 76px)' }} />
+          {/* field lines */}
+          <div className="pointer-events-none absolute left-4 right-4 top-1/2 h-px bg-black/8 dark:bg-white/10" />
+          <div className="pointer-events-none absolute left-1/2 top-1/2 h-[72px] w-[72px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-black/8 dark:border-white/10" />
 
-        {homeRows.map((row, i) => renderRow(row, m.home_team, `home-${i}`))}
-        <div className="h-2" />
-        {awayRows.map((row, i) => renderRow(row, m.away_team, `away-${i}`))}
+          {homeRows.map((row, i) => renderRow(row, m.home_team, `home-${i}`))}
+          <div className="h-2" />
+          {awayRows.map((row, i) => renderRow(row, m.away_team, `away-${i}`))}
+        </div>
       </div>
 
       {selected && selectedTeamRef && (
@@ -993,6 +1010,16 @@ function RealMatchPitch({ m, totalTeams }: { m: LiveSnapshotMatch; totalTeams: n
           <div className="grid grid-cols-2 gap-x-2 gap-y-2">
             <RealSubColumn teamRef={m.home_team} subs={homeSubs} matchStatus={m.status} totalTeams={totalTeams} selectedId={selectedId} onSelect={toggle} />
             <RealSubColumn teamRef={m.away_team} subs={awaySubs} matchStatus={m.status} totalTeams={totalTeams} selectedId={selectedId} onSelect={toggle} />
+          </div>
+        </div>
+      )}
+
+      {(homeBench.length > 0 || awayBench.length > 0) && (
+        <div className="space-y-1.5">
+          <p className="px-1 text-[9px] font-bold uppercase tracking-wider text-ink-5">Panchine</p>
+          <div className="grid grid-cols-2 gap-x-2 gap-y-2">
+            <RealSubColumn teamRef={m.home_team} subs={homeBench} matchStatus={m.status} totalTeams={totalTeams} selectedId={selectedId} onSelect={toggle} label="Panchina" />
+            <RealSubColumn teamRef={m.away_team} subs={awayBench} matchStatus={m.status} totalTeams={totalTeams} selectedId={selectedId} onSelect={toggle} label="Panchina" />
           </div>
         </div>
       )}
@@ -1036,13 +1063,25 @@ function RealOwnershipPill({ p, totalTeams }: { p: LiveSnapshotRealPlayer; total
   const tit = p.owners.filter((o) => o.status === 'titolare').length
   const pan = p.owners.length - tit
   const exclusive = p.owners.length === 1
+  const benchOnlyExclusive = exclusive && tit === 0
   const title =
     `${p.owners.length} su ${totalTeams} squadre · ${tit} titolare${tit === 1 ? '' : ''} · ${pan} panchina — ` +
     p.owners.map((o) => `${o.team_name} (${o.status})`).join(', ')
+  if (benchOnlyExclusive) {
+    return (
+      <span
+        title={title}
+        className="inline-flex items-center gap-0.5 whitespace-nowrap rounded-full bg-ink-5/14 px-2 py-0.5 text-[9px] font-bold tabular-nums text-ink-4"
+      >
+        {p.owners.length}/{totalTeams}
+        <span>0T·{pan}P</span>
+      </span>
+    )
+  }
   return (
     <span
       title={title}
-      className={`inline-flex items-center gap-0.5 whitespace-nowrap rounded-full px-1.5 py-px text-[8px] font-bold tabular-nums text-white ${
+      className={`inline-flex items-center gap-0.5 whitespace-nowrap rounded-full px-2 py-0.5 text-[9px] font-bold tabular-nums text-white ${
         exclusive ? 'bg-[#FF0090]' : 'bg-indigo-600'
       }`}
     >
@@ -1067,11 +1106,11 @@ function RealVotoPill({ p, matchStatus, width }: { p: LiveSnapshotRealPlayer; ma
     >
       {v.kind === 'score' ? (
         <>
-          <span className="block border-b border-white/15 bg-[#1b2236] px-1 text-[9px] font-bold leading-[1.5] text-white">{v.base}</span>
-          <span className={`block px-1 text-[11px] font-black leading-[1.4] ${v.totalOnBgCls}`} style={{ background: v.totalBg }}>{v.total}</span>
+          <span className="block border-b border-white/15 bg-[#1b2236] px-1 text-[10px] font-bold leading-[1.55] text-white">{v.base}</span>
+          <span className={`block px-1 text-[12px] font-black leading-[1.45] ${v.totalOnBgCls}`} style={{ background: v.totalBg }}>{v.total}</span>
         </>
       ) : (
-        <span className={`block px-1 py-1 text-[11px] font-bold leading-none ${v.text === 'S.V.' ? v.cls : 'text-ink-5 dark:text-white/70'}`}>{v.text}</span>
+        <span className={`block px-1 py-1.5 text-[12px] font-bold leading-none ${v.text === 'S.V.' ? v.cls : 'text-ink-5 dark:text-white/70'}`}>{v.text}</span>
       )}
     </span>
   )
@@ -1085,7 +1124,6 @@ function RealPitchChip({ p, teamRef, matchStatus, totalTeams, selected, onSelect
   const exclusiveMvp = exclusiveStarter && p.is_mvp
   const flash = useFlash(p.player_id)
   const flashClass = flashTintClass(flash, owned && !exclusiveMvp)
-  const subbedOff = p.subbed_off_minute != null
 
   // Picked players are tinted with their ownership colour (magenta for esclusiva,
   // indigo for shared) — strong for a titolare, faint for bench-only — while
@@ -1095,58 +1133,62 @@ function RealPitchChip({ p, teamRef, matchStatus, totalTeams, selected, onSelect
   // Literal class strings (Tailwind JIT can't see interpolated ones).
   const tierClass = ownedTitolare
     ? exclusiveOwn
-      ? 'bg-[#FF0090]/22 dark:bg-[#FF0090]/40 border-[#FF0090]/70 dark:border-[#FF0090]/90'
-      : 'bg-indigo-500/22 dark:bg-indigo-500/40 border-indigo-400/70 dark:border-indigo-400/90'
+      ? 'bg-[#090b12] border-[#FF0090]/80 dark:border-[#FF0090]/90'
+      : 'bg-[#090b12] border-indigo-400/80 dark:border-indigo-400/90'
     : ownedPanchina
       ? exclusiveOwn
         ? 'bg-[#FF0090]/12 dark:bg-[#FF0090]/22 border-[#FF0090]/45 dark:border-[#FF0090]/60'
         : 'bg-indigo-500/12 dark:bg-indigo-500/22 border-indigo-400/45 dark:border-indigo-400/60'
       : 'bg-black/[0.035] dark:bg-white/[0.035] border-black/10 dark:border-white/10'
-  // MVP frame: a refined gold ring + soft glow around the whole card. The crown
+  // MVP frame: bright gold ring + glow around the whole card. The badge
   // lives in a corner medallion (below) so it never crowds the role nail.
   const boxShadow = exclusiveMvp
-    ? '0 0 0 2px #FFC83D, 0 0 16px 2px rgba(255,0,144,0.55)'
+    ? '0 0 0 2px #FFC83D, 0 0 0 5px rgba(255,0,144,0.42), 0 0 34px 8px rgba(255,0,144,0.82)'
     : p.is_mvp
-      ? '0 0 0 2px #FFC83D, 0 0 14px 1px rgba(255,200,61,0.5)'
+      ? '0 0 0 2px #FFC83D, 0 0 0 5px rgba(255,200,61,0.34), 0 0 30px 7px rgba(255,200,61,0.78)'
       : undefined
 
   return (
     <button
       type="button"
       onClick={onSelect}
-      className={`relative flex w-full min-h-[96px] flex-col items-center gap-0.5 overflow-hidden rounded-[12px] border px-1 pb-1.5 pt-2.5 text-center transition-transform active:scale-[0.97] ${tierClass} ${subbedOff ? 'opacity-75' : ''} ${selected ? 'outline outline-2 -outline-offset-1 outline-accent' : ''} ${flashClass}`}
+      className={`relative flex min-h-[96px] w-full min-w-0 flex-col items-center gap-0.5 overflow-hidden rounded-[12px] border px-1 pb-1.5 pt-2.5 text-center transition-transform active:scale-[0.97] ${tierClass} ${selected ? 'outline outline-2 -outline-offset-1 outline-accent' : ''} ${flashClass}`}
       style={boxShadow ? { boxShadow } : undefined}
     >
-      <RoleNail role={p.role} />
-      {p.is_mvp && (
-        <span
-          aria-label="MVP"
-          title={exclusiveMvp ? 'Esclusiva + MVP — solo questa squadra lo schiera, ed è il migliore in campo' : 'Migliore in campo — MVP'}
-          className={`absolute right-1 top-1 z-[2] grid h-[19px] w-[19px] place-items-center rounded-full text-[10px] leading-none ${exclusiveMvp ? 'animate-pulse' : ''}`}
-          style={{
-            background: exclusiveMvp ? 'radial-gradient(circle at 32% 28%, #FFE9A8, #FF0090)' : 'radial-gradient(circle at 32% 28%, #FFEFB8, #E2A100)',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,255,255,0.55)',
-          }}
-        >
-          <span aria-hidden>👑</span>
-        </span>
-      )}
+      <RoleNail role={p.role} onDark={ownedTitolare} />
 
       <RealCrest teamRef={teamRef} live={realOnPitch(p, matchStatus)} size={26} />
 
-      <span className="block w-full truncate text-[10px] font-bold leading-tight text-ink-1 dark:text-white dark:[text-shadow:0_1px_2px_rgba(0,0,0,0.85)]" title={p.name}>
+      <span className={`block w-full truncate text-[13px] font-bold leading-tight ${ownedTitolare ? 'text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.85)]' : 'text-ink-1 dark:text-white dark:[text-shadow:0_1px_2px_rgba(0,0,0,0.85)]'}`} title={p.name}>
         {shortPlayerName(p.name)}
       </span>
 
-      <span className="min-h-[10px] text-[8px] font-bold leading-none text-rose-500 dark:text-rose-300" title={subbedOff ? 'Sostituito' : undefined}>
-        {subbedOff ? `↓${p.subbed_off_minute}'` : ''}
+      <span className="flex min-h-[18px] items-center justify-center">
+        {p.is_mvp && (
+          <span
+            aria-label="MVP"
+            title={exclusiveMvp ? 'Esclusiva + MVP — solo questa squadra lo schiera, ed è il migliore in campo' : 'Migliore in campo — MVP'}
+            className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[8.5px] font-black leading-none tracking-wide text-[#4a3100] ${exclusiveMvp ? 'animate-pulse' : ''}`}
+            style={{
+              background: exclusiveMvp ? 'linear-gradient(90deg,#FFE9A8,#FF0090)' : 'linear-gradient(90deg,#FFF4BF,#E2A100)',
+              boxShadow: '0 2px 7px rgba(0,0,0,0.42), 0 0 12px rgba(255,200,61,0.85), inset 0 0 0 1px rgba(255,255,255,0.75)',
+            }}
+          >
+            <MvpGlyph className="h-3 w-3" />
+            MVP
+          </span>
+        )}
       </span>
 
-      <span className="flex min-h-[13px] flex-wrap items-center justify-center gap-0.5">
+      <span className="min-h-[15px] rounded-md px-1 py-0.5 text-[10px] font-black leading-none text-rose-600 dark:text-rose-300" title={p.subbed_off_minute != null ? 'Sostituito' : undefined}>
+        {p.subbed_off_minute != null ? `↓${p.subbed_off_minute}'` : ''}
+      </span>
+
+      <span className="flex min-h-[12px] flex-wrap items-center justify-center gap-0.5">
         <BonusMalusIcons p={p} />
       </span>
 
-      <RealVotoPill p={p} matchStatus={matchStatus} width={36} />
+      <RealVotoPill p={p} matchStatus={matchStatus} width={40} />
 
       <span className="flex min-h-[12px] items-center justify-center">
         <RealOwnershipPill p={p} totalTeams={totalTeams} />
@@ -1157,13 +1199,14 @@ function RealPitchChip({ p, teamRef, matchStatus, totalTeams, selected, onSelect
 
 // One team's substitutes, listed below the pitch (off the grass, on the normal
 // glass surface) so the "↑min per <player>" linkage is actually readable.
-function RealSubColumn({ teamRef, subs, matchStatus, totalTeams, selectedId, onSelect }: { teamRef: LiveTeamRef; subs: LiveSnapshotRealPlayer[]; matchStatus: LiveSnapshotMatch['status']; totalTeams: number; selectedId: string | null; onSelect: (id: string) => void }) {
+function RealSubColumn({ teamRef, subs, matchStatus, totalTeams, selectedId, onSelect, label }: { teamRef: LiveTeamRef; subs: LiveSnapshotRealPlayer[]; matchStatus: LiveSnapshotMatch['status']; totalTeams: number; selectedId: string | null; onSelect: (id: string) => void; label?: string }) {
   if (subs.length === 0) return null
   return (
     <div className="min-w-0 space-y-1">
       <p className="flex items-center gap-1 px-0.5 text-[8.5px] font-bold uppercase tracking-wider text-ink-4">
         <RealCrest teamRef={teamRef} live={false} size={12} />
         <span className="truncate">{teamRef.name}</span>
+        {label && <span className="text-ink-5">· {label}</span>}
       </p>
       {subs.map((p) => (
         <RealSubChip key={p.player_id} p={p} teamRef={teamRef} matchStatus={matchStatus} totalTeams={totalTeams} selected={p.player_id === selectedId} onSelect={() => onSelect(p.player_id)} />
@@ -1181,18 +1224,28 @@ function RealSubChip({ p, teamRef, matchStatus, totalTeams, selected, onSelect }
   const flash = useFlash(p.player_id)
   const flashClass = flashTintClass(flash, ownedTitolare)
   const cardClass = ownedTitolare
-    ? 'border-ink-1/80 bg-ink-1/90'
+    ? p.is_mvp
+      ? 'border-amber-300 bg-[#090b12] shadow-[0_0_24px_-2px_rgba(255,200,61,0.82)]'
+      : 'border-indigo-400/80 bg-[#090b12] shadow-sm shadow-indigo-500/20'
     : owned
       ? 'border-ink-1/25 bg-ink-1/[0.06]'
       : 'border-hairline bg-glass-2'
   return (
     <button type="button" onClick={onSelect} className={`relative flex w-full items-center gap-1.5 overflow-hidden rounded-[10px] border pl-5 pr-1.5 py-1 text-left shadow-sm transition-transform active:scale-[0.98] ${selected ? 'ring-2 ring-accent' : ''} ${cardClass} ${flashClass}`}>
-      <RoleNail role={p.role} />
+      <RoleNail role={p.role} onDark={ownedTitolare} />
       <RealCrest teamRef={teamRef} live={realOnPitch(p, matchStatus)} size={18} />
       <span className="flex min-w-0 flex-1 flex-col leading-tight">
-        <span className={`truncate text-[11px] font-bold ${ownedTitolare ? 'text-surface-0' : 'text-ink-1'}`} title={p.name}>{shortPlayerName(p.name)}</span>
+        <span className="flex min-w-0 items-center gap-1">
+          <span className={`truncate text-[12.5px] font-bold ${ownedTitolare ? 'text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.85)]' : 'text-ink-1'}`} title={p.name}>{shortPlayerName(p.name)}</span>
+          {p.is_mvp && (
+            <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-amber-400/25 px-1.5 py-0.5 text-[8.5px] font-black leading-none text-amber-700 ring-1 ring-amber-400/45 shadow-[0_0_10px_rgba(255,200,61,0.35)] dark:text-amber-200" title="Migliore in campo — MVP">
+              <MvpGlyph className="h-3 w-3" />
+              MVP
+            </span>
+          )}
+        </span>
         {p.subbed_on_minute != null && (
-          <span className="truncate text-[8.5px] font-semibold text-emerald-600 dark:text-emerald-400" title={p.replaced_player_name ? `Entrato per ${p.replaced_player_name}` : 'Entrato'}>
+          <span className="truncate text-[10px] font-black text-emerald-700 dark:text-emerald-300" title={p.replaced_player_name ? `Entrato per ${p.replaced_player_name}` : 'Entrato'}>
             ↑{p.subbed_on_minute}&apos;{p.replaced_player_name ? ` per ${shortPlayerName(p.replaced_player_name)}` : ''}
           </span>
         )}
@@ -1201,7 +1254,7 @@ function RealSubChip({ p, teamRef, matchStatus, totalTeams, selected, onSelect }
           <RealOwnershipPill p={p} totalTeams={totalTeams} />
         </span>
       </span>
-      <RealVotoPill p={p} matchStatus={matchStatus} width={30} />
+      <RealVotoPill p={p} matchStatus={matchStatus} width={34} />
     </button>
   )
 }
@@ -1211,10 +1264,28 @@ function RealSubChip({ p, teamRef, matchStatus, totalTeams, selected, onSelect }
 // plus his bonus/malus. Esclusiva (a single owner) is called out in neon magenta.
 function RealPlayerSheet({ p, teamRef, matchStatus, totalTeams, onClose }: { p: LiveSnapshotRealPlayer; teamRef: LiveTeamRef; matchStatus: LiveSnapshotMatch['status']; totalTeams: number; onClose: () => void }) {
   const storedBase = p.display_voto_base ?? p.voto_base ?? (p.play_state === 'played' && p.voto != null ? p.voto : null)
-  const v = votoDisplay(storedBase, p.display_voto_total ?? p.voto, p.minutes_played, p.play_state, matchStatus)
+  const displayedTotalRaw = p.display_voto_total ?? p.voto
+  const v = votoDisplay(storedBase, displayedTotalRaw, p.minutes_played, p.play_state, matchStatus)
   const tit = p.owners.filter((o) => o.status === 'titolare')
   const pan = p.owners.filter((o) => o.status === 'panchina')
   const exclusive = p.owners.length === 1
+  const fallbackPenaltyPct = realMatchFallbackPenaltyPct(tit.length, totalTeams)
+  const penaltyPct =
+    (p.popularity_penalty_pct_now ?? 0) > 0
+      ? p.popularity_penalty_pct_now ?? 0
+      : fallbackPenaltyPct
+  const penaltyAmount =
+    (p.popularity_penalty_now ?? 0) > 0.005
+      ? p.popularity_penalty_now ?? 0
+      : displayedTotalRaw != null
+        ? (Math.abs(displayedTotalRaw) * penaltyPct) / 100
+        : 0
+  const calculatedFinal =
+    v.kind === 'score' && displayedTotalRaw != null
+      ? displayedTotalRaw + (p.mvp_bonus ?? 0) - penaltyAmount
+      : null
+  const displayedFinal = calculatedFinal ?? p.final_score_now
+  const hasFinalOverlay = displayedFinal != null && v.kind === 'score'
   return (
     <div className="rounded-2xl border border-hairline bg-glass-1 p-3.5 shadow-1">
       <div className="flex items-center gap-2.5">
@@ -1230,13 +1301,34 @@ function RealPlayerSheet({ p, teamRef, matchStatus, totalTeams, onClose }: { p: 
           <div className="flex items-baseline gap-1.5">
             <span className="text-[18px] font-black text-ink-1 tabular-nums">{v.base}</span>
             <span className="text-ink-5">→</span>
-            <span className={`text-[18px] font-black tabular-nums ${v.totalCls}`}>{v.total}</span>
+            <span className={`text-[20px] font-black tabular-nums ${totalVotoColor(displayedFinal ?? Number(v.total))}`}>
+              {displayedFinal != null ? fmt(displayedFinal, 1) : v.total}
+            </span>
           </div>
         ) : (
           <span className={`text-[14px] font-bold ${v.cls}`}>{v.text}</span>
         )}
         <button onClick={onClose} className="ml-1 shrink-0 text-ink-5 hover:text-ink-2" aria-label="Chiudi">✕</button>
       </div>
+
+      {hasFinalOverlay && (
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-amber-400/35 bg-amber-400/8 px-3 py-2.5 shadow-[0_0_18px_rgba(255,200,61,0.12)]">
+          <div className="min-w-0">
+            <div className="text-[10.5px] font-black uppercase tracking-wider text-ink-3">Voto reale dopo penalità</div>
+            <div className="mt-0.5 text-[12.5px] font-semibold text-ink-3">
+              Voto bonus/malus {v.total}
+              {(penaltyAmount > 0.005 || (p.mvp_bonus ?? 0) > 0.005) && <span> · </span>}
+              {penaltyAmount > 0.005 && <>P.P. {Math.round(penaltyPct)}% −{fmt(penaltyAmount, 2)}</>}
+              {penaltyAmount > 0.005 && (p.mvp_bonus ?? 0) > 0.005 && <span> · </span>}
+              {(p.mvp_bonus ?? 0) > 0.005 && <>MVP +{fmt(p.mvp_bonus ?? 0, 2)}</>}
+              {penaltyAmount <= 0.005 && (p.mvp_bonus ?? 0) <= 0.005 && 'Nessun correttivo ownership attivo'}
+            </div>
+          </div>
+          <span className={`shrink-0 rounded-lg bg-surface-0 px-2.5 py-1 text-[26px] font-black tabular-nums shadow-sm ${totalVotoColor(displayedFinal ?? 0)}`}>
+            {fmt(displayedFinal, 2)}
+          </span>
+        </div>
+      )}
 
       <div className="mt-3 border-t border-hairline pt-2.5">
         {p.owners.length === 0 ? (
@@ -1331,6 +1423,16 @@ function totalVotoOnBgTextClass(voto: number): string {
   return voto >= 10 || voto < 5 ? 'text-white' : 'text-black'
 }
 
+function realMatchFallbackPenaltyPct(fieldedOwners: number, totalTeams: number): number {
+  const ownershipPct = totalTeams > 0 ? (fieldedOwners / totalTeams) * 100 : 0
+  if (ownershipPct <= 10) return 0
+  if (ownershipPct <= 25) return 30
+  if (ownershipPct <= 45) return 40
+  if (ownershipPct <= 65) return 50
+  if (ownershipPct <= 80) return 60
+  return 70
+}
+
 // Resolve the right-hand value: split base/total voto, or a no-play marker.
 function votoDisplay(
   baseVoto: number | null,
@@ -1381,64 +1483,63 @@ function RealPlayerRow({
   const ownedSpine = p.owners.length > 0 && !exclusiveMvp
   const flash = useFlash(p.player_id)
   const flashClass = flashTintClass(flash, ownedTitolare && !exclusiveMvp)
-  // Subbed off and not back on → no longer on the pitch. Dimmed so it's obvious
-  // he left the field (his replacement is chained directly below at depth+1).
-  const subbedOff = p.subbed_off_minute != null
   const darkVotoPill = ownedTitolare && !exclusiveMvp
 
   return (
     <div
       className={`relative flex min-h-[50px] items-center gap-1 overflow-hidden rounded-md border py-1 pl-4 pr-1.5 sm:gap-1.5 sm:pl-5 sm:pr-2 ${
         exclusiveMvp
-          ? 'border-[#FF0090]/80 shadow-[0_0_16px_-2px] shadow-[#FF0090]/55'
+          ? 'border-[#FF0090]/90 bg-[#090b12] shadow-[0_0_32px_-2px_rgba(255,0,144,0.88)]'
           : ownedTitolare
-            ? 'border-ink-1/80 bg-ink-1/90 shadow-sm shadow-ink-1/20'
+            ? p.is_mvp
+              ? 'border-amber-300 bg-[#090b12] shadow-[0_0_30px_-2px_rgba(255,200,61,0.82)]'
+              : 'border-indigo-400/80 bg-[#090b12] shadow-sm shadow-indigo-500/20'
             : ownedSpine
               ? 'border-ink-1/25 bg-ink-1/[0.06]'
               : 'border-hairline bg-glass-2'
-      } ${muted ? 'opacity-50' : subbedOff ? 'opacity-80' : ''} ${depth > 0 ? 'ml-2 sm:ml-3' : ''} ${flashClass}`}
-      style={exclusiveMvp ? { background: 'linear-gradient(100deg, rgba(245,158,11,0.20), rgba(240,28,156,0.20))' } : undefined}
+      } ${depth > 0 ? 'ml-2 sm:ml-3' : ''} ${flashClass}`}
+      style={exclusiveMvp ? { background: 'linear-gradient(100deg, #090b12 0%, #130912 55%, #22091a 100%)' } : undefined}
     >
-      <RoleNail role={p.role} />
+      <RoleNail role={p.role} onDark={ownedTitolare} />
       {depth > 0 && <span className="self-center text-[10px] text-emerald-500 dark:text-emerald-400">↳</span>}
 
       <span className="min-w-0 flex-1">
         {/* Name gets its own line so it stays readable even in a narrow column;
             sub markers, bonus/malus glyphs and MVP all wrap onto the meta line
             below, never crowding (and truncating) the name. */}
-        <span className={`block truncate text-[12.5px] font-semibold sm:text-[13.5px] ${ownedTitolare && !exclusiveMvp ? 'text-surface-0' : 'text-ink-1'}`} title={p.name}>
+        <span className={`block truncate text-[14.5px] font-semibold sm:text-[15px] ${ownedTitolare ? 'text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.85)]' : 'text-ink-1'}`} title={p.name}>
           {shortPlayerName(p.name)}
         </span>
 
         <span className="mt-0.5 flex flex-wrap items-center gap-x-1 gap-y-0.5">
           {p.subbed_off_minute != null && (
-            <span className="shrink-0 rounded bg-rose-500 px-1.5 py-px text-[10px] font-bold tabular-nums text-white shadow-sm" title="Sostituito">
+            <span className="shrink-0 rounded-md bg-rose-500 px-2 py-0.5 text-[12px] font-black tabular-nums text-white shadow-sm" title="Sostituito">
               ↓{p.subbed_off_minute}&apos;
             </span>
           )}
           {p.subbed_on_minute != null && (
-            <span className="shrink-0 rounded bg-emerald-500 px-1.5 py-px text-[10px] font-bold tabular-nums text-white shadow-sm" title="Entrato">
+            <span className="shrink-0 rounded-md bg-emerald-500 px-2 py-0.5 text-[12px] font-black tabular-nums text-white shadow-sm" title="Entrato">
               ↑{p.subbed_on_minute}&apos;
             </span>
           )}
           {exclusiveMvp ? (
             <span
               title="Esclusiva + MVP — solo questa squadra lo schiera, ed è il migliore in campo"
-              className="shrink-0 inline-flex animate-pulse items-center gap-1 rounded-md px-1.5 py-px text-[9px] font-black uppercase leading-none tracking-wide text-white shadow-sm"
-              style={{ background: 'linear-gradient(90deg,#f59e0b,#FF0090)' }}
+              className="shrink-0 inline-flex animate-pulse items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-black uppercase leading-none tracking-wide text-white shadow-sm"
+              style={{ background: 'linear-gradient(90deg,#E2A100,#FF0090)', boxShadow: '0 0 18px rgba(255,0,144,0.7)' }}
             >
-              <span aria-hidden>👑</span>
+              <MvpGlyph className="h-3 w-3 text-white" />
               <DiamondGlyph className="text-white" />
-              Esclusiva MVP
-              <span aria-hidden>✨</span>
+              MVP
             </span>
           ) : (
             p.is_mvp && (
               <span
                 title="Migliore in campo"
-                className="shrink-0 rounded-full border border-amber-400/30 bg-amber-400/20 px-1.5 py-px text-[9px] font-black text-amber-600 shadow-sm dark:text-amber-200"
+                className="shrink-0 inline-flex items-center gap-1 rounded-full border border-amber-300/80 bg-amber-400/25 px-2 py-0.5 text-[10px] font-black text-amber-700 shadow-[0_0_16px_rgba(255,200,61,0.5)] dark:text-amber-200"
               >
-                ★ MVP
+                <MvpGlyph className="h-2.5 w-2.5" />
+                MVP
               </span>
             )
           )}
@@ -1457,11 +1558,11 @@ function RealPlayerRow({
         {v.kind === 'score' ? (
           p.owners.length > 0 ? (
             <>
-              <span className="block border-b border-white/15 bg-[#1b2236] px-1 py-0.5 text-[11px] font-bold leading-none text-white">
+              <span className="block border-b border-white/15 bg-[#1b2236] px-1 py-0.5 text-[12px] font-bold leading-none text-white">
                 {v.base}
               </span>
               <span
-                className={`block px-1 py-0.5 text-[11px] font-black leading-none ${v.totalOnBgCls}`}
+                className={`block px-1 py-0.5 text-[12px] font-black leading-none ${v.totalOnBgCls}`}
                 style={{ background: v.totalBg }}
               >
                 {v.total}
@@ -1469,10 +1570,10 @@ function RealPlayerRow({
             </>
           ) : (
           <>
-            <span className="block border-b border-hairline px-1 py-0.5 text-[11px] font-bold leading-none text-ink-2">
+            <span className="block border-b border-hairline px-1 py-0.5 text-[12px] font-bold leading-none text-ink-2">
               {v.base}
             </span>
-            <span className={`block px-1 py-0.5 text-[11px] font-black leading-none ${v.totalCls}`}>
+            <span className={`block px-1 py-0.5 text-[12px] font-black leading-none ${v.totalCls}`}>
               {v.total}
             </span>
           </>
@@ -1539,20 +1640,20 @@ function BonusMalusIcons({ p, inverted = false }: { p: BonusMalusPlayer; inverte
   if (p.penalties_missed > 0)
     items.push({
       key: 'pm',
-      node: <span className="rounded bg-rose-400/20 px-1 text-[8px] font-bold text-rose-600 dark:text-rose-300" title="Rigore sbagliato">Rig.✕</span>,
+      node: <span className="rounded bg-rose-400/20 px-1.5 py-0.5 text-[9px] font-bold text-rose-600 dark:text-rose-300" title="Rigore sbagliato">Rig.✕</span>,
     })
   if (p.own_goals > 0)
     items.push({
       key: 'og',
-      node: <span className="rounded bg-rose-500/25 px-1 text-[8px] font-bold text-rose-600 dark:text-rose-300" title="Autogol">AG</span>,
+      node: <span className="rounded bg-rose-500/25 px-1.5 py-0.5 text-[9px] font-bold text-rose-600 dark:text-rose-300" title="Autogol">AG</span>,
     })
   if (p.red_cards > 0)
     items.push({
       key: 'r',
       node: (
         <span className="inline-flex items-center gap-0.5" title={p.immunita_active ? 'Rosso presente, malus annullato da immunità' : 'Rosso'}>
-          <span className="inline-block h-3 w-2 rounded-sm bg-rose-500" />
-          {p.immunita_active && <span className="text-[10px] leading-none text-indigo-500 dark:text-indigo-300">🛡</span>}
+          <span className="inline-block h-3.5 w-2.5 rounded-sm bg-rose-500" />
+          {p.immunita_active && <span className="text-[11px] leading-none text-indigo-500 dark:text-indigo-300">🛡</span>}
         </span>
       ),
     })
@@ -1561,14 +1662,14 @@ function BonusMalusIcons({ p, inverted = false }: { p: BonusMalusPlayer; inverte
       key: 'y',
       node: (
         <span className="inline-flex items-center gap-0.5" title={p.immunita_active ? 'Giallo presente, malus annullato da immunità' : 'Giallo'}>
-          <span className="inline-block h-3 w-2 rounded-sm bg-amber-400" />
-          {p.immunita_active && <span className="text-[10px] leading-none text-indigo-500 dark:text-indigo-300">🛡</span>}
+          <span className="inline-block h-3.5 w-2.5 rounded-sm bg-amber-400" />
+          {p.immunita_active && <span className="text-[11px] leading-none text-indigo-500 dark:text-indigo-300">🛡</span>}
         </span>
       ),
     })
   if (!items.length) return null
   return (
-    <span className="flex shrink-0 items-center gap-1 self-center">
+    <span className="flex shrink-0 items-center gap-1.5 self-center">
       {items.map((it) => (
         <span key={it.key} className="inline-flex items-center leading-none">
           {it.node}
@@ -1591,11 +1692,11 @@ function BonusIcon({
 }) {
   return (
     <span
-      className={`inline-flex h-5 min-w-5 items-center justify-center gap-0.5 rounded-full px-1 text-[11px] font-bold leading-none ${className}`}
+      className={`inline-flex h-6 min-w-6 items-center justify-center gap-0.5 rounded-full px-1.5 text-[12px] font-bold leading-none ${className}`}
       title={title}
     >
       <span aria-hidden>{icon}</span>
-      {count != null && count > 1 && <span className="text-[8px]">×{count}</span>}
+      {count != null && count > 1 && <span className="text-[9px]">×{count}</span>}
     </span>
   )
 }
@@ -1994,25 +2095,21 @@ function PlayerCrest({ p, live, size }: { p: LiveSnapshotPlayer; live: boolean; 
   )
 }
 
-// Role "nail" in the card's top-left corner — the role letter on its solid role
-// color. The parent card's `overflow-hidden` + matching border-radius clip its
-// top-left to the SAME arc as the card (so it reads as part of the corner), and
-// the nail's own rounded bottom-right gives a smooth inner edge. The letter is
-// centered into the visible area (nudged slightly off the clipped corner).
-function RoleNail({ role }: { role: string }) {
+// Small role glyph in the card's top-left corner. The colour carries the role,
+// without the heavy clipped-corner tag.
+function RoleNail({ role, onDark = false }: { role: string; onDark?: boolean }) {
   const c = ROLE_DOT[role] ?? '#94a3b8'
   return (
     <span
       aria-hidden
       title={ROLE_NAME[role] ?? role}
-      className="absolute left-0 top-0 z-[1] flex items-center justify-center border-b border-r border-white/25 text-[7px] font-black leading-none text-white shadow-sm"
+      className={`absolute left-1 top-1 z-[1] flex h-3.5 w-3.5 items-center justify-center rounded-full text-[8px] font-black leading-none shadow-sm ring-1 ${
+        onDark
+          ? 'bg-[#171a22] ring-white/10'
+          : 'bg-surface-0/85 ring-black/5 dark:bg-surface-3/85 dark:ring-white/10'
+      }`}
       style={{
-        width: 15,
-        height: 13,
-        paddingTop: 1,
-        paddingLeft: 1,
-        background: `linear-gradient(145deg, ${c}, color-mix(in srgb, ${c} 70%, #020617))`,
-        borderRadius: '0 0 6px 0',
+        color: c,
       }}
     >
       {role}
@@ -2101,6 +2198,15 @@ function DiamondGlyph({ className = '' }: { className?: string }) {
   return (
     <svg width="11" height="11" viewBox="0 0 12 12" className={className} aria-hidden role="img">
       <path d="M6 0.7l5 4.3-5 6.3-5-6.3z" fill="currentColor" />
+    </svg>
+  )
+}
+
+function MvpGlyph({ className = '' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" className={className} aria-hidden role="img">
+      <path d="M8 1.2l1.65 4.2 4.5.28-3.48 2.86 1.13 4.36L8 10.48 4.2 12.9l1.13-4.36-3.48-2.86 4.5-.28z" fill="currentColor" />
+      <path d="M8 3.9l.73 1.86 2 .12-1.54 1.27.5 1.94L8 8.02 6.31 9.09l.5-1.94-1.54-1.27 2-.12z" fill="rgba(255,255,255,0.5)" />
     </svg>
   )
 }
@@ -2327,6 +2433,8 @@ function PlayerDetailSheet({
   const ppPot = p.popularity_penalty_potential
   const pctNow = entry ? Math.round(entry.pct_now) : null
   const pctMax = entry ? Math.round(entry.pct_potential) : null
+  const hasFinalOverlay = v.kind === 'score' && p.final_score_now != null
+  const displayedFinal = hasFinalOverlay ? p.final_score_now : null
 
   const chips: { key: string; icon: ReactNode; label: string; value?: ReactNode; title?: string; tone: 'pos' | 'neg' | 'mvp' }[] = []
   if (p.goals > 0) chips.push({ key: 'g', icon: '⚽', label: p.goals > 1 ? `Gol ×${p.goals}` : 'Gol', tone: 'pos' })
@@ -2387,13 +2495,34 @@ function PlayerDetailSheet({
           <div className="flex items-baseline gap-1.5">
             <span className="text-[20px] font-black text-ink-1 tabular-nums">{v.base}</span>
             <span className="text-ink-5">→</span>
-            <span className={`text-[20px] font-black tabular-nums ${v.totalCls}`}>{v.total}</span>
+            <span className={`text-[20px] font-black tabular-nums ${totalVotoColor(displayedFinal ?? Number(v.total))}`}>
+              {displayedFinal != null ? fmt(displayedFinal, 1) : v.total}
+            </span>
           </div>
         ) : (
           <span className={`text-[14px] font-bold ${v.cls}`}>{v.text}</span>
         )}
         <button onClick={onClose} className="ml-1 shrink-0 text-ink-5 hover:text-ink-2" aria-label="Chiudi">✕</button>
       </div>
+
+      {hasFinalOverlay && (
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-hairline bg-surface-1 px-3 py-2">
+          <div className="min-w-0">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-ink-5">Voto finale con P.P./MVP</div>
+            <div className="mt-0.5 text-[11.5px] text-ink-4">
+              Voto pre-P.P. {v.total}
+              {(pp > 0.005 || p.mvp_bonus > 0.005) && <span> · </span>}
+              {pp > 0.005 && <>P.P. −{fmt(pp, 2)}</>}
+              {pp > 0.005 && p.mvp_bonus > 0.005 && <span> · </span>}
+              {p.mvp_bonus > 0.005 && <>MVP +{fmt(p.mvp_bonus, 2)}</>}
+              {pp <= 0.005 && p.mvp_bonus <= 0.005 && 'Nessun correttivo ownership attivo'}
+            </div>
+          </div>
+          <span className={`shrink-0 text-[22px] font-black tabular-nums ${totalVotoColor(p.final_score_now)}`}>
+            {fmt(p.final_score_now, 2)}
+          </span>
+        </div>
+      )}
 
       <div className="mt-3 flex flex-wrap gap-1.5">
         {chips.length ? (
@@ -2715,8 +2844,8 @@ function OwnerPills({
       <span
         className={`shrink-0 ${
           isExclusiveStarter
-            ? `font-black text-[#FF0090] ${compact ? 'text-[10px]' : 'text-[11px]'}`
-            : `font-bold text-[#6366f1] ${compact ? 'text-[9px]' : 'text-[10px]'}`
+            ? `font-black text-[#FF0090] ${compact ? 'text-[11px]' : 'text-[12px]'}`
+            : `font-bold text-[#6366f1] ${compact ? 'text-[10px]' : 'text-[11px]'}`
         }`}
       >
         {totalTeams ? `in ${owners.length}/${totalTeams}` : 'anche in'}
@@ -2747,8 +2876,8 @@ function OwnerPills({
             key={`${owner.team_name}-${owner.status}-${i}`}
             className={`inline-flex shrink-0 items-center rounded-full border font-semibold ${chipCls} ${
               showNames
-                ? `min-w-0 gap-1 ${compact ? 'max-w-[120px] px-1.5 py-px text-[9px]' : 'max-w-[180px] px-2 py-0.5 text-[10px]'}`
-                : 'justify-center px-1 py-px'
+                ? `min-w-0 gap-1 ${compact ? 'max-w-[130px] px-2 py-0.5 text-[10px]' : 'max-w-[190px] px-2.5 py-0.5 text-[11px]'}`
+                : 'justify-center px-1.5 py-0.5'
             }`}
             title={`${owner.team_name} — ${isStarter ? 'titolare' : 'panchina'}`}
           >

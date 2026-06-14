@@ -172,6 +172,7 @@ export default async function LivePage({
         minute_added: m.minute_added,
         status: (m.status as LiveRoundSnapshot['matches'][number]['status']),
         kickoff_at: m.kickoff_at,
+        goal_events: [],
         players: [],
       })),
       standings: Object.fromEntries(

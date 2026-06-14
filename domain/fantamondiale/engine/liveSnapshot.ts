@@ -37,6 +37,67 @@ type Supabase = SupabaseClient<Database>
 
 type PlayState = 'played' | 'not_played' | 'pending'
 
+type CachedSportmonksFixture = {
+  participants?: Array<{
+    id: number
+    meta?: { location?: 'home' | 'away' | null } | null
+  }>
+  events?: Array<{
+    id?: number | null
+    participant_id?: number | null
+    player_name?: string | null
+    related_player_name?: string | null
+    minute?: number | null
+    extra_minute?: number | null
+    type?: { developer_name?: string | null } | null
+  }>
+}
+
+function extractGoalEventsFromFixture(
+  rawPayload: unknown,
+  match: { home_team: LiveTeamRef; away_team: LiveTeamRef },
+): LiveSnapshotGoalEvent[] {
+  if (!rawPayload || typeof rawPayload !== 'object') return []
+  const fixture = rawPayload as CachedSportmonksFixture
+  const events = Array.isArray(fixture.events) ? fixture.events : []
+  if (events.length === 0) return []
+
+  const homeSmId = fixture.participants?.find((p) => p.meta?.location === 'home')?.id ?? null
+  const awaySmId = fixture.participants?.find((p) => p.meta?.location === 'away')?.id ?? null
+
+  return events
+    .flatMap((event, index): LiveSnapshotGoalEvent[] => {
+      const type = event.type?.developer_name
+      if (type !== 'GOAL' && type !== 'PENALTY' && type !== 'OWN_GOAL') return []
+
+      const eventTeamIsHome = homeSmId != null && event.participant_id === homeSmId
+      const eventTeamIsAway = awaySmId != null && event.participant_id === awaySmId
+      const code =
+        type === 'OWN_GOAL'
+          ? eventTeamIsHome
+            ? match.away_team.fifa_code
+            : eventTeamIsAway
+              ? match.home_team.fifa_code
+              : ''
+          : eventTeamIsHome
+            ? match.home_team.fifa_code
+            : eventTeamIsAway
+              ? match.away_team.fifa_code
+              : ''
+
+      return [{
+        key: `sm-goal-${event.id ?? index}`,
+        minute: event.minute ?? null,
+        extra_minute: event.extra_minute ?? null,
+        scorer: event.player_name ?? '—',
+        code,
+        assist: event.related_player_name ?? null,
+        own: type === 'OWN_GOAL',
+      }]
+    })
+    .sort((a, b) => (a.minute ?? 999) - (b.minute ?? 999) || (a.extra_minute ?? 0) - (b.extra_minute ?? 0))
+}
+
 // ---- snapshot payload shape (persisted as jsonb) ---------------------------
 
 export type LiveTeamRef = {
@@ -171,6 +232,10 @@ export type LiveSnapshotRealPlayer = {
   clean_sheet_bonus: number
   /** Highest-rated player in the fixture. */
   is_mvp: boolean
+  popularity_penalty_now: number
+  popularity_penalty_pct_now: number
+  mvp_bonus: number
+  final_score_now: number | null
   minutes_played: number | null
   /** Play status, so the UI can render −, X (DNP, match over) or S.V. */
   play_state: PlayState
@@ -205,6 +270,16 @@ export type LiveSnapshotRealPlayer = {
   max_possible: number
 }
 
+export type LiveSnapshotGoalEvent = {
+  key: string
+  minute: number | null
+  extra_minute: number | null
+  scorer: string
+  code: string
+  assist: string | null
+  own: boolean
+}
+
 export type LiveSnapshotMatch = {
   match_id: string
   home_team_id: string
@@ -219,6 +294,8 @@ export type LiveSnapshotMatch = {
   minute_added: number | null
   status: 'scheduled' | 'in_progress' | 'finished' | 'cancelled'
   kickoff_at: string
+  /** Chronological scoring events from SportMonks when cached. */
+  goal_events: LiveSnapshotGoalEvent[]
   /** Players from fm_player pool who appeared in this match (minutes_played > 0). */
   players: LiveSnapshotRealPlayer[]
 }
@@ -297,7 +374,7 @@ export async function computeLiveRoundSnapshot(
   // ---- 2. Matches for the round (live-tolerant: scores may be null) ------
   const { data: matches } = await supabase
     .from('fm_real_match')
-    .select('id, home_team_id, away_team_id, home_score, away_score, result, status, minute, minute_added, kickoff_at')
+    .select('id, home_team_id, away_team_id, home_score, away_score, result, status, minute, minute_added, kickoff_at, sportmonks_fixture_id')
     .eq('scoring_round_id', roundId)
   const matchByTeamId = new Map<string, NonNullable<typeof matches>[number]>()
   for (const m of matches ?? []) {
@@ -364,6 +441,15 @@ export async function computeLiveRoundSnapshot(
   const nationalTeamById = new Map((nationalTeams ?? []).map((t) => [t.id, t]))
 
   const matchIds = (matches ?? []).map((m) => m.id)
+  const sportmonksFixtureIds = (matches ?? [])
+    .map((m) => m.sportmonks_fixture_id)
+    .filter((id): id is number => typeof id === 'number')
+  const { data: cachedFixtures } = await supabase
+    .from('sportmonks_fixtures')
+    .select('sportmonks_fixture_id, raw_payload')
+    .in('sportmonks_fixture_id', sportmonksFixtureIds.length > 0 ? sportmonksFixtureIds : [-1])
+  const cachedFixtureById = new Map((cachedFixtures ?? []).map((f) => [f.sportmonks_fixture_id, f.raw_payload]))
+
   const { data: allStats } = await supabase
     .from('fm_player_match_stats')
     .select(
@@ -582,26 +668,29 @@ export async function computeLiveRoundSnapshot(
     stateByPlayer.set(pid, played ? 'played' : matchFinal ? 'not_played' : 'pending')
   }
 
-  // ── MVP per fixture = highest BASE voto (excluding bonuses) ─────────────
-  // The MVP is the best raw performer, measured by voto_base (the rating-derived
-  // voto BEFORE football bonus/malus). Bonuses like the clean sheet are excluded
-  // on purpose: a 0-0 keeper must not steal the badge from a higher-rated
-  // outfielder just because of the PI. Ties break on lower player_id so the
-  // badge is stable across live ticks. Uses the base raw (pre per-lega immunità)
-  // so the MVP is competition-wide consistent.
+  // ── MVP per fixture = highest SportMonks rating ────────────────────────
+  // SportMonks is the single source for MVP. Pick the highest raw rating in
+  // the fixture, regardless of fantasy ownership/bench status or minutes-rule
+  // voto shaping. Ties break on lower player_id so live ticks stay stable.
   const mvpByMatch = new Map<string, string>()
   const bestByMatch = new Map<string, number>()
   for (const [pid, raw] of rawByPlayer) {
-    if (raw.voto_base == null) continue // s.v. can't be MVP
+    const player = playerById.get(pid)
+    if (!player) continue
+    const match = matchByTeamId.get(player.national_team_id)
+    if (!match) continue
+    const stats = statsByKey.get(`${pid}:${match.id}`)
+    const rating = stats?.rating != null ? Number(stats.rating) : null
+    if (rating == null) continue
     const mid = raw.real_match_id
     const best = bestByMatch.get(mid)
     const cur = mvpByMatch.get(mid)
     if (
       best == null ||
-      raw.voto_base > best ||
-      (raw.voto_base === best && cur != null && pid < cur)
+      rating > best ||
+      (rating === best && cur != null && pid < cur)
     ) {
-      bestByMatch.set(mid, raw.voto_base)
+      bestByMatch.set(mid, rating)
       mvpByMatch.set(mid, pid)
     }
   }
@@ -1059,6 +1148,13 @@ export async function computeLiveRoundSnapshot(
         // total and show as icons — never folded into the base.
         const displayVotoBase = votoBase
         const displayVotoTotal = voto
+        const finalized = voto != null
+          ? finalizePlayerForLega(
+              { raw_subtotal: voto, is_mvp: isMvpOf(pid) },
+              own?.pct_now ?? 0,
+              config,
+            )
+          : null
         return {
           player_id: pid,
           name: player.name,
@@ -1075,6 +1171,10 @@ export async function computeLiveRoundSnapshot(
           football_malus: footballMalus,
           clean_sheet_bonus: cleanSheetBonus,
           is_mvp: isMvpOf(pid),
+          popularity_penalty_now: finalized?.popularity_penalty_amount ?? 0,
+          popularity_penalty_pct_now: finalized?.popularity_penalty_pct ?? 0,
+          mvp_bonus: finalized?.mvp_bonus_amount ?? 0,
+          final_score_now: finalized?.final_score ?? null,
           minutes_played: stats.minutes_played ?? null,
           play_state: stateOf(pid),
           goals: stats.goals ?? 0,
@@ -1120,6 +1220,10 @@ export async function computeLiveRoundSnapshot(
       minute_added: (m as typeof m & { minute_added?: number | null }).minute_added ?? null,
       status: m.status as LiveSnapshotMatch['status'],
       kickoff_at: (m as typeof m & { kickoff_at: string }).kickoff_at,
+      goal_events: extractGoalEventsFromFixture(
+        m.sportmonks_fixture_id != null ? cachedFixtureById.get(m.sportmonks_fixture_id) : null,
+        { home_team: homeTeam, away_team: awayTeam },
+      ),
       players: realPlayers,
     }
   })
