@@ -147,7 +147,7 @@ function sortBenchByPriority<T extends { bench_order?: number | null; name: stri
   return [...players].sort((a, b) => (a.bench_order ?? 999) - (b.bench_order ?? 999) || a.name.localeCompare(b.name))
 }
 
-function fmt(n: number | null | undefined, d = 2): string {
+function fmt(n: number | null | undefined, d = 1): string {
   if (n == null) return '—'
   return Number(n).toFixed(d)
 }
@@ -1318,14 +1318,14 @@ function RealPlayerSheet({ p, teamRef, matchStatus, totalTeams, onClose }: { p: 
             <div className="mt-0.5 text-[12.5px] font-semibold text-ink-3">
               Voto bonus/malus {v.total}
               {(penaltyAmount > 0.005 || (p.mvp_bonus ?? 0) > 0.005) && <span> · </span>}
-              {penaltyAmount > 0.005 && <>P.P. {Math.round(penaltyPct)}% −{fmt(penaltyAmount, 2)}</>}
+              {penaltyAmount > 0.005 && <>P.P. {Math.round(penaltyPct)}% −{fmt(penaltyAmount, 1)}</>}
               {penaltyAmount > 0.005 && (p.mvp_bonus ?? 0) > 0.005 && <span> · </span>}
-              {(p.mvp_bonus ?? 0) > 0.005 && <>MVP +{fmt(p.mvp_bonus ?? 0, 2)}</>}
+              {(p.mvp_bonus ?? 0) > 0.005 && <>MVP +{fmt(p.mvp_bonus ?? 0, 1)}</>}
               {penaltyAmount <= 0.005 && (p.mvp_bonus ?? 0) <= 0.005 && 'Nessun correttivo ownership attivo'}
             </div>
           </div>
           <span className={`shrink-0 rounded-lg bg-surface-0 px-2.5 py-1 text-[26px] font-black tabular-nums shadow-sm ${totalVotoColor(displayedFinal ?? 0)}`}>
-            {fmt(displayedFinal, 2)}
+            {fmt(displayedFinal, 1)}
           </span>
         </div>
       )}
@@ -2166,7 +2166,7 @@ function PopularityChip({ p, entry }: { p: LiveSnapshotPlayer; entry: LiveOwners
     (penalty.hasActivePenalty ? `Penalità di Popolarità ${penalty.label}` : `Rischio Penalità di Popolarità ${penalty.label}`) +
     (!penalty.hasActivePenalty && pctOwnMax != null ? ` se il possesso sale a ${pctOwnMax}%` : '') +
     (pctOwnNow != null ? ` · popolarità ${pctOwnNow}% della lega` : '') +
-    (penalty.hasActivePenalty && p.popularity_penalty_now > 0.005 ? ` · malus attuale −${fmt(p.popularity_penalty_now, 2)}` : '')
+    (penalty.hasActivePenalty && p.popularity_penalty_now > 0.005 ? ` · malus attuale −${fmt(p.popularity_penalty_now, 1)}` : '')
   return (
     <span
       title={title}
@@ -2455,7 +2455,7 @@ function PlayerDetailSheet({
       title:
         (penalty.hasActivePenalty ? `Penalità di Popolarità ${penalty.label}` : `Rischio Penalità di Popolarità ${penalty.label}`) +
         (pctNow != null ? ` · popolarità ${pctNow}%${pctMax != null && pctMax > pctNow ? ` → ${pctMax}%` : ''} della lega` : '') +
-        (penalty.hasActivePenalty ? ` · malus −${fmt(pp, 2)} → −${fmt(ppPot, 2)}` : ''),
+        (penalty.hasActivePenalty ? ` · malus −${fmt(pp, 1)} → −${fmt(ppPot, 1)}` : ''),
       value: (
         <>
           {/* the penalty %, leading — what he'll lose to popularity */}
@@ -2465,7 +2465,7 @@ function PlayerDetailSheet({
           {pctNow != null && (
             <span className="text-ink-5"> · {pctNow}% lega</span>
           )}
-          {penalty.hasActivePenalty && <span className="text-rose-600 dark:text-rose-300"> · −{fmt(pp, 2)}</span>}
+          {penalty.hasActivePenalty && <span className="text-rose-600 dark:text-rose-300"> · −{fmt(pp, 1)}</span>}
         </>
       ),
       tone: 'neg',
@@ -2512,14 +2512,14 @@ function PlayerDetailSheet({
             <div className="mt-0.5 text-[11.5px] text-ink-4">
               Voto pre-P.P. {v.total}
               {(pp > 0.005 || p.mvp_bonus > 0.005) && <span> · </span>}
-              {pp > 0.005 && <>P.P. −{fmt(pp, 2)}</>}
+              {pp > 0.005 && <>P.P. −{fmt(pp, 1)}</>}
               {pp > 0.005 && p.mvp_bonus > 0.005 && <span> · </span>}
-              {p.mvp_bonus > 0.005 && <>MVP +{fmt(p.mvp_bonus, 2)}</>}
+              {p.mvp_bonus > 0.005 && <>MVP +{fmt(p.mvp_bonus, 1)}</>}
               {pp <= 0.005 && p.mvp_bonus <= 0.005 && 'Nessun correttivo ownership attivo'}
             </div>
           </div>
           <span className={`shrink-0 text-[22px] font-black tabular-nums ${totalVotoColor(p.final_score_now)}`}>
-            {fmt(p.final_score_now, 2)}
+            {fmt(p.final_score_now, 1)}
           </span>
         </div>
       )}
@@ -2599,13 +2599,13 @@ function PlayerDetailSheet({
                     </div>
                     {showBenchRisk && (
                       <div className="ml-[30px] mt-1 rounded-lg bg-ink-5/8 px-2.5 py-1.5 text-[12px] leading-snug text-ink-4">
-                        Se entra: P.P. <span className="font-bold text-rose-600 dark:text-rose-300">−{fmt(potentialPenalty, 2)}</span>
+                        Se entra: P.P. <span className="font-bold text-rose-600 dark:text-rose-300">−{fmt(potentialPenalty, 1)}</span>
                         {cardMalusIfSub > 0.005 && (
                           <>
                             {' '}e Immunità persa: cartellino <span className="font-bold text-amber-600 dark:text-amber-300">−{fmt(cardMalusIfSub, 1)}</span>:
                           </>
                         )}
-                        {' '}Voto eventuale <span className={`font-bold tabular-nums ${totalVotoColor(eventualScore)}`}>{fmt(eventualScore, 2)}</span>.
+                        {' '}Voto eventuale <span className={`font-bold tabular-nums ${totalVotoColor(eventualScore)}`}>{fmt(eventualScore, 1)}</span>.
                       </div>
                     )}
                   </div>
