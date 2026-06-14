@@ -914,18 +914,26 @@ function RealMatchPitch({ m, totalTeams }: { m: LiveSnapshotMatch; totalTeams: n
   const subs = (players: LiveSnapshotRealPlayer[]) =>
     players.filter((p) => !p.is_starter && (p.subbed_on_minute != null || (p.minutes_played ?? 0) > 0))
 
+  // GK at each team's own end; rows go P→D→C→A for the home half and mirror
+  // (A→C→D→P) for the away half so the two attacks meet at the halfway line.
   const homeRows = (['P', 'D', 'C', 'A'] as const)
     .map((r) => sortByName(xi(homeAll).filter((p) => p.role === r)))
     .filter((row) => row.length > 0)
-  // Away half is mirrored: attackers near halfway, GK at the very bottom.
   const awayRows = (['A', 'C', 'D', 'P'] as const)
     .map((r) => sortByName(xi(awayAll).filter((p) => p.role === r)))
     .filter((row) => row.length > 0)
   const homeSubs = subs(homeAll)
   const awaySubs = subs(awayAll)
 
+  // One CSS-grid row per role line: N equal columns that SHRINK to fit the pitch
+  // width and never wrap, so the module reads correctly — all defenders on one
+  // line, all attackers on one line — on any screen size.
   const renderRow = (row: LiveSnapshotRealPlayer[], teamRef: LiveTeamRef, key: string) => (
-    <div key={key} className="relative z-[1] flex flex-wrap items-stretch justify-center gap-1.5">
+    <div
+      key={key}
+      className="relative z-[1] mx-auto grid w-full items-stretch gap-1.5"
+      style={{ gridTemplateColumns: `repeat(${row.length}, minmax(0,1fr))`, maxWidth: row.length * 92 }}
+    >
       {row.map((p) => (
         <RealPitchChip key={p.player_id} p={p} teamRef={teamRef} matchStatus={m.status} totalTeams={totalTeams} />
       ))}
@@ -933,24 +941,32 @@ function RealMatchPitch({ m, totalTeams }: { m: LiveSnapshotMatch; totalTeams: n
   )
 
   return (
-    <div
-      className="relative flex flex-col gap-2.5 overflow-hidden rounded-2xl border border-hairline px-1.5 py-3 shadow-1"
-      style={{ background: 'linear-gradient(180deg, #2f7a49, #3a8f57 50%, #2f7a49)' }}
-    >
+    <div className="space-y-2">
       <div
-        className="pointer-events-none absolute inset-0 opacity-50"
-        style={{ background: 'repeating-linear-gradient(180deg, transparent 0 38px, rgba(255,255,255,0.08) 38px 76px)' }}
-      />
-      <div className="pointer-events-none absolute left-4 right-4 top-1/2 h-px" style={{ background: 'rgba(255,255,255,0.32)' }} />
-      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[72px] w-[72px] -translate-x-1/2 -translate-y-1/2 rounded-full border" style={{ borderColor: 'rgba(255,255,255,0.3)' }} />
+        className="relative flex flex-col gap-2.5 overflow-hidden rounded-2xl border border-hairline px-1.5 py-4 shadow-1"
+        style={{ background: 'linear-gradient(180deg, #2f7a49, #3a8f57 50%, #2f7a49)' }}
+      >
+        <div
+          className="pointer-events-none absolute inset-0 opacity-50"
+          style={{ background: 'repeating-linear-gradient(180deg, transparent 0 38px, rgba(255,255,255,0.08) 38px 76px)' }}
+        />
+        <div className="pointer-events-none absolute left-4 right-4 top-1/2 h-px" style={{ background: 'rgba(255,255,255,0.32)' }} />
+        <div className="pointer-events-none absolute left-1/2 top-1/2 h-[72px] w-[72px] -translate-x-1/2 -translate-y-1/2 rounded-full border" style={{ borderColor: 'rgba(255,255,255,0.3)' }} />
 
-      {homeSubs.length > 0 && <RealSubsStrip teamRef={m.home_team} subs={homeSubs} matchStatus={m.status} totalTeams={totalTeams} />}
-      {homeRows.map((row, i) => renderRow(row, m.home_team, `home-${i}`))}
+        {homeRows.map((row, i) => renderRow(row, m.home_team, `home-${i}`))}
+        <div className="h-2" />
+        {awayRows.map((row, i) => renderRow(row, m.away_team, `away-${i}`))}
+      </div>
 
-      <div className="h-2" />
-
-      {awayRows.map((row, i) => renderRow(row, m.away_team, `away-${i}`))}
-      {awaySubs.length > 0 && <RealSubsStrip teamRef={m.away_team} subs={awaySubs} matchStatus={m.status} totalTeams={totalTeams} />}
+      {(homeSubs.length > 0 || awaySubs.length > 0) && (
+        <div className="space-y-1.5">
+          <p className="px-1 text-[9px] font-bold uppercase tracking-wider text-ink-5">Subentrati</p>
+          <div className="grid grid-cols-1 gap-x-3 gap-y-2 sm:grid-cols-2">
+            <RealSubColumn teamRef={m.home_team} subs={homeSubs} matchStatus={m.status} totalTeams={totalTeams} />
+            <RealSubColumn teamRef={m.away_team} subs={awaySubs} matchStatus={m.status} totalTeams={totalTeams} />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -1059,7 +1075,7 @@ function RealPitchChip({ p, teamRef, matchStatus, totalTeams }: { p: LiveSnapsho
 
   return (
     <div
-      className={`relative flex w-[84px] min-h-[92px] flex-col items-center gap-0.5 overflow-hidden rounded-[12px] border px-1 pb-1.5 pt-2 text-center shadow-sm ${cardClass} ${subbedOff ? 'opacity-75' : ''} ${flashClass}`}
+      className={`relative flex w-full min-h-[92px] flex-col items-center gap-0.5 overflow-hidden rounded-[12px] border px-1 pb-1.5 pt-2 text-center shadow-sm ${cardClass} ${subbedOff ? 'opacity-75' : ''} ${flashClass}`}
       style={exclusiveMvp ? { background: 'linear-gradient(150deg, rgba(245,158,11,0.22), rgba(240,28,156,0.22))', animation: 'pulse 1.4s ease-in-out infinite' } : undefined}
     >
       <RoleNail role={p.role} />
@@ -1103,23 +1119,26 @@ function RealPitchChip({ p, teamRef, matchStatus, totalTeams }: { p: LiveSnapsho
   )
 }
 
-// Subentrati strip — compact horizontal cards for players who came on, with the
-// minute and who they replaced. Same ownership/voto language as the pitch chips.
-function RealSubsStrip({ teamRef, subs, matchStatus, totalTeams }: { teamRef: LiveTeamRef; subs: LiveSnapshotRealPlayer[]; matchStatus: LiveSnapshotMatch['status']; totalTeams: number }) {
+// One team's substitutes, listed below the pitch (off the grass, on the normal
+// glass surface) so the "↑min per <player>" linkage is actually readable.
+function RealSubColumn({ teamRef, subs, matchStatus, totalTeams }: { teamRef: LiveTeamRef; subs: LiveSnapshotRealPlayer[]; matchStatus: LiveSnapshotMatch['status']; totalTeams: number }) {
+  if (subs.length === 0) return null
   return (
-    <div className="relative z-[1] px-0.5">
-      <p className="mb-1 flex items-center gap-1 text-[8px] font-bold uppercase tracking-wider text-white/70">
-        <RealCrest teamRef={teamRef} live={false} size={12} /> Subentrati
+    <div className="min-w-0 space-y-1">
+      <p className="flex items-center gap-1 px-0.5 text-[8.5px] font-bold uppercase tracking-wider text-ink-4">
+        <RealCrest teamRef={teamRef} live={false} size={12} />
+        <span className="truncate">{teamRef.name}</span>
       </p>
-      <div className="grid grid-cols-2 gap-1.5">
-        {subs.map((p) => (
-          <RealSubChip key={p.player_id} p={p} teamRef={teamRef} matchStatus={matchStatus} totalTeams={totalTeams} />
-        ))}
-      </div>
+      {subs.map((p) => (
+        <RealSubChip key={p.player_id} p={p} teamRef={teamRef} matchStatus={matchStatus} totalTeams={totalTeams} />
+      ))}
     </div>
   )
 }
 
+// A single substitute row (below the pitch): crest, name, the "↑min per X"
+// linkage, bonus/malus + ownership, and the split voto. Themed for the glass
+// surface, with the owned dark-fill treatment shared with the rest of the board.
 function RealSubChip({ p, teamRef, matchStatus, totalTeams }: { p: LiveSnapshotRealPlayer; teamRef: LiveTeamRef; matchStatus: LiveSnapshotMatch['status']; totalTeams: number }) {
   const ownedTitolare = p.owners.some((o) => o.status === 'titolare')
   const owned = p.owners.length > 0
@@ -1128,16 +1147,16 @@ function RealSubChip({ p, teamRef, matchStatus, totalTeams }: { p: LiveSnapshotR
   const cardClass = ownedTitolare
     ? 'border-ink-1/80 bg-ink-1/90'
     : owned
-      ? 'border-ink-1/30 bg-ink-1/[0.10]'
-      : 'border-white/15 bg-black/25'
+      ? 'border-ink-1/25 bg-ink-1/[0.06]'
+      : 'border-hairline bg-glass-2'
   return (
-    <div className={`relative flex items-center gap-1.5 overflow-hidden rounded-[10px] border pl-4 pr-1 py-1 shadow-sm ${cardClass} ${flashClass}`}>
+    <div className={`relative flex items-center gap-1.5 overflow-hidden rounded-[10px] border pl-5 pr-1.5 py-1 shadow-sm ${cardClass} ${flashClass}`}>
       <RoleNail role={p.role} />
       <RealCrest teamRef={teamRef} live={realOnPitch(p, matchStatus)} size={18} />
       <span className="flex min-w-0 flex-1 flex-col leading-tight">
-        <span className={`truncate text-[10px] font-bold ${ownedTitolare ? 'text-surface-0' : 'text-ink-1'}`} title={p.name}>{shortPlayerName(p.name)}</span>
+        <span className={`truncate text-[11px] font-bold ${ownedTitolare ? 'text-surface-0' : 'text-ink-1'}`} title={p.name}>{shortPlayerName(p.name)}</span>
         {p.subbed_on_minute != null && (
-          <span className="truncate text-[8px] font-semibold text-emerald-300" title={p.replaced_player_name ? `Entrato per ${p.replaced_player_name}` : 'Entrato'}>
+          <span className="truncate text-[8.5px] font-semibold text-emerald-600 dark:text-emerald-400" title={p.replaced_player_name ? `Entrato per ${p.replaced_player_name}` : 'Entrato'}>
             ↑{p.subbed_on_minute}&apos;{p.replaced_player_name ? ` per ${shortPlayerName(p.replaced_player_name)}` : ''}
           </span>
         )}
