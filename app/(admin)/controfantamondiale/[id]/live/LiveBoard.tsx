@@ -962,15 +962,15 @@ function RealMatchPitch({ m, totalTeams }: { m: LiveSnapshotMatch; totalTeams: n
   return (
     <div className="space-y-2">
       <div
-        className="relative flex flex-col gap-2.5 overflow-hidden rounded-2xl border border-hairline px-1.5 py-4 shadow-1"
-        style={{ background: 'linear-gradient(180deg, #2f7a49, #3a8f57 50%, #2f7a49)' }}
+        className="relative flex flex-col gap-2.5 overflow-hidden rounded-2xl border border-white/10 px-1.5 py-4 shadow-1"
+        style={{ background: 'linear-gradient(180deg, #20232b, #2a2e38 50%, #20232b)' }}
       >
         <div
-          className="pointer-events-none absolute inset-0 opacity-50"
-          style={{ background: 'repeating-linear-gradient(180deg, transparent 0 38px, rgba(255,255,255,0.08) 38px 76px)' }}
+          className="pointer-events-none absolute inset-0 opacity-60"
+          style={{ background: 'repeating-linear-gradient(180deg, transparent 0 38px, rgba(255,255,255,0.04) 38px 76px)' }}
         />
-        <div className="pointer-events-none absolute left-4 right-4 top-1/2 h-px" style={{ background: 'rgba(255,255,255,0.32)' }} />
-        <div className="pointer-events-none absolute left-1/2 top-1/2 h-[72px] w-[72px] -translate-x-1/2 -translate-y-1/2 rounded-full border" style={{ borderColor: 'rgba(255,255,255,0.3)' }} />
+        <div className="pointer-events-none absolute left-4 right-4 top-1/2 h-px" style={{ background: 'rgba(255,255,255,0.18)' }} />
+        <div className="pointer-events-none absolute left-1/2 top-1/2 h-[72px] w-[72px] -translate-x-1/2 -translate-y-1/2 rounded-full border" style={{ borderColor: 'rgba(255,255,255,0.18)' }} />
 
         {homeRows.map((row, i) => renderRow(row, m.home_team, `home-${i}`))}
         <div className="h-2" />
@@ -1043,33 +1043,25 @@ function RealOwnershipPill({ p, totalTeams }: { p: LiveSnapshotRealPlayer; total
   )
 }
 
-// Split voto pill shared by the real-match chip & sub chip. Colored total fill
-// for owned players (so they pop), colored text otherwise.
-function RealVotoPill({ p, matchStatus, owned, width }: { p: LiveSnapshotRealPlayer; matchStatus: LiveSnapshotMatch['status']; owned: boolean; width: number }) {
+// Split voto pill shared by the real-match chip & sub chip. Always dark — base
+// on a deep slate, total on its colour band — so the voto reads consistently on
+// both the charcoal pitch and the glass surface below it.
+function RealVotoPill({ p, matchStatus, width }: { p: LiveSnapshotRealPlayer; matchStatus: LiveSnapshotMatch['status']; width: number }) {
   const storedBase =
     p.display_voto_base ?? p.voto_base ?? (p.play_state === 'played' && p.voto != null ? p.voto : null)
   const v = votoDisplay(storedBase, p.display_voto_total ?? p.voto, p.minutes_played, p.play_state, matchStatus)
   return (
     <span
-      className={`block overflow-hidden rounded-md border text-center tabular-nums shadow-sm ${
-        owned ? 'border-white/15 bg-[#111827]' : 'border-hairline bg-surface-2'
-      }`}
+      className="block overflow-hidden rounded-md border border-white/15 bg-[#111827] text-center tabular-nums shadow-sm"
       style={{ width }}
     >
       {v.kind === 'score' ? (
-        owned ? (
-          <>
-            <span className="block border-b border-white/15 bg-[#1b2236] px-1 text-[9px] font-bold leading-[1.5] text-white">{v.base}</span>
-            <span className={`block px-1 text-[11px] font-black leading-[1.4] ${v.totalOnBgCls}`} style={{ background: v.totalBg }}>{v.total}</span>
-          </>
-        ) : (
-          <>
-            <span className="block border-b border-hairline px-1 text-[9px] font-bold leading-[1.5] text-ink-2">{v.base}</span>
-            <span className={`block px-1 text-[11px] font-black leading-[1.4] ${v.totalCls}`}>{v.total}</span>
-          </>
-        )
+        <>
+          <span className="block border-b border-white/15 bg-[#1b2236] px-1 text-[9px] font-bold leading-[1.5] text-white">{v.base}</span>
+          <span className={`block px-1 text-[11px] font-black leading-[1.4] ${v.totalOnBgCls}`} style={{ background: v.totalBg }}>{v.total}</span>
+        </>
       ) : (
-        <span className={`block px-1 py-1 text-[11px] font-bold leading-none ${v.cls}`}>{v.text}</span>
+        <span className={`block px-1 py-1 text-[11px] font-bold leading-none ${v.text === 'S.V.' ? v.cls : 'text-ink-5 dark:text-white/70'}`}>{v.text}</span>
       )}
     </span>
   )
@@ -1085,21 +1077,27 @@ function RealPitchChip({ p, teamRef, matchStatus, totalTeams }: { p: LiveSnapsho
   const flashClass = flashTintClass(flash, owned && !exclusiveMvp)
   const subbedOff = p.subbed_off_minute != null
 
-  // Three clearly separated fill tiers so picked-panchina never reads like a
-  // not-picked player: faint → medium slate → strong near-black.
+  // On the charcoal field, picked players are tinted with their ownership colour
+  // (magenta for esclusiva, indigo for shared) — strong for a titolare, faint
+  // for bench-only — while not-picked players stay a neutral faint card. Three
+  // clearly separated tiers, tied to the same colours as the ownership pill.
+  const exclusiveOwn = p.owners.length === 1
+  const tint = exclusiveOwn
+    ? { strong: 'rgba(192,27,192,0.26)', faint: 'rgba(192,27,192,0.13)', bStrong: 'rgba(216,27,216,0.70)', bFaint: 'rgba(216,27,216,0.40)' }
+    : { strong: 'rgba(79,70,229,0.30)', faint: 'rgba(79,70,229,0.14)', bStrong: 'rgba(129,140,248,0.70)', bFaint: 'rgba(129,140,248,0.40)' }
   const bg = exclusiveMvp
     ? 'linear-gradient(150deg, rgba(146,64,14,0.92), rgba(112,26,117,0.92))'
     : ownedTitolare
-      ? 'rgba(15,23,42,0.92)'
+      ? tint.strong
       : ownedPanchina
-        ? 'rgba(15,23,42,0.55)'
-        : 'rgba(2,6,23,0.14)'
+        ? tint.faint
+        : 'rgba(255,255,255,0.05)'
   const borderColor = exclusiveMvp || p.is_mvp
     ? '#fbbf24'
     : ownedTitolare
-      ? 'rgba(255,255,255,0.30)'
+      ? tint.bStrong
       : ownedPanchina
-        ? 'rgba(255,255,255,0.22)'
+        ? tint.bFaint
         : 'rgba(255,255,255,0.12)'
   // MVP must be unmissable: a thick gold ring + glow around the whole card;
   // the esclusiva-MVP jackpot pulses gold→magenta on top of that.
@@ -1131,15 +1129,15 @@ function RealPitchChip({ p, teamRef, matchStatus, totalTeams }: { p: LiveSnapsho
         {shortPlayerName(p.name)}
       </span>
 
-      {subbedOff && (
-        <span className="text-[8px] font-bold leading-none text-rose-300" title="Sostituito">↓{p.subbed_off_minute}&apos;</span>
-      )}
+      <span className="min-h-[10px] text-[8px] font-bold leading-none text-rose-300" title={subbedOff ? 'Sostituito' : undefined}>
+        {subbedOff ? `↓${p.subbed_off_minute}'` : ''}
+      </span>
 
       <span className="flex min-h-[13px] flex-wrap items-center justify-center gap-0.5">
         <BonusMalusIcons p={p} inverted />
       </span>
 
-      <RealVotoPill p={p} matchStatus={matchStatus} owned={owned} width={36} />
+      <RealVotoPill p={p} matchStatus={matchStatus} width={36} />
 
       <span className="flex min-h-[12px] items-center justify-center">
         <RealOwnershipPill p={p} totalTeams={totalTeams} />
@@ -1194,7 +1192,7 @@ function RealSubChip({ p, teamRef, matchStatus, totalTeams }: { p: LiveSnapshotR
           <RealOwnershipPill p={p} totalTeams={totalTeams} />
         </span>
       </span>
-      <RealVotoPill p={p} matchStatus={matchStatus} owned={owned} width={30} />
+      <RealVotoPill p={p} matchStatus={matchStatus} width={30} />
     </div>
   )
 }
