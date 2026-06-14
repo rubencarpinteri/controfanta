@@ -925,6 +925,12 @@ function realOnPitch(p: LiveSnapshotRealPlayer, matchStatus: LiveSnapshotMatch['
 }
 
 function RealMatchPitch({ m, totalTeams }: { m: LiveSnapshotMatch; totalTeams: number }) {
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const toggle = (id: string) => setSelectedId((cur) => (cur === id ? null : id))
+  const selected = m.players.find((p) => p.player_id === selectedId) ?? null
+  const selectedTeamRef = selected
+    ? selected.national_team_id === m.home_team_id ? m.home_team : m.away_team
+    : null
   const sideOf = (teamId: string) => m.players.filter((p) => p.national_team_id === teamId)
   const homeAll = sideOf(m.home_team_id)
   const awayAll = sideOf(m.away_team_id)
@@ -954,7 +960,7 @@ function RealMatchPitch({ m, totalTeams }: { m: LiveSnapshotMatch; totalTeams: n
       style={{ gridTemplateColumns: `repeat(${row.length}, minmax(0,1fr))`, maxWidth: row.length * 92 }}
     >
       {row.map((p) => (
-        <RealPitchChip key={p.player_id} p={p} teamRef={teamRef} matchStatus={m.status} totalTeams={totalTeams} />
+        <RealPitchChip key={p.player_id} p={p} teamRef={teamRef} matchStatus={m.status} totalTeams={totalTeams} selected={p.player_id === selectedId} onSelect={() => toggle(p.player_id)} />
       ))}
     </div>
   )
@@ -977,12 +983,16 @@ function RealMatchPitch({ m, totalTeams }: { m: LiveSnapshotMatch; totalTeams: n
         {awayRows.map((row, i) => renderRow(row, m.away_team, `away-${i}`))}
       </div>
 
+      {selected && selectedTeamRef && (
+        <RealPlayerSheet p={selected} teamRef={selectedTeamRef} matchStatus={m.status} totalTeams={totalTeams} onClose={() => setSelectedId(null)} />
+      )}
+
       {(homeSubs.length > 0 || awaySubs.length > 0) && (
         <div className="space-y-1.5">
           <p className="px-1 text-[9px] font-bold uppercase tracking-wider text-ink-5">Subentrati</p>
           <div className="grid grid-cols-2 gap-x-2 gap-y-2">
-            <RealSubColumn teamRef={m.home_team} subs={homeSubs} matchStatus={m.status} totalTeams={totalTeams} />
-            <RealSubColumn teamRef={m.away_team} subs={awaySubs} matchStatus={m.status} totalTeams={totalTeams} />
+            <RealSubColumn teamRef={m.home_team} subs={homeSubs} matchStatus={m.status} totalTeams={totalTeams} selectedId={selectedId} onSelect={toggle} />
+            <RealSubColumn teamRef={m.away_team} subs={awaySubs} matchStatus={m.status} totalTeams={totalTeams} selectedId={selectedId} onSelect={toggle} />
           </div>
         </div>
       )}
@@ -1033,7 +1043,7 @@ function RealOwnershipPill({ p, totalTeams }: { p: LiveSnapshotRealPlayer; total
     <span
       title={title}
       className={`inline-flex items-center gap-0.5 whitespace-nowrap rounded-full px-1.5 py-px text-[8px] font-bold tabular-nums text-white ${
-        exclusive ? 'bg-[#c01bc0]' : 'bg-indigo-600'
+        exclusive ? 'bg-[#FF0090]' : 'bg-indigo-600'
       }`}
     >
       {exclusive && <DiamondGlyph className="text-white" />}
@@ -1067,7 +1077,7 @@ function RealVotoPill({ p, matchStatus, width }: { p: LiveSnapshotRealPlayer; ma
   )
 }
 
-function RealPitchChip({ p, teamRef, matchStatus, totalTeams }: { p: LiveSnapshotRealPlayer; teamRef: LiveTeamRef; matchStatus: LiveSnapshotMatch['status']; totalTeams: number }) {
+function RealPitchChip({ p, teamRef, matchStatus, totalTeams, selected, onSelect }: { p: LiveSnapshotRealPlayer; teamRef: LiveTeamRef; matchStatus: LiveSnapshotMatch['status']; totalTeams: number; selected: boolean; onSelect: () => void }) {
   const ownedTitolare = p.owners.some((o) => o.status === 'titolare')
   const ownedPanchina = !ownedTitolare && p.owners.length > 0
   const owned = p.owners.length > 0
@@ -1083,22 +1093,24 @@ function RealPitchChip({ p, teamRef, matchStatus, totalTeams }: { p: LiveSnapsho
   // clearly separated tiers, tied to the same colours as the ownership pill.
   const exclusiveOwn = p.owners.length === 1
   const tint = exclusiveOwn
-    ? { strong: 'rgba(192,27,192,0.26)', faint: 'rgba(192,27,192,0.13)', bStrong: 'rgba(216,27,216,0.70)', bFaint: 'rgba(216,27,216,0.40)' }
-    : { strong: 'rgba(79,70,229,0.30)', faint: 'rgba(79,70,229,0.14)', bStrong: 'rgba(129,140,248,0.70)', bFaint: 'rgba(129,140,248,0.40)' }
+    ? { strong: 'rgba(255,0,144,0.40)', faint: 'rgba(255,0,144,0.20)', bStrong: 'rgba(255,0,144,0.95)', bFaint: 'rgba(255,0,144,0.62)' }
+    : { strong: 'rgba(79,70,229,0.42)', faint: 'rgba(79,70,229,0.22)', bStrong: 'rgba(129,140,248,0.90)', bFaint: 'rgba(129,140,248,0.58)' }
+  // not-picked stays a near-invisible neutral card so ANY picked player (even a
+  // bench-only esclusiva) clearly reads as "owned" against it.
   const bg = exclusiveMvp
     ? 'linear-gradient(150deg, rgba(146,64,14,0.92), rgba(112,26,117,0.92))'
     : ownedTitolare
       ? tint.strong
       : ownedPanchina
         ? tint.faint
-        : 'rgba(255,255,255,0.05)'
+        : 'rgba(255,255,255,0.035)'
   const borderColor = exclusiveMvp || p.is_mvp
     ? '#fbbf24'
     : ownedTitolare
       ? tint.bStrong
       : ownedPanchina
         ? tint.bFaint
-        : 'rgba(255,255,255,0.12)'
+        : 'rgba(255,255,255,0.10)'
   // MVP must be unmissable: a thick gold ring + glow around the whole card;
   // the esclusiva-MVP jackpot pulses gold→magenta on top of that.
   const boxShadow = exclusiveMvp
@@ -1108,15 +1120,17 @@ function RealPitchChip({ p, teamRef, matchStatus, totalTeams }: { p: LiveSnapsho
       : undefined
 
   return (
-    <div
-      className={`relative flex w-full min-h-[96px] flex-col items-center gap-0.5 overflow-hidden rounded-[12px] border px-1 pb-1.5 ${p.is_mvp ? 'pt-3.5' : 'pt-2.5'} text-center ${subbedOff ? 'opacity-75' : ''} ${flashClass}`}
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`relative flex w-full min-h-[96px] flex-col items-center gap-0.5 overflow-hidden rounded-[12px] border px-1 pb-1.5 ${p.is_mvp ? 'pt-3.5' : 'pt-2.5'} text-center transition-transform active:scale-[0.97] ${subbedOff ? 'opacity-75' : ''} ${selected ? 'ring-2 ring-white/80 ring-offset-1 ring-offset-transparent' : ''} ${flashClass}`}
       style={{ background: bg, borderColor, boxShadow, ...(exclusiveMvp ? { animation: 'pulse 1.4s ease-in-out infinite' } : {}) }}
     >
       <RoleNail role={p.role} />
       {p.is_mvp && (
         <span
           className={`absolute -top-px left-1/2 z-[2] -translate-x-1/2 inline-flex items-center gap-1 rounded-b-lg px-2 py-0.5 text-[9px] font-black uppercase leading-none shadow-sm ${exclusiveMvp ? 'animate-pulse text-white' : 'text-amber-950'}`}
-          style={exclusiveMvp ? { background: 'linear-gradient(90deg,#f59e0b,#f01c9c)' } : { background: '#fbbf24' }}
+          style={exclusiveMvp ? { background: 'linear-gradient(90deg,#f59e0b,#FF0090)' } : { background: '#fbbf24' }}
           title={exclusiveMvp ? 'Esclusiva + MVP — solo questa squadra lo schiera, ed è il migliore in campo' : 'Migliore in campo'}
         >
           <span aria-hidden className="text-[11px]">👑</span> MVP
@@ -1125,7 +1139,7 @@ function RealPitchChip({ p, teamRef, matchStatus, totalTeams }: { p: LiveSnapsho
 
       <RealCrest teamRef={teamRef} live={realOnPitch(p, matchStatus)} size={26} />
 
-      <span className="block w-full truncate text-[10px] font-bold leading-tight text-white" title={p.name}>
+      <span className="block w-full truncate text-[10px] font-bold leading-tight text-white" title={p.name} style={{ textShadow: '0 1px 2px rgba(0,0,0,0.85)' }}>
         {shortPlayerName(p.name)}
       </span>
 
@@ -1142,13 +1156,13 @@ function RealPitchChip({ p, teamRef, matchStatus, totalTeams }: { p: LiveSnapsho
       <span className="flex min-h-[12px] items-center justify-center">
         <RealOwnershipPill p={p} totalTeams={totalTeams} />
       </span>
-    </div>
+    </button>
   )
 }
 
 // One team's substitutes, listed below the pitch (off the grass, on the normal
 // glass surface) so the "↑min per <player>" linkage is actually readable.
-function RealSubColumn({ teamRef, subs, matchStatus, totalTeams }: { teamRef: LiveTeamRef; subs: LiveSnapshotRealPlayer[]; matchStatus: LiveSnapshotMatch['status']; totalTeams: number }) {
+function RealSubColumn({ teamRef, subs, matchStatus, totalTeams, selectedId, onSelect }: { teamRef: LiveTeamRef; subs: LiveSnapshotRealPlayer[]; matchStatus: LiveSnapshotMatch['status']; totalTeams: number; selectedId: string | null; onSelect: (id: string) => void }) {
   if (subs.length === 0) return null
   return (
     <div className="min-w-0 space-y-1">
@@ -1157,7 +1171,7 @@ function RealSubColumn({ teamRef, subs, matchStatus, totalTeams }: { teamRef: Li
         <span className="truncate">{teamRef.name}</span>
       </p>
       {subs.map((p) => (
-        <RealSubChip key={p.player_id} p={p} teamRef={teamRef} matchStatus={matchStatus} totalTeams={totalTeams} />
+        <RealSubChip key={p.player_id} p={p} teamRef={teamRef} matchStatus={matchStatus} totalTeams={totalTeams} selected={p.player_id === selectedId} onSelect={() => onSelect(p.player_id)} />
       ))}
     </div>
   )
@@ -1166,7 +1180,7 @@ function RealSubColumn({ teamRef, subs, matchStatus, totalTeams }: { teamRef: Li
 // A single substitute row (below the pitch): crest, name, the "↑min per X"
 // linkage, bonus/malus + ownership, and the split voto. Themed for the glass
 // surface, with the owned dark-fill treatment shared with the rest of the board.
-function RealSubChip({ p, teamRef, matchStatus, totalTeams }: { p: LiveSnapshotRealPlayer; teamRef: LiveTeamRef; matchStatus: LiveSnapshotMatch['status']; totalTeams: number }) {
+function RealSubChip({ p, teamRef, matchStatus, totalTeams, selected, onSelect }: { p: LiveSnapshotRealPlayer; teamRef: LiveTeamRef; matchStatus: LiveSnapshotMatch['status']; totalTeams: number; selected: boolean; onSelect: () => void }) {
   const ownedTitolare = p.owners.some((o) => o.status === 'titolare')
   const owned = p.owners.length > 0
   const flash = useFlash(p.player_id)
@@ -1177,7 +1191,7 @@ function RealSubChip({ p, teamRef, matchStatus, totalTeams }: { p: LiveSnapshotR
       ? 'border-ink-1/25 bg-ink-1/[0.06]'
       : 'border-hairline bg-glass-2'
   return (
-    <div className={`relative flex items-center gap-1.5 overflow-hidden rounded-[10px] border pl-5 pr-1.5 py-1 shadow-sm ${cardClass} ${flashClass}`}>
+    <button type="button" onClick={onSelect} className={`relative flex w-full items-center gap-1.5 overflow-hidden rounded-[10px] border pl-5 pr-1.5 py-1 text-left shadow-sm transition-transform active:scale-[0.98] ${selected ? 'ring-2 ring-accent' : ''} ${cardClass} ${flashClass}`}>
       <RoleNail role={p.role} />
       <RealCrest teamRef={teamRef} live={realOnPitch(p, matchStatus)} size={18} />
       <span className="flex min-w-0 flex-1 flex-col leading-tight">
@@ -1193,6 +1207,77 @@ function RealSubChip({ p, teamRef, matchStatus, totalTeams }: { p: LiveSnapshotR
         </span>
       </span>
       <RealVotoPill p={p} matchStatus={matchStatus} width={30} />
+    </button>
+  )
+}
+
+// Tap-to-reveal detail for a real-match player: the answer to "who owns him?".
+// Lists the exact fantasy teams holding the player, split titolare vs panchina,
+// plus his bonus/malus. Esclusiva (a single owner) is called out in neon magenta.
+function RealPlayerSheet({ p, teamRef, matchStatus, totalTeams, onClose }: { p: LiveSnapshotRealPlayer; teamRef: LiveTeamRef; matchStatus: LiveSnapshotMatch['status']; totalTeams: number; onClose: () => void }) {
+  const storedBase = p.display_voto_base ?? p.voto_base ?? (p.play_state === 'played' && p.voto != null ? p.voto : null)
+  const v = votoDisplay(storedBase, p.display_voto_total ?? p.voto, p.minutes_played, p.play_state, matchStatus)
+  const tit = p.owners.filter((o) => o.status === 'titolare')
+  const pan = p.owners.filter((o) => o.status === 'panchina')
+  const exclusive = p.owners.length === 1
+  return (
+    <div className="rounded-2xl border border-hairline bg-glass-1 p-3.5 shadow-1">
+      <div className="flex items-center gap-2.5">
+        <RealCrest teamRef={teamRef} live={realOnPitch(p, matchStatus)} size={30} />
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[15px] font-bold text-ink-1">{p.name}</div>
+          <div className="text-[12px] text-ink-4">
+            {ROLE_NAME[p.role] ?? p.role} · {teamRef.name}
+            {realOnPitch(p, matchStatus) && <span className="text-lime-500 dark:text-lime-400"> · in campo</span>}
+          </div>
+        </div>
+        {v.kind === 'score' ? (
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-[18px] font-black text-ink-1 tabular-nums">{v.base}</span>
+            <span className="text-ink-5">→</span>
+            <span className={`text-[18px] font-black tabular-nums ${v.totalCls}`}>{v.total}</span>
+          </div>
+        ) : (
+          <span className={`text-[14px] font-bold ${v.cls}`}>{v.text}</span>
+        )}
+        <button onClick={onClose} className="ml-1 shrink-0 text-ink-5 hover:text-ink-2" aria-label="Chiudi">✕</button>
+      </div>
+
+      <div className="mt-3 border-t border-hairline pt-2.5">
+        {p.owners.length === 0 ? (
+          <div className="text-[12px] text-ink-5">Nessuna squadra della lega lo schiera.</div>
+        ) : exclusive ? (
+          <div className="flex items-center gap-2.5 rounded-xl px-3 py-2.5" style={{ background: 'rgba(255,0,144,0.10)' }}>
+            <span style={{ color: '#FF0090' }}><DiamondGlyph className="h-4 w-4" /></span>
+            <div className="min-w-0 text-[12.5px]">
+              <span className="font-bold" style={{ color: '#FF0090' }}>Esclusiva di {p.owners[0]!.team_name}</span>
+              <span className="text-ink-4"> · {p.owners[0]!.status === 'titolare' ? 'titolare' : 'in panchina'}</span>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-ink-5">
+              In {p.owners.length} squadre su {totalTeams}
+            </div>
+            {tit.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] font-bold text-indigo-500 dark:text-indigo-300">Titolare:</span>
+                {tit.map((o) => (
+                  <span key={o.fantasy_team_id} className="rounded-md bg-indigo-500/15 px-2 py-0.5 text-[11.5px] font-semibold text-indigo-700 dark:text-indigo-200">{o.team_name}</span>
+                ))}
+              </div>
+            )}
+            {pan.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] font-bold text-ink-4">Panchina:</span>
+                {pan.map((o) => (
+                  <span key={o.fantasy_team_id} className="rounded-md bg-ink-5/12 px-2 py-0.5 text-[11.5px] font-semibold text-ink-3">{o.team_name}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -1310,7 +1395,7 @@ function RealPlayerRow({
     <div
       className={`relative flex min-h-[50px] items-center gap-1 overflow-hidden rounded-md border py-1 pl-4 pr-1.5 sm:gap-1.5 sm:pl-5 sm:pr-2 ${
         exclusiveMvp
-          ? 'border-[#f01c9c]/80 shadow-[0_0_16px_-2px] shadow-[#f01c9c]/55'
+          ? 'border-[#FF0090]/80 shadow-[0_0_16px_-2px] shadow-[#FF0090]/55'
           : ownedTitolare
             ? 'border-ink-1/80 bg-ink-1/90 shadow-sm shadow-ink-1/20'
             : ownedSpine
@@ -1345,7 +1430,7 @@ function RealPlayerRow({
             <span
               title="Esclusiva + MVP — solo questa squadra lo schiera, ed è il migliore in campo"
               className="shrink-0 inline-flex animate-pulse items-center gap-1 rounded-md px-1.5 py-px text-[9px] font-black uppercase leading-none tracking-wide text-white shadow-sm"
-              style={{ background: 'linear-gradient(90deg,#f59e0b,#f01c9c)' }}
+              style={{ background: 'linear-gradient(90deg,#f59e0b,#FF0090)' }}
             >
               <span aria-hidden>👑</span>
               <DiamondGlyph className="text-white" />
@@ -1682,7 +1767,7 @@ function LineupLegend() {
 <span className="font-semibold text-rose-500 dark:text-rose-300">−%</span> P.P. — Penalità di Popolarità: quota di voto persa perché lo schiera anche un&apos;altra squadra (es. 20% lega → −30%)
         </span>
         <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-lime-400 shadow-[0_0_5px_1px] shadow-lime-400/70" />in campo ora</span>
-        <span className="flex items-center gap-1"><span className="text-[#f01c9c]"><DiamondGlyph /></span>esclusiva</span>
+        <span className="flex items-center gap-1"><span className="text-[#FF0090]"><DiamondGlyph /></span>esclusiva</span>
         <span className="flex items-center gap-1"><span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-indigo-500 text-[7px] font-bold text-white">XX</span>rivale titolare · <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-ink-5/70 text-[7px] font-bold text-white">XX</span>rivale panchina</span>
       </div>
     </div>
@@ -1963,7 +2048,7 @@ function MvpExclusiveGlyph() {
     <span
       title="Esclusiva + MVP — solo questa squadra lo schiera, ed è il migliore in campo"
       className="inline-flex animate-pulse items-center gap-0.5 rounded-md px-1 py-[1.5px] text-[10px] font-black leading-none text-white shadow-sm"
-      style={{ background: 'linear-gradient(90deg,#f59e0b,#f01c9c)' }}
+      style={{ background: 'linear-gradient(90deg,#f59e0b,#FF0090)' }}
     >
       <span aria-hidden>👑</span>
       <DiamondGlyph className="text-white" />
@@ -2034,7 +2119,7 @@ function OwnershipMini({ owners, isMvp = false }: { owners: LiveOwnerRef[]; isMv
     return (
       <span
         title="Esclusiva — solo questa squadra lo schiera"
-        className="inline-flex h-[17px] items-center rounded-md bg-[#f01c9c]/12 px-1 text-[#f01c9c]"
+        className="inline-flex h-[17px] items-center rounded-md bg-[#FF0090]/12 px-1 text-[#FF0090]"
       >
         <DiamondGlyph />
       </span>
@@ -2341,10 +2426,10 @@ function PlayerDetailSheet({
 
       <div className="mt-3 border-t border-hairline pt-2.5">
         {others.length === 0 ? (
-          <div className="flex items-center gap-2.5 rounded-xl bg-[#f01c9c]/10 px-3 py-2.5">
-            <span className="text-[#f01c9c]"><DiamondGlyph className="h-4 w-4" /></span>
+          <div className="flex items-center gap-2.5 rounded-xl bg-[#FF0090]/10 px-3 py-2.5">
+            <span className="text-[#FF0090]"><DiamondGlyph className="h-4 w-4" /></span>
             <div>
-              <div className="text-[13px] font-bold text-[#f01c9c]">Esclusiva di {teamName}</div>
+              <div className="text-[13px] font-bold text-[#FF0090]">Esclusiva di {teamName}</div>
               <div className="text-[11.5px] text-ink-4">Nessun&apos;altra squadra della lega lo schiera</div>
             </div>
           </div>
@@ -2635,7 +2720,7 @@ function OwnerPills({
       <span
         className={`shrink-0 ${
           isExclusiveStarter
-            ? `font-black text-[#f01c9c] ${compact ? 'text-[10px]' : 'text-[11px]'}`
+            ? `font-black text-[#FF0090] ${compact ? 'text-[10px]' : 'text-[11px]'}`
             : `font-bold text-[#6366f1] ${compact ? 'text-[9px]' : 'text-[10px]'}`
         }`}
       >
