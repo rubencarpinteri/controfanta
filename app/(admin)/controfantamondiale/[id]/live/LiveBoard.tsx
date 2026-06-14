@@ -967,16 +967,16 @@ function RealMatchPitch({ m, totalTeams }: { m: LiveSnapshotMatch; totalTeams: n
 
   return (
     <div className="space-y-2">
-      <div
-        className="relative flex flex-col gap-2.5 overflow-hidden rounded-2xl border border-white/10 px-1.5 py-4 shadow-1"
-        style={{ background: 'linear-gradient(180deg, #20232b, #2a2e38 50%, #20232b)' }}
-      >
-        <div
-          className="pointer-events-none absolute inset-0 opacity-60"
-          style={{ background: 'repeating-linear-gradient(180deg, transparent 0 38px, rgba(255,255,255,0.04) 38px 76px)' }}
-        />
-        <div className="pointer-events-none absolute left-4 right-4 top-1/2 h-px" style={{ background: 'rgba(255,255,255,0.18)' }} />
-        <div className="pointer-events-none absolute left-1/2 top-1/2 h-[72px] w-[72px] -translate-x-1/2 -translate-y-1/2 rounded-full border" style={{ borderColor: 'rgba(255,255,255,0.18)' }} />
+      <div className="relative flex flex-col gap-2.5 overflow-hidden rounded-2xl border border-black/10 dark:border-white/10 px-1.5 py-4 shadow-1">
+        {/* field base — light turf in light mode, charcoal in dark mode */}
+        <div className="pointer-events-none absolute inset-0 dark:hidden" style={{ background: 'linear-gradient(180deg, #eef1f6, #e4e8ef 50%, #eef1f6)' }} />
+        <div className="pointer-events-none absolute inset-0 hidden dark:block" style={{ background: 'linear-gradient(180deg, #20232b, #2a2e38 50%, #20232b)' }} />
+        {/* mowing stripes */}
+        <div className="pointer-events-none absolute inset-0 dark:hidden" style={{ background: 'repeating-linear-gradient(180deg, transparent 0 38px, rgba(0,0,0,0.028) 38px 76px)' }} />
+        <div className="pointer-events-none absolute inset-0 hidden opacity-60 dark:block" style={{ background: 'repeating-linear-gradient(180deg, transparent 0 38px, rgba(255,255,255,0.04) 38px 76px)' }} />
+        {/* field lines */}
+        <div className="pointer-events-none absolute left-4 right-4 top-1/2 h-px bg-black/15 dark:bg-white/20" />
+        <div className="pointer-events-none absolute left-1/2 top-1/2 h-[72px] w-[72px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-black/15 dark:border-white/20" />
 
         {homeRows.map((row, i) => renderRow(row, m.home_team, `home-${i}`))}
         <div className="h-2" />
@@ -1087,68 +1087,63 @@ function RealPitchChip({ p, teamRef, matchStatus, totalTeams, selected, onSelect
   const flashClass = flashTintClass(flash, owned && !exclusiveMvp)
   const subbedOff = p.subbed_off_minute != null
 
-  // On the charcoal field, picked players are tinted with their ownership colour
-  // (magenta for esclusiva, indigo for shared) — strong for a titolare, faint
-  // for bench-only — while not-picked players stay a neutral faint card. Three
-  // clearly separated tiers, tied to the same colours as the ownership pill.
+  // Picked players are tinted with their ownership colour (magenta for esclusiva,
+  // indigo for shared) — strong for a titolare, faint for bench-only — while
+  // not-picked players stay a neutral faint card. Tints are theme-aware (deeper
+  // in dark mode, softer in light) so the tiers separate on either field.
   const exclusiveOwn = p.owners.length === 1
-  const tint = exclusiveOwn
-    ? { strong: 'rgba(255,0,144,0.40)', faint: 'rgba(255,0,144,0.20)', bStrong: 'rgba(255,0,144,0.95)', bFaint: 'rgba(255,0,144,0.62)' }
-    : { strong: 'rgba(79,70,229,0.42)', faint: 'rgba(79,70,229,0.22)', bStrong: 'rgba(129,140,248,0.90)', bFaint: 'rgba(129,140,248,0.58)' }
-  // not-picked stays a near-invisible neutral card so ANY picked player (even a
-  // bench-only esclusiva) clearly reads as "owned" against it.
-  const bg = exclusiveMvp
-    ? 'linear-gradient(150deg, rgba(146,64,14,0.92), rgba(112,26,117,0.92))'
-    : ownedTitolare
-      ? tint.strong
-      : ownedPanchina
-        ? tint.faint
-        : 'rgba(255,255,255,0.035)'
-  const borderColor = exclusiveMvp || p.is_mvp
-    ? '#fbbf24'
-    : ownedTitolare
-      ? tint.bStrong
-      : ownedPanchina
-        ? tint.bFaint
-        : 'rgba(255,255,255,0.10)'
-  // MVP must be unmissable: a thick gold ring + glow around the whole card;
-  // the esclusiva-MVP jackpot pulses gold→magenta on top of that.
+  // Literal class strings (Tailwind JIT can't see interpolated ones).
+  const tierClass = ownedTitolare
+    ? exclusiveOwn
+      ? 'bg-[#FF0090]/22 dark:bg-[#FF0090]/40 border-[#FF0090]/70 dark:border-[#FF0090]/90'
+      : 'bg-indigo-500/22 dark:bg-indigo-500/40 border-indigo-400/70 dark:border-indigo-400/90'
+    : ownedPanchina
+      ? exclusiveOwn
+        ? 'bg-[#FF0090]/12 dark:bg-[#FF0090]/22 border-[#FF0090]/45 dark:border-[#FF0090]/60'
+        : 'bg-indigo-500/12 dark:bg-indigo-500/22 border-indigo-400/45 dark:border-indigo-400/60'
+      : 'bg-black/[0.035] dark:bg-white/[0.035] border-black/10 dark:border-white/10'
+  // MVP frame: a refined gold ring + soft glow around the whole card. The crown
+  // lives in a corner medallion (below) so it never crowds the role nail.
   const boxShadow = exclusiveMvp
-    ? '0 0 0 2.5px #fbbf24, 0 0 18px 3px rgba(240,28,156,0.65)'
+    ? '0 0 0 2px #FFC83D, 0 0 16px 2px rgba(255,0,144,0.55)'
     : p.is_mvp
-      ? '0 0 0 2.5px #fbbf24, 0 0 16px 2px rgba(251,191,36,0.6)'
+      ? '0 0 0 2px #FFC83D, 0 0 14px 1px rgba(255,200,61,0.5)'
       : undefined
 
   return (
     <button
       type="button"
       onClick={onSelect}
-      className={`relative flex w-full min-h-[96px] flex-col items-center gap-0.5 overflow-hidden rounded-[12px] border px-1 pb-1.5 ${p.is_mvp ? 'pt-3.5' : 'pt-2.5'} text-center transition-transform active:scale-[0.97] ${subbedOff ? 'opacity-75' : ''} ${selected ? 'ring-2 ring-white/80 ring-offset-1 ring-offset-transparent' : ''} ${flashClass}`}
-      style={{ background: bg, borderColor, boxShadow, ...(exclusiveMvp ? { animation: 'pulse 1.4s ease-in-out infinite' } : {}) }}
+      className={`relative flex w-full min-h-[96px] flex-col items-center gap-0.5 overflow-hidden rounded-[12px] border px-1 pb-1.5 pt-2.5 text-center transition-transform active:scale-[0.97] ${tierClass} ${subbedOff ? 'opacity-75' : ''} ${selected ? 'outline outline-2 -outline-offset-1 outline-accent' : ''} ${flashClass}`}
+      style={boxShadow ? { boxShadow } : undefined}
     >
       <RoleNail role={p.role} />
       {p.is_mvp && (
         <span
-          className={`absolute -top-px left-1/2 z-[2] -translate-x-1/2 inline-flex items-center gap-1 rounded-b-lg px-2 py-0.5 text-[9px] font-black uppercase leading-none shadow-sm ${exclusiveMvp ? 'animate-pulse text-white' : 'text-amber-950'}`}
-          style={exclusiveMvp ? { background: 'linear-gradient(90deg,#f59e0b,#FF0090)' } : { background: '#fbbf24' }}
-          title={exclusiveMvp ? 'Esclusiva + MVP — solo questa squadra lo schiera, ed è il migliore in campo' : 'Migliore in campo'}
+          aria-label="MVP"
+          title={exclusiveMvp ? 'Esclusiva + MVP — solo questa squadra lo schiera, ed è il migliore in campo' : 'Migliore in campo — MVP'}
+          className={`absolute right-1 top-1 z-[2] grid h-[19px] w-[19px] place-items-center rounded-full text-[10px] leading-none ${exclusiveMvp ? 'animate-pulse' : ''}`}
+          style={{
+            background: exclusiveMvp ? 'radial-gradient(circle at 32% 28%, #FFE9A8, #FF0090)' : 'radial-gradient(circle at 32% 28%, #FFEFB8, #E2A100)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,255,255,0.55)',
+          }}
         >
-          <span aria-hidden className="text-[11px]">👑</span> MVP
+          <span aria-hidden>👑</span>
         </span>
       )}
 
       <RealCrest teamRef={teamRef} live={realOnPitch(p, matchStatus)} size={26} />
 
-      <span className="block w-full truncate text-[10px] font-bold leading-tight text-white" title={p.name} style={{ textShadow: '0 1px 2px rgba(0,0,0,0.85)' }}>
+      <span className="block w-full truncate text-[10px] font-bold leading-tight text-ink-1 dark:text-white dark:[text-shadow:0_1px_2px_rgba(0,0,0,0.85)]" title={p.name}>
         {shortPlayerName(p.name)}
       </span>
 
-      <span className="min-h-[10px] text-[8px] font-bold leading-none text-rose-300" title={subbedOff ? 'Sostituito' : undefined}>
+      <span className="min-h-[10px] text-[8px] font-bold leading-none text-rose-500 dark:text-rose-300" title={subbedOff ? 'Sostituito' : undefined}>
         {subbedOff ? `↓${p.subbed_off_minute}'` : ''}
       </span>
 
       <span className="flex min-h-[13px] flex-wrap items-center justify-center gap-0.5">
-        <BonusMalusIcons p={p} inverted />
+        <BonusMalusIcons p={p} />
       </span>
 
       <RealVotoPill p={p} matchStatus={matchStatus} width={36} />
