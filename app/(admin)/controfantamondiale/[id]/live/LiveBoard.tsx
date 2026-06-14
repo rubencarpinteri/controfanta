@@ -1509,7 +1509,7 @@ function RealPlayerRow({
 
   return (
     <div
-      className={`relative flex min-h-[50px] items-center gap-1 overflow-hidden rounded-md border py-1 pl-4 pr-1.5 sm:gap-1.5 sm:pl-5 sm:pr-2 ${
+      className={`relative flex min-h-[50px] items-center gap-1 overflow-hidden rounded-md border py-1 pl-[26px] pr-1.5 sm:gap-1.5 sm:pl-[30px] sm:pr-2 ${
         exclusiveMvp
           ? 'border-[#FF0090]/90 bg-[#090b12] shadow-[0_0_32px_-2px_rgba(255,0,144,0.88)]'
           : ownedTitolare
@@ -2422,7 +2422,7 @@ function BenchChip({
       type="button"
       onClick={onSelect}
       title={pendingTitle}
-      className={`relative flex min-w-0 items-center gap-1.5 overflow-hidden rounded-lg border bg-glass-2 py-1.5 pl-5 pr-1.5 text-left transition-all ${
+      className={`relative flex min-w-0 items-center gap-1.5 overflow-hidden rounded-lg border bg-glass-2 py-1.5 pl-[26px] pr-1.5 text-left transition-all ${
         selected
           ? 'border-accent bg-accent/10 ring-2 ring-accent'
           : pendingFor
@@ -2469,8 +2469,14 @@ function PlayerDetailSheet({
   const ppPot = p.popularity_penalty_potential
   const pctNow = entry ? Math.round(entry.pct_now) : null
   const pctMax = entry ? Math.round(entry.pct_potential) : null
-  const hasFinalOverlay = v.kind === 'score' && p.final_score_now != null
-  const displayedFinal = hasFinalOverlay ? p.final_score_now : null
+  
+  const displayedTotalRaw = p.display_voto_total ?? p.raw_subtotal
+  const calculatedFinal =
+    v.kind === 'score' && displayedTotalRaw != null
+      ? displayedTotalRaw + p.mvp_bonus - pp
+      : null
+  const displayedFinal = p.final_score_now ?? calculatedFinal
+  const hasFinalOverlay = displayedFinal != null && v.kind === 'score'
 
   const chips: { key: string; icon: ReactNode; label: string; value?: ReactNode; title?: string; tone: 'pos' | 'neg' | 'mvp' }[] = []
   if (p.goals > 0) chips.push({ key: 'g', icon: '⚽', label: p.goals > 1 ? `Gol ×${p.goals}` : 'Gol', tone: 'pos' })
@@ -2546,7 +2552,7 @@ function PlayerDetailSheet({
           <div className="min-w-0">
             <div className="text-[10px] font-bold uppercase tracking-wider text-ink-5">Voto finale con P.P./MVP</div>
             <div className="mt-0.5 text-[11.5px] text-ink-4">
-              Voto pre-P.P. {v.total}
+              Voto bonus/malus {fmt(displayedTotalRaw, 1)}
               {(pp > 0.005 || p.mvp_bonus > 0.005) && <span> · </span>}
               {pp > 0.005 && <>P.P. −{fmt(pp, 1)}</>}
               {pp > 0.005 && p.mvp_bonus > 0.005 && <span> · </span>}
@@ -2554,8 +2560,8 @@ function PlayerDetailSheet({
               {pp <= 0.005 && p.mvp_bonus <= 0.005 && 'Nessun correttivo ownership attivo'}
             </div>
           </div>
-          <span className={`shrink-0 text-[22px] font-black tabular-nums ${totalVotoColor(p.final_score_now)}`}>
-            {fmt(p.final_score_now, 1)}
+          <span className={`shrink-0 text-[22px] font-black tabular-nums ${totalVotoColor(displayedFinal)}`}>
+            {fmt(displayedFinal, 1)}
           </span>
         </div>
       )}
@@ -2740,7 +2746,7 @@ function FantasyPlayerRow({
 
   return (
     <div
-      className={`relative flex min-h-[54px] items-center gap-2 overflow-hidden rounded-md border border-hairline bg-glass-2 py-1.5 pl-5 pr-2 ${
+      className={`relative flex min-h-[54px] items-center gap-2 overflow-hidden rounded-md border border-hairline bg-glass-2 py-1.5 pl-[28px] pr-2 ${
         muted ? 'opacity-55' : ''
       } ${flashClass}`}
     >
