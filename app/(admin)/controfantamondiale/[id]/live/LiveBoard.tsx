@@ -2908,15 +2908,15 @@ function OwnerPills({
             ? 'border-surface-0/30 bg-surface-0/15 text-surface-0'
             : 'border-surface-0/20 bg-surface-0/10 text-surface-0/75'
           : isStarter
-            ? 'border-indigo-400/25 bg-indigo-400/12 text-indigo-500 dark:text-indigo-300'
-            : 'border-hairline bg-ink-5/8 text-ink-5'
+            ? 'border-indigo-400/25 bg-indigo-400/12 text-indigo-500 dark:text-indigo-200 dark:bg-indigo-200/15 dark:border-indigo-200/30'
+            : 'border-hairline bg-ink-5/8 text-ink-5 dark:text-ink-2 dark:bg-ink-2/10 dark:border-ink-2/20'
         const glyphCls = onInk
           ? isStarter
             ? 'text-surface-0/85'
             : 'text-surface-0/70'
           : isStarter
-            ? 'text-indigo-500/80 dark:text-indigo-300/80'
-            : 'text-ink-5'
+            ? 'text-indigo-500/80 dark:text-indigo-200/80'
+            : 'text-ink-5 dark:text-ink-2'
         const glyph = isStarter ? (
           <PitchGlyph className={`shrink-0 ${glyphCls}`} />
         ) : (
