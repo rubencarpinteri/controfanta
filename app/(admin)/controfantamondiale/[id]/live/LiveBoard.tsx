@@ -709,12 +709,35 @@ function MatchDetailPanel({
   const maxBenchRows = Math.max(0, ...sideLineups.map((lineup) => lineup.lineup.bench.length))
 
   const [view, setView] = useState<TeamLineupView>('pitch')
-  // Marcatori line: scorers (with ×N), own goals, then assist-men. Goal/assist
-  // minutes aren't in the snapshot, so we list names rather than a timeline.
-  const scorers = m.players.filter((p) => p.goals > 0)
-  const ownGoalers = m.players.filter((p) => p.own_goals > 0)
-  const assisters = m.players.filter((p) => p.assists > 0)
-  const hasGoalEvents = scorers.length > 0 || ownGoalers.length > 0
+  // Marcatori line: one entry per goal, tagged with the nation that scored (own
+  // goals tagged with the BENEFITING nation) and the assist-man at low opacity.
+  // The snapshot carries goal/assist COUNTS but no goal↔assist linkage, so the
+  // assist is paired best-effort (per-team, in order) rather than authoritatively.
+  const codeOf = (teamId: string) =>
+    teamId === m.home_team_id ? m.home_team.fifa_code : m.away_team.fifa_code
+  const assistPool = new Map<string, string[]>()
+  for (const a of m.players) {
+    if (a.assists > 0) {
+      const arr = assistPool.get(a.national_team_id) ?? []
+      for (let i = 0; i < a.assists; i++) arr.push(a.name)
+      assistPool.set(a.national_team_id, arr)
+    }
+  }
+  type GoalEntry = { key: string; scorer: string; code: string; assist: string | null; own: boolean }
+  const goalEntries: GoalEntry[] = []
+  for (const s of m.players) {
+    for (let i = 0; i < s.goals; i++) {
+      const pool = assistPool.get(s.national_team_id) ?? []
+      goalEntries.push({ key: `g-${s.player_id}-${i}`, scorer: s.name, code: codeOf(s.national_team_id), assist: pool.shift() ?? null, own: false })
+    }
+  }
+  for (const o of m.players) {
+    for (let i = 0; i < o.own_goals; i++) {
+      const benefitsTeamId = o.national_team_id === m.home_team_id ? m.away_team_id : m.home_team_id
+      goalEntries.push({ key: `og-${o.player_id}-${i}`, scorer: o.name, code: codeOf(benefitsTeamId), assist: null, own: true })
+    }
+  }
+  const hasGoalEvents = goalEntries.length > 0
 
   return (
     <div className="rounded-xl border border-hairline bg-glass-1 overflow-hidden">
@@ -758,25 +781,21 @@ function MatchDetailPanel({
 
         {hasGoalEvents && (
           <div className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10.5px] leading-tight text-ink-3">
-            {scorers.map((s) => (
-              <span key={`g-${s.player_id}`} className="inline-flex items-center gap-1">
-                <span aria-hidden>⚽</span>
-                {shortPlayerName(s.name)}
-                {s.goals > 1 && <span className="text-ink-5">×{s.goals}</span>}
+            {goalEntries.map((e) => (
+              <span key={e.key} className={`inline-flex items-center gap-1 ${e.own ? 'text-rose-500 dark:text-rose-300' : ''}`}>
+                <span aria-hidden>{e.own ? '🥅' : '⚽'}</span>
+                {shortPlayerName(e.scorer)}
+                <span className="rounded bg-ink-5/12 px-1 text-[8px] font-bold tracking-wide text-ink-4">
+                  {e.own ? `A.G. ${e.code}` : e.code}
+                </span>
+                {e.assist && (
+                  <span className="inline-flex items-center gap-0.5 opacity-50" title={`Assist: ${e.assist}`}>
+                    <span aria-hidden>👟</span>
+                    {shortPlayerName(e.assist)}
+                  </span>
+                )}
               </span>
             ))}
-            {ownGoalers.map((s) => (
-              <span key={`og-${s.player_id}`} className="inline-flex items-center gap-1 text-rose-500 dark:text-rose-300" title="Autogol">
-                <span aria-hidden>🥅</span>
-                {shortPlayerName(s.name)} (AG)
-              </span>
-            ))}
-            {assisters.length > 0 && (
-              <span className="inline-flex items-center gap-1 text-ink-4">
-                <span aria-hidden>👟</span>
-                {assisters.map((a) => shortPlayerName(a.name)).join(', ')}
-              </span>
-            )}
           </div>
         )}
       </div>
@@ -961,7 +980,7 @@ function RealMatchPitch({ m, totalTeams }: { m: LiveSnapshotMatch; totalTeams: n
       {(homeSubs.length > 0 || awaySubs.length > 0) && (
         <div className="space-y-1.5">
           <p className="px-1 text-[9px] font-bold uppercase tracking-wider text-ink-5">Subentrati</p>
-          <div className="grid grid-cols-1 gap-x-3 gap-y-2 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-x-2 gap-y-2">
             <RealSubColumn teamRef={m.home_team} subs={homeSubs} matchStatus={m.status} totalTeams={totalTeams} />
             <RealSubColumn teamRef={m.away_team} subs={awaySubs} matchStatus={m.status} totalTeams={totalTeams} />
           </div>
@@ -1058,47 +1077,57 @@ function RealVotoPill({ p, matchStatus, owned, width }: { p: LiveSnapshotRealPla
 
 function RealPitchChip({ p, teamRef, matchStatus, totalTeams }: { p: LiveSnapshotRealPlayer; teamRef: LiveTeamRef; matchStatus: LiveSnapshotMatch['status']; totalTeams: number }) {
   const ownedTitolare = p.owners.some((o) => o.status === 'titolare')
+  const ownedPanchina = !ownedTitolare && p.owners.length > 0
   const owned = p.owners.length > 0
   const exclusiveStarter = p.owners.length === 1 && p.owners[0]?.status === 'titolare'
   const exclusiveMvp = exclusiveStarter && p.is_mvp
   const flash = useFlash(p.player_id)
-  const flashClass = flashTintClass(flash, ownedTitolare && !exclusiveMvp)
+  const flashClass = flashTintClass(flash, owned && !exclusiveMvp)
   const subbedOff = p.subbed_off_minute != null
 
-  const cardClass = exclusiveMvp
-    ? 'border-[#f01c9c]/80'
+  // Three clearly separated fill tiers so picked-panchina never reads like a
+  // not-picked player: faint → medium slate → strong near-black.
+  const bg = exclusiveMvp
+    ? 'linear-gradient(150deg, rgba(146,64,14,0.92), rgba(112,26,117,0.92))'
     : ownedTitolare
-      ? 'border-ink-1/80 bg-ink-1/90'
-      : owned
-        ? 'border-ink-1/30 bg-ink-1/[0.10]'
-        : 'border-white/15 bg-black/25'
+      ? 'rgba(15,23,42,0.92)'
+      : ownedPanchina
+        ? 'rgba(15,23,42,0.55)'
+        : 'rgba(2,6,23,0.14)'
+  const borderColor = exclusiveMvp || p.is_mvp
+    ? '#fbbf24'
+    : ownedTitolare
+      ? 'rgba(255,255,255,0.30)'
+      : ownedPanchina
+        ? 'rgba(255,255,255,0.22)'
+        : 'rgba(255,255,255,0.12)'
+  // MVP must be unmissable: a thick gold ring + glow around the whole card;
+  // the esclusiva-MVP jackpot pulses gold→magenta on top of that.
+  const boxShadow = exclusiveMvp
+    ? '0 0 0 2.5px #fbbf24, 0 0 18px 3px rgba(240,28,156,0.65)'
+    : p.is_mvp
+      ? '0 0 0 2.5px #fbbf24, 0 0 16px 2px rgba(251,191,36,0.6)'
+      : undefined
 
   return (
     <div
-      className={`relative flex w-full min-h-[92px] flex-col items-center gap-0.5 overflow-hidden rounded-[12px] border px-1 pb-1.5 pt-2 text-center shadow-sm ${cardClass} ${subbedOff ? 'opacity-75' : ''} ${flashClass}`}
-      style={exclusiveMvp ? { background: 'linear-gradient(150deg, rgba(245,158,11,0.22), rgba(240,28,156,0.22))', animation: 'pulse 1.4s ease-in-out infinite' } : undefined}
+      className={`relative flex w-full min-h-[96px] flex-col items-center gap-0.5 overflow-hidden rounded-[12px] border px-1 pb-1.5 ${p.is_mvp ? 'pt-3.5' : 'pt-2.5'} text-center ${subbedOff ? 'opacity-75' : ''} ${flashClass}`}
+      style={{ background: bg, borderColor, boxShadow, ...(exclusiveMvp ? { animation: 'pulse 1.4s ease-in-out infinite' } : {}) }}
     >
       <RoleNail role={p.role} />
-      {exclusiveMvp ? (
+      {p.is_mvp && (
         <span
-          className="absolute -top-px left-1/2 z-[2] -translate-x-1/2 inline-flex animate-pulse items-center gap-0.5 rounded-b-md px-1.5 py-px text-[8px] font-black uppercase leading-none text-white shadow-sm"
-          style={{ background: 'linear-gradient(90deg,#f59e0b,#f01c9c)' }}
-          title="Esclusiva + MVP — solo questa squadra lo schiera, ed è il migliore in campo"
+          className={`absolute -top-px left-1/2 z-[2] -translate-x-1/2 inline-flex items-center gap-1 rounded-b-lg px-2 py-0.5 text-[9px] font-black uppercase leading-none shadow-sm ${exclusiveMvp ? 'animate-pulse text-white' : 'text-amber-950'}`}
+          style={exclusiveMvp ? { background: 'linear-gradient(90deg,#f59e0b,#f01c9c)' } : { background: '#fbbf24' }}
+          title={exclusiveMvp ? 'Esclusiva + MVP — solo questa squadra lo schiera, ed è il migliore in campo' : 'Migliore in campo'}
         >
-          <span aria-hidden>👑</span> MVP
+          <span aria-hidden className="text-[11px]">👑</span> MVP
         </span>
-      ) : p.is_mvp ? (
-        <span
-          className="absolute -top-px left-1/2 z-[2] -translate-x-1/2 inline-flex items-center gap-0.5 rounded-b-md bg-amber-400 px-1.5 py-px text-[8px] font-black uppercase leading-none text-amber-950 shadow-sm"
-          title="Migliore in campo"
-        >
-          <span aria-hidden>👑</span> MVP
-        </span>
-      ) : null}
+      )}
 
       <RealCrest teamRef={teamRef} live={realOnPitch(p, matchStatus)} size={26} />
 
-      <span className={`block w-full truncate text-[10px] font-bold leading-tight ${ownedTitolare && !exclusiveMvp ? 'text-surface-0' : 'text-ink-1'}`} title={p.name}>
+      <span className="block w-full truncate text-[10px] font-bold leading-tight text-white" title={p.name}>
         {shortPlayerName(p.name)}
       </span>
 
@@ -1107,7 +1136,7 @@ function RealPitchChip({ p, teamRef, matchStatus, totalTeams }: { p: LiveSnapsho
       )}
 
       <span className="flex min-h-[13px] flex-wrap items-center justify-center gap-0.5">
-        <BonusMalusIcons p={p} inverted={ownedTitolare && !exclusiveMvp} />
+        <BonusMalusIcons p={p} inverted />
       </span>
 
       <RealVotoPill p={p} matchStatus={matchStatus} owned={owned} width={36} />
