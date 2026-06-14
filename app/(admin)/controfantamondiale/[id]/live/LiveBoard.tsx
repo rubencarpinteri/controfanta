@@ -721,6 +721,12 @@ function MatchDetailPanel({
   const maxBenchRows = Math.max(homeSide.lineup.bench.length, awaySide.lineup.bench.length)
 
   const [view, setView] = useState<TeamLineupView>('list')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const toggle = (id: string) => setSelectedId((cur) => (cur === id ? null : id))
+  const selected = m.players.find((p) => p.player_id === selectedId) ?? null
+  const selectedTeamRef = selected
+    ? selected.national_team_id === m.home_team_id ? m.home_team : m.away_team
+    : null
   // Marcatori line: one entry per goal, tagged with the nation that scored (own
   // goals tagged with the BENEFITING nation) and the assist-man at low opacity.
   // The snapshot carries goal/assist COUNTS but no goal↔assist linkage, so the
@@ -825,7 +831,7 @@ function MatchDetailPanel({
             <TeamViewToggle view={view} onChange={setView} />
           </div>
           {view === 'pitch' ? (
-            <RealMatchPitch m={m} totalTeams={totalTeams} />
+            <RealMatchPitch m={m} totalTeams={totalTeams} selectedId={selectedId} onSelect={toggle} />
           ) : (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-x-2 sm:gap-x-4 border-b border-hairline pb-1.5 pt-1">
@@ -846,12 +852,12 @@ function MatchDetailPanel({
                   return (
                     <Fragment key={`starter-row-${i}`}>
                       {homeP ? (
-                        <RealPlayerRow p={homeP.p} matchStatus={m.status} totalTeams={totalTeams} depth={homeP.depth} />
+                        <RealPlayerRow p={homeP.p} matchStatus={m.status} totalTeams={totalTeams} depth={homeP.depth} onSelect={() => toggle(homeP.p.player_id)} />
                       ) : (
                         <RealPlayerPlaceholder />
                       )}
                       {awayP ? (
-                        <RealPlayerRow p={awayP.p} matchStatus={m.status} totalTeams={totalTeams} depth={awayP.depth} />
+                        <RealPlayerRow p={awayP.p} matchStatus={m.status} totalTeams={totalTeams} depth={awayP.depth} onSelect={() => toggle(awayP.p.player_id)} />
                       ) : (
                         <RealPlayerPlaceholder />
                       )}
@@ -870,12 +876,12 @@ function MatchDetailPanel({
                       return (
                         <Fragment key={`bench-row-${i}`}>
                           {homeP ? (
-                            <RealPlayerRow p={homeP} matchStatus={m.status} totalTeams={totalTeams} />
+                            <RealPlayerRow p={homeP} matchStatus={m.status} totalTeams={totalTeams} onSelect={() => toggle(homeP.player_id)} />
                           ) : (
                             <RealPlayerPlaceholder />
                           )}
                           {awayP ? (
-                            <RealPlayerRow p={awayP} matchStatus={m.status} totalTeams={totalTeams} />
+                            <RealPlayerRow p={awayP} matchStatus={m.status} totalTeams={totalTeams} onSelect={() => toggle(awayP.player_id)} />
                           ) : (
                             <RealPlayerPlaceholder />
                           )}
@@ -885,6 +891,12 @@ function MatchDetailPanel({
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {selected && selectedTeamRef && (
+            <div className="mt-3 border-t border-hairline pt-3">
+              <RealPlayerSheet p={selected} teamRef={selectedTeamRef} matchStatus={m.status} totalTeams={totalTeams} onClose={() => setSelectedId(null)} />
             </div>
           )}
         </div>
@@ -938,13 +950,8 @@ function realOnPitch(p: LiveSnapshotRealPlayer, matchStatus: LiveSnapshotMatch['
   )
 }
 
-function RealMatchPitch({ m, totalTeams }: { m: LiveSnapshotMatch; totalTeams: number }) {
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const toggle = (id: string) => setSelectedId((cur) => (cur === id ? null : id))
-  const selected = m.players.find((p) => p.player_id === selectedId) ?? null
-  const selectedTeamRef = selected
-    ? selected.national_team_id === m.home_team_id ? m.home_team : m.away_team
-    : null
+function RealMatchPitch({ m, totalTeams, selectedId, onSelect }: { m: LiveSnapshotMatch; totalTeams: number; selectedId: string | null; onSelect: (id: string) => void }) {
+  const toggle = onSelect
   const sideOf = (teamId: string) => m.players.filter((p) => p.national_team_id === teamId)
   const homeAll = sideOf(m.home_team_id)
   const awayAll = sideOf(m.away_team_id)
@@ -1002,9 +1009,7 @@ function RealMatchPitch({ m, totalTeams }: { m: LiveSnapshotMatch; totalTeams: n
         </div>
       </div>
 
-      {selected && selectedTeamRef && (
-        <RealPlayerSheet p={selected} teamRef={selectedTeamRef} matchStatus={m.status} totalTeams={totalTeams} onClose={() => setSelectedId(null)} />
-      )}
+
 
       {(homeSubs.length > 0 || awaySubs.length > 0) && (
         <div className="space-y-1.5">
@@ -1468,12 +1473,14 @@ function RealPlayerRow({
   totalTeams,
   depth = 0,
   muted = false,
+  onSelect,
 }: {
   p: LiveSnapshotRealPlayer
   matchStatus: LiveSnapshotMatch['status']
   totalTeams: number
   depth?: number
   muted?: boolean
+  onSelect?: () => void
 }) {
   const storedBaseVoto =
     p.display_voto_base ??
@@ -1497,6 +1504,8 @@ function RealPlayerRow({
   const flash = useFlash(p.player_id)
   const flashClass = flashTintClass(flash, ownedTitolare && !exclusiveMvp)
   const darkVotoPill = ownedTitolare && !exclusiveMvp
+  const RatingContainer = onSelect ? 'button' : 'span'
+  const ratingContainerProps = onSelect ? { type: 'button' as const, onClick: onSelect } : {}
 
   return (
     <div
@@ -1561,8 +1570,11 @@ function RealPlayerRow({
         </span>
       </span>
 
-      <span
+      <RatingContainer
+        {...ratingContainerProps}
         className={`shrink-0 self-center w-9 overflow-hidden rounded-md border text-center tabular-nums shadow-sm sm:w-11 ${
+          onSelect ? 'cursor-pointer transition-all hover:scale-105 active:scale-95' : ''
+        } ${
           darkVotoPill
             ? 'border-white/15 bg-[#111827]'
             : 'border-hairline bg-surface-2'
@@ -1606,7 +1618,7 @@ function RealPlayerRow({
             {v.text}
           </span>
         )}
-      </span>
+      </RatingContainer>
     </div>
   )
 }
@@ -1733,6 +1745,9 @@ function TeamDetailPanel({
 }) {
   const notFielded = isNotFielded(team)
   const [view, setView] = useState<TeamLineupView>('list')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const selected = team.players.find((p) => p.player_id === selectedId) ?? null
+  const toggle = (id: string) => setSelectedId((cur) => (cur === id ? null : id))
 
   return (
     <div
@@ -1758,10 +1773,21 @@ function TeamDetailPanel({
             <TeamViewToggle view={view} onChange={setView} />
           </div>
           {view === 'list' ? (
-            <TeamListBody team={team} liveField={liveField} ownership={ownership} />
+            <TeamListBody team={team} liveField={liveField} ownership={ownership} selectedId={selectedId} onSelect={toggle} />
           ) : (
-            <FantasyPitch team={team} liveField={liveField} ownership={ownership} />
+            <FantasyPitch team={team} liveField={liveField} ownership={ownership} selectedId={selectedId} onSelect={toggle} />
           )}
+
+          {selected && (
+            <PlayerDetailSheet
+              p={selected}
+              entry={ownership[selected.player_id]}
+              teamName={team.name}
+              liveState={liveField.get(selected.player_id)}
+              onClose={() => setSelectedId(null)}
+            />
+          )}
+
           <LineupLegend />
         </div>
       )}
@@ -1827,8 +1853,8 @@ function TeamViewToggle({ view, onChange }: { view: TeamLineupView; onChange: (v
   return (
     <div className="flex shrink-0 gap-1 rounded-full border border-hairline bg-glass-2 p-1 shadow-sm">
       {([
-        { v: 'pitch' as const, label: 'Campo' },
         { v: 'list' as const, label: 'Lista' },
+        { v: 'pitch' as const, label: 'Campo' },
       ]).map((opt) => (
         <button
           key={opt.v}
@@ -1891,10 +1917,14 @@ function TeamListBody({
   team,
   liveField,
   ownership,
+  selectedId,
+  onSelect,
 }: {
   team: LiveSnapshotTeam
   liveField: Map<string, LiveFieldState>
   ownership: Record<string, LiveOwnershipEntry>
+  selectedId?: string | null
+  onSelect?: (id: string) => void
 }) {
   const inXi = team.players.filter((p) => p.via === 'starter')
   const bench = team.players.filter((p) => p.via === 'bench' || p.via === 'sub')
@@ -1906,7 +1936,7 @@ function TeamListBody({
         return (
           <div key={role} className="space-y-1">
             {rolePlayers.map((p) => (
-              <FantasyPlayerRow key={p.player_id} p={p} entry={ownership[p.player_id]} liveState={liveField.get(p.player_id)} />
+              <FantasyPlayerRow key={p.player_id} p={p} entry={ownership[p.player_id]} liveState={liveField.get(p.player_id)} onSelect={onSelect ? () => onSelect(p.player_id) : undefined} />
             ))}
           </div>
         )
@@ -1934,7 +1964,7 @@ function TeamListBody({
                 </div>
                 <div className="min-w-0 space-y-1">
                 {roleBench.map((p) => (
-                  <FantasyPlayerRow key={p.player_id} p={p} entry={ownership[p.player_id]} muted liveState={liveField.get(p.player_id)} />
+                  <FantasyPlayerRow key={p.player_id} p={p} entry={ownership[p.player_id]} muted liveState={liveField.get(p.player_id)} onSelect={onSelect ? () => onSelect(p.player_id) : undefined} />
                 ))}
                 </div>
               </div>
@@ -1957,12 +1987,16 @@ function FantasyPitch({
   team,
   liveField,
   ownership,
+  selectedId,
+  onSelect,
 }: {
   team: LiveSnapshotTeam
   liveField: Map<string, LiveFieldState>
   ownership: Record<string, LiveOwnershipEntry>
+  selectedId: string | null
+  onSelect: (id: string) => void
 }) {
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const toggle = onSelect
   const fielded = team.players.filter((p) => p.counts)
   // Bench = true reserves only. A non-playing titolare is NOT demoted here — he
   // stays "up" as a ghost slot on the pitch (or is replaced by a sub who's on).
@@ -1986,8 +2020,6 @@ function FantasyPitch({
       ...playedShort.filter((p) => p.role === role).map((p): PitchSlot => ({ kind: 'ghost', p })),
     ])
     .filter((r) => r.length > 0)
-  const selected = team.players.find((p) => p.player_id === selectedId) ?? null
-  const toggle = (id: string) => setSelectedId((cur) => (cur === id ? null : id))
 
   return (
     <div className="space-y-2">
@@ -2027,15 +2059,7 @@ function FantasyPitch({
         ))}
       </div>
 
-      {selected && (
-        <PlayerDetailSheet
-          p={selected}
-          entry={ownership[selected.player_id]}
-          teamName={team.name}
-          liveState={liveField.get(selected.player_id)}
-          onClose={() => setSelectedId(null)}
-        />
-      )}
+
 
       {team.coach && <CoachRow coach={team.coach} />}
 
@@ -2692,11 +2716,13 @@ function FantasyPlayerRow({
   entry,
   muted = false,
   liveState,
+  onSelect,
 }: {
   p: LiveSnapshotPlayer
   entry?: LiveOwnershipEntry
   muted?: boolean
   liveState?: LiveFieldState
+  onSelect?: () => void
 }) {
   const penNow = p.popularity_penalty_now
   const penPot = p.popularity_penalty_potential
@@ -2709,6 +2735,8 @@ function FantasyPlayerRow({
   const v = computeVoto(p)
   const flash = useFlash(p.player_id)
   const flashClass = flashTintClass(flash)
+  const RatingContainer = onSelect ? 'button' : 'span'
+  const ratingContainerProps = onSelect ? { type: 'button' as const, onClick: onSelect } : {}
 
   return (
     <div
@@ -2795,7 +2823,12 @@ function FantasyPlayerRow({
 
       <LivePlayerDot state={liveState} />
 
-      <span className="shrink-0 w-16 overflow-hidden rounded-lg border border-hairline bg-surface-2 text-center tabular-nums shadow-sm">
+      <RatingContainer
+        {...ratingContainerProps}
+        className={`shrink-0 w-16 overflow-hidden rounded-lg border border-hairline bg-surface-2 text-center tabular-nums shadow-sm ${
+          onSelect ? 'cursor-pointer transition-all hover:scale-105 active:scale-95' : ''
+        }`}
+      >
         {v.kind === 'score' ? (
           <>
             <span className="block border-b border-hairline px-1.5 py-1 text-[14px] font-bold leading-none text-ink-2">
@@ -2808,7 +2841,7 @@ function FantasyPlayerRow({
         ) : (
           <span className={`block px-1.5 py-2.5 text-[14px] font-bold leading-none ${v.cls}`}>{v.text}</span>
         )}
-      </span>
+      </RatingContainer>
     </div>
   )
 }
@@ -3224,6 +3257,9 @@ function MobileTeamCard({
 }) {
   const notFielded = isNotFielded(team)
   const [view, setView] = useState<TeamLineupView>('list')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const selected = team.players.find((p) => p.player_id === selectedId) ?? null
+  const toggle = (id: string) => setSelectedId((cur) => (cur === id ? null : id))
   return (
     <div
       className={`rounded-xl border bg-glass-1 ${expanded ? '' : 'overflow-hidden'} ${
@@ -3292,10 +3328,21 @@ function MobileTeamCard({
                 <TeamViewToggle view={view} onChange={setView} />
               </div>
               {view === 'list' ? (
-                <div className="space-y-2"><TeamListBody team={team} liveField={liveField} ownership={ownership} /></div>
+                <div className="space-y-2"><TeamListBody team={team} liveField={liveField} ownership={ownership} selectedId={selectedId} onSelect={toggle} /></div>
               ) : (
-                <FantasyPitch team={team} liveField={liveField} ownership={ownership} />
+                <FantasyPitch team={team} liveField={liveField} ownership={ownership} selectedId={selectedId} onSelect={toggle} />
               )}
+
+              {selected && (
+                <PlayerDetailSheet
+                  p={selected}
+                  entry={ownership[selected.player_id]}
+                  teamName={team.name}
+                  liveState={liveField.get(selected.player_id)}
+                  onClose={() => setSelectedId(null)}
+                />
+              )}
+
               <LineupLegend />
             </>
           )}
