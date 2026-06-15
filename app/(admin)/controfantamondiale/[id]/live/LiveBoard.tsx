@@ -2903,17 +2903,22 @@ function OwnerPills({
       </span>
       {owners.map((owner, i) => {
         const isStarter = owner.status === 'titolare'
+        const isExclusive = owners.length === 1
         const chipCls = onInk
-          ? isStarter
-            ? 'border-white/30 bg-white/15 text-white'
-            : 'border-white/20 bg-white/10 text-white/75'
+          ? isExclusive && isStarter
+            ? 'border-[#FF0090]/40 bg-[#FF0090]/15 text-[#FF0090]'
+            : isStarter
+              ? 'border-indigo-400/40 bg-indigo-400/15 text-indigo-300'
+              : 'border-white/20 bg-white/10 text-white/70'
           : isStarter
             ? 'border-indigo-400/25 bg-indigo-400/12 text-indigo-500 dark:text-indigo-200 dark:bg-indigo-200/15 dark:border-indigo-200/30'
             : 'border-hairline bg-ink-5/8 text-ink-5 dark:text-ink-2 dark:bg-ink-2/10 dark:border-ink-2/20'
         const glyphCls = onInk
-          ? isStarter
-            ? 'text-white/85'
-            : 'text-white/70'
+          ? isExclusive && isStarter
+            ? 'text-[#FF0090]/90'
+            : isStarter
+              ? 'text-indigo-300/90'
+              : 'text-white/60'
           : isStarter
             ? 'text-indigo-500/80 dark:text-indigo-200/80'
             : 'text-ink-5 dark:text-ink-2'
