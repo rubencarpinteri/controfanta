@@ -2632,10 +2632,10 @@ function PlayerDetailSheet({
                         className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                           titolare
                             ? 'bg-indigo-400/12 text-indigo-500 dark:text-indigo-300'
-                            : 'bg-ink-5/8 text-ink-5'
+                            : 'bg-ink-5/8 text-ink-5 dark:bg-ink-2/10 dark:text-ink-2'
                         }`}
                       >
-                        {titolare ? <PitchGlyph className="text-indigo-500/80 dark:text-indigo-300/80" /> : <BenchGlyph className="text-ink-5" />}
+                        {titolare ? <PitchGlyph className="text-indigo-500/80 dark:text-indigo-300/80" /> : <BenchGlyph className="text-ink-5 dark:text-ink-2" />}
                         {titolare ? 'titolare' : 'panchina'}
                       </span>
                     </div>
@@ -2905,15 +2905,15 @@ function OwnerPills({
         const isStarter = owner.status === 'titolare'
         const chipCls = onInk
           ? isStarter
-            ? 'border-surface-0/30 bg-surface-0/15 text-surface-0'
-            : 'border-surface-0/20 bg-surface-0/10 text-surface-0/75'
+            ? 'border-white/30 bg-white/15 text-white'
+            : 'border-white/20 bg-white/10 text-white/75'
           : isStarter
             ? 'border-indigo-400/25 bg-indigo-400/12 text-indigo-500 dark:text-indigo-200 dark:bg-indigo-200/15 dark:border-indigo-200/30'
             : 'border-hairline bg-ink-5/8 text-ink-5 dark:text-ink-2 dark:bg-ink-2/10 dark:border-ink-2/20'
         const glyphCls = onInk
           ? isStarter
-            ? 'text-surface-0/85'
-            : 'text-surface-0/70'
+            ? 'text-white/85'
+            : 'text-white/70'
           : isStarter
             ? 'text-indigo-500/80 dark:text-indigo-200/80'
             : 'text-ink-5 dark:text-ink-2'
