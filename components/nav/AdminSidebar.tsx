@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import type { Route } from 'next'
+import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { logoutAction } from '@/app/(auth)/login/actions'
 import { toggleViewAsManagerAction } from '@/app/(admin)/preview-actions'
@@ -130,8 +131,23 @@ interface AdminSidebarProps {
   leagueName: string
 }
 
+const SIDEBAR_KEY = 'cf_sidebar_collapsed'
+
 export function AdminSidebar({ isAdmin, canPreview, previewing, username, leagueName }: AdminSidebarProps) {
   const pathname = usePathname()
+  const [collapsed, setCollapsed] = useState(false)
+
+  useEffect(() => {
+    setCollapsed(localStorage.getItem(SIDEBAR_KEY) === '1')
+  }, [])
+
+  function toggleCollapsed() {
+    setCollapsed((v) => {
+      const next = !v
+      localStorage.setItem(SIDEBAR_KEY, next ? '1' : '0')
+      return next
+    })
+  }
 
   const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin)
 
@@ -149,11 +165,24 @@ export function AdminSidebar({ isAdmin, canPreview, previewing, username, league
     <>
       {/* ── Desktop sidebar (hidden on mobile) ──────────────────────────── */}
       <aside
-        className="hidden h-screen w-60 shrink-0 flex-col border-r border-hairline bg-surface-1 backdrop-blur-2xl md:flex dark:bg-glass-2"
+        className={[
+          'relative hidden h-screen shrink-0 flex-col border-r border-hairline bg-surface-1 backdrop-blur-2xl md:flex dark:bg-glass-2',
+          collapsed ? 'w-[68px]' : 'w-60',
+        ].join(' ')}
       >
+        {/* Collapse / expand toggle — pinned to the right edge */}
+        <button
+          onClick={toggleCollapsed}
+          title={collapsed ? 'Espandi barra' : 'Riduci barra'}
+          aria-label={collapsed ? 'Espandi barra laterale' : 'Riduci barra laterale'}
+          className="absolute -right-3 top-5 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-hairline bg-surface-1 text-[12px] leading-none text-ink-4 shadow-sm transition-colors hover:text-ink-1 dark:bg-glass-3"
+        >
+          {collapsed ? '»' : '«'}
+        </button>
+
         {/* Brand */}
-        <div className="border-b border-hairline px-4 py-4">
-          <div className="flex items-center gap-3">
+        <div className={['border-b border-hairline py-4', collapsed ? 'px-0' : 'px-4'].join(' ')}>
+          <div className={['flex items-center gap-3', collapsed ? 'justify-center' : ''].join(' ')}>
             <div
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-indigo-700 dark:text-indigo-200"
               style={{
@@ -165,43 +194,48 @@ export function AdminSidebar({ isAdmin, canPreview, previewing, username, league
             >
               <NavIcon name="ball" size={18} />
             </div>
-            <div className="min-w-0">
-              <p className="truncate text-[13px] font-semibold tracking-tight text-ink-1">
-                {leagueName}
-              </p>
-              <p className="text-[10.5px] font-medium uppercase tracking-[0.14em] text-ink-4">
-                CONTROFANTA
-              </p>
-            </div>
+            {!collapsed && (
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-semibold tracking-tight text-ink-1">
+                  {leagueName}
+                </p>
+                <p className="text-[10.5px] font-medium uppercase tracking-[0.14em] text-ink-4">
+                  CONTROFANTA
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-0.5 overflow-y-auto px-2.5 py-3">
+        <nav className={['flex-1 space-y-0.5 overflow-y-auto py-3', collapsed ? 'px-2' : 'px-2.5'].join(' ')}>
           {visibleItems.map((item) => {
             const active = isActive(item)
             return (
               <Link
                 key={item.href}
                 href={item.href as Route}
+                title={collapsed ? item.label : undefined}
                 className={[
-                  'group flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-all',
+                  'group flex items-center gap-3 rounded-xl py-2 text-[13px] transition-all',
+                  collapsed ? 'justify-center px-0' : 'px-3',
                   active
                     ? 'bg-indigo-500/12 text-indigo-700 dark:text-indigo-200 border border-indigo-500/25 dark:border-indigo-400/25 shadow-[0_2px_8px_-2px_rgba(99,102,241,0.25)]'
                     : 'border border-transparent text-ink-3 hover:bg-glass-1 hover:text-ink-1',
                 ].join(' ')}
               >
                 <NavIcon name={item.icon} />
-                <span className="font-medium tracking-tight">{item.label}</span>
+                {!collapsed && <span className="font-medium tracking-tight">{item.label}</span>}
               </Link>
             )
           })}
         </nav>
 
         {/* User footer */}
-        <div className="border-t border-hairline px-3 py-3">
-          <div className="mb-2 flex items-center gap-2.5 px-1">
+        <div className={['border-t border-hairline py-3', collapsed ? 'px-2' : 'px-3'].join(' ')}>
+          <div className={['mb-2 flex items-center gap-2.5', collapsed ? 'justify-center px-0' : 'px-1'].join(' ')}>
             <div
+              title={collapsed ? `${username} · ${isAdmin ? 'Admin' : 'Manager'}` : undefined}
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold uppercase text-indigo-700 dark:text-indigo-200"
               style={{
                 background:
@@ -211,39 +245,47 @@ export function AdminSidebar({ isAdmin, canPreview, previewing, username, league
             >
               {username.slice(0, 1)}
             </div>
-            <div className="min-w-0">
-              <p className="truncate text-[12px] font-medium tracking-tight text-ink-1">
-                {username}
-              </p>
-              <p className="text-[10.5px] font-medium text-ink-4">
-                {isAdmin ? 'Admin' : 'Manager'}
-              </p>
-            </div>
+            {!collapsed && (
+              <div className="min-w-0">
+                <p className="truncate text-[12px] font-medium tracking-tight text-ink-1">
+                  {username}
+                </p>
+                <p className="text-[10.5px] font-medium text-ink-4">
+                  {isAdmin ? 'Admin' : 'Manager'}
+                </p>
+              </div>
+            )}
           </div>
           {canPreview && (
             <form action={toggleViewAsManagerAction} className="mb-2">
               <button
                 type="submit"
+                title={collapsed ? (previewing ? 'Esci da anteprima' : 'Vedi come manager') : undefined}
                 className={[
-                  'flex w-full items-center justify-center gap-2 rounded-md px-3 py-1.5 text-[11.5px] font-medium transition-colors',
+                  'flex w-full items-center gap-2 rounded-md py-1.5 text-[11.5px] font-medium transition-colors',
+                  collapsed ? 'justify-center px-0' : 'justify-center px-3',
                   previewing
                     ? 'bg-amber-500/15 text-amber-600 dark:text-amber-300 hover:bg-amber-500/25'
                     : 'text-ink-4 hover:bg-glass-1 hover:text-ink-1',
                 ].join(' ')}
               >
                 <NavIcon name={previewing ? 'gear' : 'user'} size={13} />
-                {previewing ? 'Esci da anteprima' : 'Vedi come manager'}
+                {!collapsed && (previewing ? 'Esci da anteprima' : 'Vedi come manager')}
               </button>
             </form>
           )}
-          <div className="flex items-center gap-2">
-            <form action={logoutAction} className="flex-1">
+          <div className={['flex items-center gap-2', collapsed ? 'flex-col' : ''].join(' ')}>
+            <form action={logoutAction} className={collapsed ? 'w-full' : 'flex-1'}>
               <button
                 type="submit"
-                className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-[12px] text-ink-4 transition-colors hover:bg-rose-500/10 hover:text-rose-300"
+                title={collapsed ? 'Esci' : undefined}
+                className={[
+                  'flex w-full items-center gap-2 rounded-md py-1.5 text-[12px] text-ink-4 transition-colors hover:bg-rose-500/10 hover:text-rose-300',
+                  collapsed ? 'justify-center px-0' : 'px-3 text-left',
+                ].join(' ')}
               >
                 <NavIcon name="logout" size={13} />
-                Esci
+                {!collapsed && 'Esci'}
               </button>
             </form>
             <ThemeToggle />

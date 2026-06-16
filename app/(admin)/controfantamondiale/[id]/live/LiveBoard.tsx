@@ -363,6 +363,7 @@ export function LiveBoard({
     defaultMatchId(initialSnapshot?.matches ?? []),
   )
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(myTeamId)
+  const [matchListCollapsed, setMatchListCollapsed] = useState(false)
   const timer = useRef<ReturnType<typeof setInterval> | null>(null)
   const flashes = useRatingFlash(snapshot)
 
@@ -439,11 +440,19 @@ export function LiveBoard({
       </div>
 
       {/* ── Desktop: 3-column layout ── */}
-      <div className="hidden lg:grid lg:grid-cols-[190px_minmax(0,1fr)_190px] lg:gap-3 xl:grid-cols-[198px_minmax(0,1fr)_198px]">
+      <div
+        className={`hidden lg:grid lg:gap-3 ${
+          matchListCollapsed
+            ? 'lg:grid-cols-[34px_minmax(0,1fr)_190px] xl:grid-cols-[34px_minmax(0,1fr)_198px]'
+            : 'lg:grid-cols-[190px_minmax(0,1fr)_190px] xl:grid-cols-[198px_minmax(0,1fr)_198px]'
+        }`}
+      >
         <MatchListPanel
           matches={snapshot.matches}
           selectedMatchId={selectedMatch?.match_id ?? null}
           onSelect={handleSelectMatch}
+          collapsed={matchListCollapsed}
+          onToggleCollapse={() => setMatchListCollapsed((v) => !v)}
         />
         <CenterPanel
           match={selectedMatch}
@@ -546,22 +555,42 @@ function MatchListPanel({
   selectedMatchId,
   onSelect,
   inline = false,
+  collapsed = false,
+  onToggleCollapse,
 }: {
   matches: LiveSnapshotMatch[]
   selectedMatchId: string | null
   onSelect: (id: string) => void
   inline?: boolean
+  collapsed?: boolean
+  onToggleCollapse?: () => void
 }) {
+  // Collapsed desktop rail — a thin clickable strip that re-expands the column.
+  if (collapsed) {
+    return (
+      <button
+        onClick={onToggleCollapse}
+        title="Espandi partite"
+        className="flex h-full w-full flex-col items-center gap-2 rounded-xl border border-hairline bg-glass-1 py-2.5 text-ink-4 transition-colors hover:bg-glass-2 hover:text-ink-2"
+      >
+        <span aria-hidden className="text-[12px]">»</span>
+        <span className="text-[9px] font-bold uppercase tracking-wider [writing-mode:vertical-rl]">
+          Partite
+        </span>
+      </button>
+    )
+  }
+
   if (inline) {
     // All matches visible at once in a 2-column grid — tap any to open its
     // detail below, no horizontal scrolling/hunting.
     return (
-      <div className="grid grid-cols-2 gap-1.5">
+      <div className="grid grid-cols-3 gap-1.5">
         {matches.map((m) => (
           <button
             key={m.match_id}
             onClick={() => onSelect(m.match_id)}
-            className={`rounded-lg border px-2 py-1.5 text-left transition-colors ${
+            className={`rounded-lg border px-1.5 py-1.5 text-left transition-colors ${
               m.match_id === selectedMatchId
                 ? 'border-indigo-500/40 bg-indigo-500/10'
                 : 'border-hairline bg-glass-1'
@@ -576,55 +605,59 @@ function MatchListPanel({
 
   return (
     <div className="flex flex-col gap-1 rounded-xl border border-hairline bg-glass-1 overflow-hidden">
-      <p className="px-3 pt-2.5 pb-1 text-[9px] font-bold uppercase tracking-wider text-ink-5">
-        Partite del turno
-      </p>
+      <div className="flex items-center justify-between px-3 pt-2.5 pb-1">
+        <p className="text-[9px] font-bold uppercase tracking-wider text-ink-5">
+          Partite del turno
+        </p>
+        {onToggleCollapse && (
+          <button
+            onClick={onToggleCollapse}
+            title="Riduci partite"
+            className="-mr-1 rounded px-1 text-[12px] leading-none text-ink-5 transition-colors hover:text-ink-2"
+            aria-label="Riduci colonna partite"
+          >
+            «
+          </button>
+        )}
+      </div>
       {matches.map((m) => (
         <button
           key={m.match_id}
           onClick={() => onSelect(m.match_id)}
-          className={`w-full border-t border-hairline px-2.5 py-2 text-left transition-colors hover:bg-glass-2 ${
+          className={`w-full border-t border-hairline px-2 py-1.5 text-left transition-colors hover:bg-glass-2 ${
             m.match_id === selectedMatchId ? 'bg-indigo-500/8' : ''
           } ${m.status === 'in_progress' ? 'ring-1 ring-inset ring-lime-400/80' : ''}`}
         >
-          <MatchChip match={m} selected={m.match_id === selectedMatchId} />
+          <MatchChip match={m} selected={m.match_id === selectedMatchId} dense />
         </button>
       ))}
     </div>
   )
 }
 
-function MatchChip({ match: m, selected = false, compact = false }: { match: LiveSnapshotMatch; selected?: boolean; compact?: boolean }) {
+function MatchChip({ match: m, selected = false, compact = false, dense = false }: { match: LiveSnapshotMatch; selected?: boolean; compact?: boolean; dense?: boolean }) {
   const homePresence = matchFantasyPresence(m, m.home_team_id)
   const awayPresence = matchFantasyPresence(m, m.away_team_id)
   const fantasyCount = homePresence.length + awayPresence.length
 
-  // Compact variant for the mobile 2-column grid: drop the presence-dots row,
-  // shrink crests/type, and tuck the date alongside the status — so far more
-  // matches fit on screen without scrolling.
-  if (compact) {
+  // Dense single-line variant for the desktop column: flag · CODE · score · CODE
+  // · flag on one row, with a live pulse / kickoff time — minimal height.
+  if (dense) {
+    const live = m.status === 'in_progress'
     return (
-      <div className="space-y-1">
-        <div className="flex items-center gap-1">
-          <MatchStatusBadge status={m.status} minute={m.minute} minuteAdded={m.minute_added} />
-          <span className="truncate text-[9px] font-semibold text-ink-4 tabular-nums capitalize">
-            {m.status === 'scheduled' ? fmtKickoff(m.kickoff_at) : fmtMatchDate(m.kickoff_at)}
-          </span>
-          {fantasyCount > 0 && (
-            <span className="ml-auto shrink-0 text-[9px] font-bold text-ink-5 tabular-nums" title={`${fantasyCount} giocatori nel pool`}>
-              {fantasyCount}●
-            </span>
-          )}
-        </div>
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1">
+      <div className="flex items-center gap-1">
+        <span className="w-1.5 shrink-0">
+          {live && <span className="block h-1.5 w-1.5 animate-pulse rounded-full bg-lime-400" />}
+        </span>
+        <div className="grid flex-1 grid-cols-[1fr_auto_1fr] items-center gap-1">
           <div className="flex min-w-0 items-center gap-1">
             <TeamCrest name={m.home_team.name} logoUrl={m.home_team.logo_url} flagUrl={m.home_team.flag_url} fifaCode={m.home_team.fifa_code} size={16} className="shrink-0" />
             <span className={`text-[12px] font-black uppercase tracking-tight ${selected ? 'text-ink-1' : 'text-ink-2'}`}>
               {m.home_team.fifa_code || m.home_team.name.slice(0, 3).toUpperCase()}
             </span>
           </div>
-          <span className={`text-[12px] font-black tabular-nums ${m.status === 'in_progress' ? 'text-emerald-600 dark:text-emerald-400' : 'text-ink-1'}`}>
-            {m.status !== 'scheduled' ? `${m.home_score ?? 0}–${m.away_score ?? 0}` : '–'}
+          <span className={`text-[12px] font-black tabular-nums ${live ? 'text-emerald-600 dark:text-emerald-400' : 'text-ink-1'}`}>
+            {m.status === 'scheduled' ? fmtKickoff(m.kickoff_at) : `${m.home_score ?? 0}–${m.away_score ?? 0}`}
           </span>
           <div className="flex min-w-0 items-center justify-end gap-1">
             <span className={`text-[12px] font-black uppercase tracking-tight ${selected ? 'text-ink-1' : 'text-ink-2'}`}>
@@ -632,6 +665,40 @@ function MatchChip({ match: m, selected = false, compact = false }: { match: Liv
             </span>
             <TeamCrest name={m.away_team.name} logoUrl={m.away_team.logo_url} flagUrl={m.away_team.flag_url} fifaCode={m.away_team.fifa_code} size={16} className="shrink-0" />
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Compact variant for the mobile 2-column grid: drop the presence-dots row,
+  // shrink crests/type, and tuck the date alongside the status — so far more
+  // matches fit on screen without scrolling.
+  if (compact) {
+    return (
+      <div className="space-y-0.5">
+        <div className="flex items-center gap-0.5">
+          <MatchStatusBadge status={m.status} minute={m.minute} minuteAdded={m.minute_added} />
+          <span className="truncate text-[8px] font-semibold text-ink-4 tabular-nums capitalize">
+            {m.status === 'scheduled' ? fmtKickoff(m.kickoff_at) : fmtMatchDate(m.kickoff_at)}
+          </span>
+          {fantasyCount > 0 && (
+            <span className="ml-auto shrink-0 text-[8px] font-bold text-ink-5 tabular-nums" title={`${fantasyCount} giocatori nel pool`}>
+              {fantasyCount}●
+            </span>
+          )}
+        </div>
+        <div className="flex items-center justify-center gap-1">
+          <TeamCrest name={m.home_team.name} logoUrl={m.home_team.logo_url} flagUrl={m.home_team.flag_url} fifaCode={m.home_team.fifa_code} size={20} className="shrink-0" />
+          <span className={`text-[12px] font-black uppercase tracking-tight ${selected ? 'text-ink-1' : 'text-ink-2'}`}>
+            {m.home_team.fifa_code || m.home_team.name.slice(0, 3).toUpperCase()}
+          </span>
+          <span className={`mx-0.5 shrink-0 text-[14px] font-black tabular-nums ${m.status === 'in_progress' ? 'text-emerald-600 dark:text-emerald-400' : 'text-ink-1'}`}>
+            {m.status !== 'scheduled' ? `${m.home_score ?? 0}–${m.away_score ?? 0}` : '–'}
+          </span>
+          <span className={`text-[12px] font-black uppercase tracking-tight ${selected ? 'text-ink-1' : 'text-ink-2'}`}>
+            {m.away_team.fifa_code || m.away_team.name.slice(0, 3).toUpperCase()}
+          </span>
+          <TeamCrest name={m.away_team.name} logoUrl={m.away_team.logo_url} flagUrl={m.away_team.flag_url} fifaCode={m.away_team.fifa_code} size={20} className="shrink-0" />
         </div>
       </div>
     )
