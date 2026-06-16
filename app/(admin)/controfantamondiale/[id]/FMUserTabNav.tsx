@@ -30,8 +30,24 @@ export function FMUserTabNav({
   const pathname = usePathname()
   const base = `/controfantamondiale/${id}`
   const [playing, setPlaying] = useState<boolean | null>(null)
+  const navRef = useRef<HTMLDivElement>(null)
 
   const adminTabs = ADMIN_TABS.filter((t) => isSuperAdmin || !t.platform)
+
+  // Publish the live nav's real rendered height as a CSS variable so in-board
+  // sticky headers (team / match) can park exactly below it instead of guessing
+  // a fixed offset — keeps them clear of the bar even when the tabs wrap to two
+  // rows on narrow screens.
+  useEffect(() => {
+    const el = navRef.current
+    if (!el) return
+    const publish = () =>
+      document.documentElement.style.setProperty('--cf-livenav-h', `${el.offsetHeight}px`)
+    publish()
+    const ro = new ResizeObserver(publish)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -54,8 +70,8 @@ export function FMUserTabNav({
   }, [id])
 
   return (
-    <div className="sticky top-0 z-10 -mx-4 mb-5 bg-surface-0/75 px-4 py-2 backdrop-blur-2xl md:-mx-8 md:px-8">
-      <div className="flex gap-1 overflow-x-auto rounded-[18px] border border-hairline bg-glass-tint p-1 shadow-1 backdrop-blur-2xl scrollbar-none">
+    <div ref={navRef} className="sticky top-0 z-30 -mx-4 mb-5 bg-surface-0/75 px-4 py-2 backdrop-blur-2xl md:-mx-8 md:px-8">
+      <div className="flex flex-wrap gap-1 rounded-[18px] border border-hairline bg-glass-tint p-1 shadow-1 backdrop-blur-2xl">
         {TABS.map((tab) => {
           const href = `${base}${tab.suffix}`
           const isActive =

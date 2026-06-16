@@ -571,10 +571,16 @@ function MatchListPanel({
       <button
         onClick={onToggleCollapse}
         title="Espandi partite"
-        className="flex h-full w-full flex-col items-center gap-2 rounded-xl border border-hairline bg-glass-1 py-2.5 text-ink-4 transition-colors hover:bg-glass-2 hover:text-ink-2"
+        aria-label="Espandi colonna partite"
+        className="group flex h-full w-full flex-col items-center gap-3 rounded-xl border border-hairline bg-glass-1 py-3 text-ink-4 transition-colors hover:bg-glass-2 hover:text-ink-2"
       >
-        <span aria-hidden className="text-[12px]">»</span>
-        <span className="text-[9px] font-bold uppercase tracking-wider [writing-mode:vertical-rl]">
+        <span
+          aria-hidden
+          className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-hairline bg-glass-2 text-[12px] leading-none transition-colors group-hover:border-hairline-strong group-hover:bg-glass-3"
+        >
+          »
+        </span>
+        <span className="text-[9px] font-bold uppercase tracking-[0.18em] [writing-mode:vertical-rl]">
           Partite
         </span>
       </button>
@@ -613,7 +619,7 @@ function MatchListPanel({
           <button
             onClick={onToggleCollapse}
             title="Riduci partite"
-            className="-mr-1 rounded px-1 text-[12px] leading-none text-ink-5 transition-colors hover:text-ink-2"
+            className="-mr-0.5 inline-flex h-6 w-6 items-center justify-center rounded-md border border-hairline bg-glass-2 text-[12px] leading-none text-ink-4 transition-colors hover:border-hairline-strong hover:bg-glass-3 hover:text-ink-1"
             aria-label="Riduci colonna partite"
           >
             «
@@ -933,9 +939,13 @@ function MatchDetailPanel({
   const hasGoalEvents = goalEntries.length > 0
 
   return (
-    <div className="rounded-xl border border-hairline bg-glass-1 overflow-hidden">
-      {/* header */}
-      <div className="bg-glass-2 px-4 py-3 border-b border-hairline">
+    <div className="rounded-xl border border-hairline bg-glass-1">
+      {/* header — sticks below the live nav as a floating pill while the lineups
+          scroll underneath, matching the Squadre team header treatment. */}
+      <div
+        style={{ top: 'calc(var(--cf-livenav-h, 70px) + 6px)' }}
+        className="sticky z-20 mx-1 mt-1 rounded-2xl border border-hairline-strong bg-surface-1/95 px-4 py-3 shadow-lg shadow-black/10 backdrop-blur-xl"
+      >
         <div className="flex items-center justify-center gap-4">
           <div className="flex flex-1 flex-col items-center gap-1.5">
             <TeamCrest
@@ -1994,8 +2004,9 @@ function TeamDetailHeader({
 }) {
   return (
     <div
+      style={sticky ? { top: 'calc(var(--cf-livenav-h, 70px) + 6px)' } : undefined}
       className={`flex items-center gap-2 rounded-t-xl border-b px-4 py-3 ${
-        sticky ? 'sticky top-[44px] z-10 bg-surface-1 backdrop-blur-xl' : ''
+        sticky ? 'sticky z-20 bg-surface-1 backdrop-blur-xl' : ''
       } ${
         isMine
           ? 'border-indigo-500/40 bg-gradient-to-r from-indigo-500/22 via-indigo-500/8 to-transparent'
@@ -3527,12 +3538,13 @@ function MobileTeamCard({
     >
       <button
         onClick={onToggle}
-        className={`w-full flex items-center gap-2 rounded-t-xl px-3 py-2.5 border-b ${
+        style={expanded ? { top: 'calc(var(--cf-livenav-h, 70px) + 6px)' } : undefined}
+        className={`w-full flex items-center gap-2 px-3 py-2.5 border-b ${
           expanded
             ? isMine
-              ? 'sticky top-[44px] z-10 border-indigo-500/40 bg-surface-1 bg-gradient-to-r from-indigo-500/22 via-indigo-500/8 to-transparent backdrop-blur-xl'
-              : 'sticky top-[44px] z-10 border-hairline bg-surface-1 bg-gradient-to-r from-accent/18 via-accent/6 to-transparent backdrop-blur-xl'
-            : 'border-hairline bg-glass-2'
+              ? 'sticky z-20 mx-1 mb-1 rounded-2xl border border-indigo-500/40 bg-surface-1/95 bg-gradient-to-r from-indigo-500/22 via-indigo-500/8 to-transparent shadow-lg shadow-black/10 backdrop-blur-xl'
+              : 'sticky z-20 mx-1 mb-1 rounded-2xl border border-hairline-strong bg-surface-1/95 bg-gradient-to-r from-accent/18 via-accent/6 to-transparent shadow-lg shadow-black/10 backdrop-blur-xl'
+            : 'rounded-t-xl border-hairline bg-glass-2'
         }`}
       >
         <span className="w-4 shrink-0 text-center text-[12px] font-bold text-ink-5">{rank}</span>
