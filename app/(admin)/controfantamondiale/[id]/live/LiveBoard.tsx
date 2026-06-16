@@ -1,6 +1,7 @@
 'use client'
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState, Fragment, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, Fragment, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import { TeamCrest } from '@/components/fm/TeamCrest'
 import { CoachTierBadge } from '@/components/fm/CoachTierBadge'
@@ -255,6 +256,65 @@ function teamLiveCounts(
   return { field, bench }
 }
 
+// How many of a team's counting players already have a rating, how many still
+// have a match to come, and how many didn't play with no bench cover left
+// (the team plays a man short). Drives the "Gioca in N" / "N da giocare" remark.
+function teamRatingProgress(team: LiveSnapshotTeam): {
+  fielded: number
+  rated: number
+  pending: number
+  short: number
+} {
+  const fielded = team.players.filter((p) => p.counts)
+  let rated = 0
+  let pending = 0
+  let short = 0
+  for (const p of fielded) {
+    if (p.status === 'played') rated++
+    else if (p.status === 'not_played') short++
+    else pending++
+  }
+  return { fielded: fielded.length, rated, pending, short }
+}
+
+// Compact remark badge: red "Gioca in N" when the team is short, amber count of
+// players still to play, nothing once everyone is rated.
+function RatingProgressBadge({ team, className = '' }: { team: LiveSnapshotTeam; className?: string }) {
+  const { fielded, pending, short } = teamRatingProgress(team)
+  if (short > 0) {
+    return (
+      <span
+        title={`${short} titolari non scesi in campo e senza riserva disponibile`}
+        className={`inline-flex shrink-0 items-center gap-1 rounded-full bg-rose-500/14 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-rose-600 dark:text-rose-300 ${className}`}
+      >
+        Gioca in {fielded - short}!
+      </span>
+    )
+  }
+  if (pending > 0) {
+    return (
+      <span
+        title={`${pending} voti ancora mancanti`}
+        className={`inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-400/16 px-2 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-300 ${className}`}
+      >
+        {pending === 1 ? 'Ne manca ancora 1' : `Ne mancano ancora ${pending}`} <span aria-hidden>⏳</span>
+      </span>
+    )
+  }
+  return null
+}
+
+// Color the BR final score by how many Battle-Royale goals it yields, reusing
+// the rating palette tiers (red → blue).
+function brGoalColor(goals: number): string {
+  if (goals >= 5) return 'text-[#FF0090]' // magenta
+  if (goals >= 4) return 'text-[#8B5CF6]' // violet
+  if (goals >= 3) return 'text-[#4F46E5]' // indigo
+  if (goals >= 2) return 'text-[#00ADC4]' // light blue
+  if (goals >= 1) return 'text-[#00C424]' // green
+  return 'text-ink-2'
+}
+
 // Glowing dots: green for each fantasy titolare currently on the pitch in a live
 // match, grey for the rest of the squad involved in a live match.
 function LiveDots({ field, bench }: { field: number; bench: number }) {
@@ -493,19 +553,21 @@ function MatchListPanel({
   inline?: boolean
 }) {
   if (inline) {
+    // All matches visible at once in a 2-column grid — tap any to open its
+    // detail below, no horizontal scrolling/hunting.
     return (
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="grid grid-cols-2 gap-1.5">
         {matches.map((m) => (
           <button
             key={m.match_id}
             onClick={() => onSelect(m.match_id)}
-            className={`flex-shrink-0 rounded-lg border px-3 py-2 text-left transition-colors ${
+            className={`rounded-lg border px-2 py-1.5 text-left transition-colors ${
               m.match_id === selectedMatchId
                 ? 'border-indigo-500/40 bg-indigo-500/10'
                 : 'border-hairline bg-glass-1'
             } ${m.status === 'in_progress' ? 'ring-1 ring-inset ring-lime-400/80' : ''}`}
           >
-            <MatchChip match={m} />
+            <MatchChip match={m} selected={m.match_id === selectedMatchId} compact />
           </button>
         ))}
       </div>
@@ -532,10 +594,48 @@ function MatchListPanel({
   )
 }
 
-function MatchChip({ match: m, selected = false }: { match: LiveSnapshotMatch; selected?: boolean }) {
+function MatchChip({ match: m, selected = false, compact = false }: { match: LiveSnapshotMatch; selected?: boolean; compact?: boolean }) {
   const homePresence = matchFantasyPresence(m, m.home_team_id)
   const awayPresence = matchFantasyPresence(m, m.away_team_id)
   const fantasyCount = homePresence.length + awayPresence.length
+
+  // Compact variant for the mobile 2-column grid: drop the presence-dots row,
+  // shrink crests/type, and tuck the date alongside the status — so far more
+  // matches fit on screen without scrolling.
+  if (compact) {
+    return (
+      <div className="space-y-1">
+        <div className="flex items-center gap-1">
+          <MatchStatusBadge status={m.status} minute={m.minute} minuteAdded={m.minute_added} />
+          <span className="truncate text-[9px] font-semibold text-ink-4 tabular-nums capitalize">
+            {m.status === 'scheduled' ? fmtKickoff(m.kickoff_at) : fmtMatchDate(m.kickoff_at)}
+          </span>
+          {fantasyCount > 0 && (
+            <span className="ml-auto shrink-0 text-[9px] font-bold text-ink-5 tabular-nums" title={`${fantasyCount} giocatori nel pool`}>
+              {fantasyCount}●
+            </span>
+          )}
+        </div>
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1">
+          <div className="flex min-w-0 items-center gap-1">
+            <TeamCrest name={m.home_team.name} logoUrl={m.home_team.logo_url} flagUrl={m.home_team.flag_url} fifaCode={m.home_team.fifa_code} size={16} className="shrink-0" />
+            <span className={`text-[12px] font-black uppercase tracking-tight ${selected ? 'text-ink-1' : 'text-ink-2'}`}>
+              {m.home_team.fifa_code || m.home_team.name.slice(0, 3).toUpperCase()}
+            </span>
+          </div>
+          <span className={`text-[12px] font-black tabular-nums ${m.status === 'in_progress' ? 'text-emerald-600 dark:text-emerald-400' : 'text-ink-1'}`}>
+            {m.status !== 'scheduled' ? `${m.home_score ?? 0}–${m.away_score ?? 0}` : '–'}
+          </span>
+          <div className="flex min-w-0 items-center justify-end gap-1">
+            <span className={`text-[12px] font-black uppercase tracking-tight ${selected ? 'text-ink-1' : 'text-ink-2'}`}>
+              {m.away_team.fifa_code || m.away_team.name.slice(0, 3).toUpperCase()}
+            </span>
+            <TeamCrest name={m.away_team.name} logoUrl={m.away_team.logo_url} flagUrl={m.away_team.flag_url} fifaCode={m.away_team.fifa_code} size={16} className="shrink-0" />
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-1.5">
@@ -1744,8 +1844,9 @@ function TeamDetailPanel({
   ownership: Record<string, LiveOwnershipEntry>
 }) {
   const notFielded = isNotFielded(team)
-  const [view, setView] = useState<TeamLineupView>('list')
+  const [view, setView] = useState<TeamLineupView>('pitch')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null)
   const selected = team.players.find((p) => p.player_id === selectedId) ?? null
   const toggle = (id: string) => setSelectedId((cur) => (cur === id ? null : id))
 
@@ -1768,7 +1869,10 @@ function TeamDetailPanel({
           </p>
         </div>
       ) : (
-        <div className="p-3 space-y-3">
+        <div
+          className="p-3 space-y-3"
+          onClickCapture={(e) => setAnchor({ x: e.clientX, y: e.clientY })}
+        >
           <div className="flex justify-center">
             <TeamViewToggle view={view} onChange={setView} />
           </div>
@@ -1778,14 +1882,16 @@ function TeamDetailPanel({
             <FantasyPitch team={team} liveField={liveField} ownership={ownership} selectedId={selectedId} onSelect={toggle} />
           )}
 
-          {selected && (
-            <PlayerDetailSheet
-              p={selected}
-              entry={ownership[selected.player_id]}
-              teamName={team.name}
-              liveState={liveField.get(selected.player_id)}
-              onClose={() => setSelectedId(null)}
-            />
+          {selected && anchor && (
+            <FloatingSheet anchor={anchor} onClose={() => setSelectedId(null)}>
+              <PlayerDetailSheet
+                p={selected}
+                entry={ownership[selected.player_id]}
+                teamName={team.name}
+                liveState={liveField.get(selected.player_id)}
+                onClose={() => setSelectedId(null)}
+              />
+            </FloatingSheet>
           )}
 
           <LineupLegend />
@@ -1840,6 +1946,7 @@ function TeamDetailHeader({
             {notFielded ? 'Formazione non schierata' : team.formation ?? '—'}
           </span>
           <LiveDots field={liveCounts.field} bench={liveCounts.bench} />
+          {!notFielded && <RatingProgressBadge team={team} />}
         </div>
       </div>
       <span className="text-[22px] font-black tabular-nums text-emerald-500 dark:text-emerald-400">
@@ -1853,8 +1960,8 @@ function TeamViewToggle({ view, onChange }: { view: TeamLineupView; onChange: (v
   return (
     <div className="flex shrink-0 gap-1 rounded-full border border-hairline bg-glass-2 p-1 shadow-sm">
       {([
-        { v: 'list' as const, label: 'Lista' },
         { v: 'pitch' as const, label: 'Campo' },
+        { v: 'list' as const, label: 'Lista' },
       ]).map((opt) => (
         <button
           key={opt.v}
@@ -2450,6 +2557,72 @@ function BenchChip({
 
 // Tap-to-expand detail for a single player: full voto, every bonus/malus with
 // its value, and the rival teams (with titolare/panchina) or an exclusive call.
+// Floating popover that anchors a player sheet near the tapped card, instead of
+// pushing it to the bottom of the list. Portals to <body> so it escapes any
+// overflow/stacking context, clamps itself inside the viewport, and closes on
+// backdrop tap or Escape.
+function FloatingSheet({
+  anchor,
+  onClose,
+  children,
+}: {
+  anchor: { x: number; y: number }
+  onClose: () => void
+  children: ReactNode
+}) {
+  const cardRef = useRef<HTMLDivElement | null>(null)
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
+
+  useLayoutEffect(() => {
+    const el = cardRef.current
+    if (!el) return
+    const margin = 12
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    const w = el.offsetWidth
+    const h = el.offsetHeight
+    // Prefer centering horizontally on the tap; clamp to the viewport.
+    let left = anchor.x - w / 2
+    left = Math.max(margin, Math.min(left, vw - w - margin))
+    // Prefer opening just below the tap; flip above if it would overflow.
+    let top = anchor.y + 14
+    if (top + h > vh - margin) top = Math.max(margin, anchor.y - h - 14)
+    top = Math.max(margin, Math.min(top, vh - h - margin))
+    setPos({ left, top })
+  }, [anchor])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  if (typeof document === 'undefined') return null
+
+  return createPortal(
+    <div className="fixed inset-0 z-[60]" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px]" />
+      <div
+        ref={cardRef}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          position: 'fixed',
+          left: pos?.left ?? -9999,
+          top: pos?.top ?? -9999,
+          width: 'min(360px, calc(100vw - 24px))',
+          visibility: pos ? 'visible' : 'hidden',
+        }}
+        className="shadow-2xl"
+      >
+        {children}
+      </div>
+    </div>,
+    document.body,
+  )
+}
+
 function PlayerDetailSheet({
   p,
   entry,
@@ -2523,7 +2696,7 @@ function PlayerDetailSheet({
       : 'Presente anche in altre squadre'
 
   return (
-    <div className="rounded-2xl border border-hairline bg-glass-1 p-3.5 shadow-1">
+    <div className="rounded-2xl border border-hairline-strong bg-surface-0 p-3.5 shadow-1">
       <div className="flex items-center gap-2.5">
         <PlayerCrest p={p} live={liveState === 'field'} size={32} />
         <div className="min-w-0 flex-1">
@@ -3267,8 +3440,9 @@ function MobileTeamCard({
   onToggle: () => void
 }) {
   const notFielded = isNotFielded(team)
-  const [view, setView] = useState<TeamLineupView>('list')
+  const [view, setView] = useState<TeamLineupView>('pitch')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null)
   const selected = team.players.find((p) => p.player_id === selectedId) ?? null
   const toggle = (id: string) => setSelectedId((cur) => (cur === id ? null : id))
   return (
@@ -3287,36 +3461,61 @@ function MobileTeamCard({
             : 'border-hairline bg-glass-2'
         }`}
       >
-        <span className="w-5 text-center text-[11px] font-bold text-ink-5">{rank}</span>
+        <span className="w-4 shrink-0 text-center text-[12px] font-bold text-ink-5">{rank}</span>
         <div className="flex-1 min-w-0 text-left">
           <div className="flex items-center gap-1.5">
-            <span className="text-[13.5px] font-extrabold tracking-tight text-ink-1 truncate">{team.name}</span>
+            <span className="text-[17px] font-extrabold leading-tight tracking-tight text-ink-1 truncate">{team.name}</span>
             {isMine && (
               <span className="shrink-0 rounded-full bg-indigo-500 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-white">
                 Tu
               </span>
             )}
           </div>
-          {notFielded ? (
-            <span className="text-[10px] font-semibold text-rose-500 dark:text-rose-400 truncate block">
-              Formazione non schierata
-            </span>
-          ) : (
-            team.manager_name && (
-              <span className="text-[10px] text-ink-5 truncate block">{team.manager_name}</span>
-            )
-          )}
+          <div className="flex items-center gap-1.5">
+            {notFielded ? (
+              <span className="text-[10px] font-semibold text-rose-500 dark:text-rose-400 truncate">
+                Formazione non schierata
+              </span>
+            ) : (
+              <>
+                {team.manager_name && (
+                  <span className="text-[10px] text-ink-5 truncate">{team.manager_name}</span>
+                )}
+                <RatingProgressBadge team={team} />
+              </>
+            )}
+          </div>
         </div>
         <LiveDots field={liveCounts.field} bench={liveCounts.bench} />
-        <span className={`shrink-0 text-[10px] tabular-nums ${(standings?.goals_scored ?? 0) > 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-ink-5'}`}>
-          ⚽ {standings?.goals_scored ?? 0}
-        </span>
-        <span className={`shrink-0 text-[11px] font-bold tabular-nums ${(standings?.giornata_points ?? 0) > 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-ink-4'}`}>
-          {standings?.giornata_points ?? 0} pt
-        </span>
-        <span className="w-12 shrink-0 text-right text-[15px] font-black tabular-nums text-ink-1">
-          {fmt(team.live_total, 1)}
-        </span>
+
+        {/* stat cluster — fixed-width columns, dividers between each, all values
+            on one baseline row so labels/numbers line up cleanly */}
+        <div className="flex shrink-0 items-stretch">
+          {/* goals */}
+          <div className="flex w-9 flex-col items-center">
+            <span className="text-[7.5px] font-bold uppercase tracking-wider text-ink-5">Gol</span>
+            <span className={`flex h-6 items-center justify-center gap-0.5 leading-none ${(standings?.goals_scored ?? 0) > 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-ink-5'}`}>
+              <span className="text-[10px]">⚽</span>
+              <span className="text-[16px] font-black tabular-nums">{standings?.goals_scored ?? 0}</span>
+            </span>
+          </div>
+          <span aria-hidden className="mx-1.5 my-0.5 w-px bg-hairline-strong" />
+          {/* points */}
+          <div className="flex w-7 flex-col items-center">
+            <span className="text-[7.5px] font-bold uppercase tracking-wider text-ink-5">Punti</span>
+            <span className={`flex h-6 items-center justify-center text-[16px] font-black tabular-nums leading-none ${(standings?.giornata_points ?? 0) > 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-ink-4'}`}>
+              {standings?.giornata_points ?? 0}
+            </span>
+          </div>
+          <span aria-hidden className="mx-1.5 my-0.5 w-px bg-hairline-strong" />
+          {/* punteggio finale — emphasized, color-coded by goals it yields */}
+          <div className="flex w-[52px] flex-col items-center">
+            <span className="text-[7.5px] font-bold uppercase tracking-wider text-ink-5">Totale</span>
+            <span className={`flex h-6 items-center justify-center text-[23px] font-black tabular-nums leading-none ${brGoalColor(standings?.goals_scored ?? 0)}`}>
+              {fmt(team.live_total, 1)}
+            </span>
+          </div>
+        </div>
         <span className="shrink-0 text-[10px] text-ink-4">{expanded ? '▲' : '▼'}</span>
       </button>
 
@@ -3334,28 +3533,30 @@ function MobileTeamCard({
           ) : previewMode && !isMine ? (
             <MaskedPlayerRows count={team.players.filter((p) => p.counts).length} />
           ) : (
-            <>
+            <div onClickCapture={(e) => setAnchor({ x: e.clientX, y: e.clientY })}>
               <div className="flex justify-center">
                 <TeamViewToggle view={view} onChange={setView} />
               </div>
               {view === 'list' ? (
-                <div className="space-y-2"><TeamListBody team={team} liveField={liveField} ownership={ownership} selectedId={selectedId} onSelect={toggle} /></div>
+                <div className="mt-2 space-y-2"><TeamListBody team={team} liveField={liveField} ownership={ownership} selectedId={selectedId} onSelect={toggle} /></div>
               ) : (
-                <FantasyPitch team={team} liveField={liveField} ownership={ownership} selectedId={selectedId} onSelect={toggle} />
+                <div className="mt-2"><FantasyPitch team={team} liveField={liveField} ownership={ownership} selectedId={selectedId} onSelect={toggle} /></div>
               )}
 
-              {selected && (
-                <PlayerDetailSheet
-                  p={selected}
-                  entry={ownership[selected.player_id]}
-                  teamName={team.name}
-                  liveState={liveField.get(selected.player_id)}
-                  onClose={() => setSelectedId(null)}
-                />
+              {selected && anchor && (
+                <FloatingSheet anchor={anchor} onClose={() => setSelectedId(null)}>
+                  <PlayerDetailSheet
+                    p={selected}
+                    entry={ownership[selected.player_id]}
+                    teamName={team.name}
+                    liveState={liveField.get(selected.player_id)}
+                    onClose={() => setSelectedId(null)}
+                  />
+                </FloatingSheet>
               )}
 
-              <LineupLegend />
-            </>
+              <div className="mt-2"><LineupLegend /></div>
+            </div>
           )}
         </div>
       )}
