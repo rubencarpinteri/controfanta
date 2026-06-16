@@ -121,6 +121,8 @@ export type SMEventType =
 export type SMEvent = {
   id: number
   fixture_id: number
+  /** SportMonks' authoritative chronological ordering key for fixture events. */
+  sort_order?: number | null
   period_id?: number | null
   participant_id: number  // team_id of the event "owner"
   type_id: number

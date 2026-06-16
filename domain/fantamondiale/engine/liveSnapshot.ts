@@ -44,6 +44,8 @@ type CachedSportmonksFixture = {
   }>
   events?: Array<{
     id?: number | null
+    /** SportMonks' authoritative chronological ordering key for fixture events. */
+    sort_order?: number | null
     participant_id?: number | null
     player_name?: string | null
     related_player_name?: string | null
@@ -66,7 +68,7 @@ function extractGoalEventsFromFixture(
   const awaySmId = fixture.participants?.find((p) => p.meta?.location === 'away')?.id ?? null
 
   return events
-    .flatMap((event, index): LiveSnapshotGoalEvent[] => {
+    .flatMap((event, index): Array<LiveSnapshotGoalEvent & { _sortOrder: number; _id: number; _index: number }> => {
       const type = event.type?.developer_name
       if (type !== 'GOAL' && type !== 'PENALTY' && type !== 'OWN_GOAL') return []
 
@@ -93,9 +95,24 @@ function extractGoalEventsFromFixture(
         code,
         assist: event.related_player_name ?? null,
         own: type === 'OWN_GOAL',
+        _sortOrder: event.sort_order ?? Number.MAX_SAFE_INTEGER,
+        _id: event.id ?? Number.MAX_SAFE_INTEGER,
+        _index: index,
       }]
     })
-    .sort((a, b) => (a.minute ?? 999) - (b.minute ?? 999) || (a.extra_minute ?? 0) - (b.extra_minute ?? 0))
+    // Chronological order. SportMonks' `sort_order` is the authoritative
+    // sequence; fall back to (minute, extra_minute), then event id, then the
+    // original array index — so goals never appear out of order, including
+    // ties within the same minute.
+    .sort(
+      (a, b) =>
+        a._sortOrder - b._sortOrder ||
+        (a.minute ?? 999) - (b.minute ?? 999) ||
+        (a.extra_minute ?? 0) - (b.extra_minute ?? 0) ||
+        a._id - b._id ||
+        a._index - b._index,
+    )
+    .map(({ _sortOrder, _id, _index, ...event }) => event)
 }
 
 // ---- snapshot payload shape (persisted as jsonb) ---------------------------
