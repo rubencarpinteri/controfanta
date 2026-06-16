@@ -689,18 +689,22 @@ function MatchChip({ match: m, selected = false, compact = false, dense = false 
             </span>
           )}
         </div>
-        <div className="flex items-center justify-center gap-1">
-          <TeamCrest name={m.home_team.name} logoUrl={m.home_team.logo_url} flagUrl={m.home_team.flag_url} fifaCode={m.home_team.fifa_code} size={20} className="shrink-0" />
-          <span className={`text-[12px] font-black uppercase tracking-tight ${selected ? 'text-ink-1' : 'text-ink-2'}`}>
-            {m.home_team.fifa_code || m.home_team.name.slice(0, 3).toUpperCase()}
-          </span>
-          <span className={`mx-0.5 shrink-0 text-[14px] font-black tabular-nums ${m.status === 'in_progress' ? 'text-emerald-600 dark:text-emerald-400' : 'text-ink-1'}`}>
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-0.5 overflow-hidden">
+          <div className="flex min-w-0 items-center justify-end gap-1">
+            <span className={`truncate text-[11px] font-black uppercase tracking-tight ${selected ? 'text-ink-1' : 'text-ink-2'}`}>
+              {m.home_team.fifa_code || m.home_team.name.slice(0, 3).toUpperCase()}
+            </span>
+            <TeamCrest name={m.home_team.name} logoUrl={m.home_team.logo_url} flagUrl={m.home_team.flag_url} fifaCode={m.home_team.fifa_code} size={17} className="shrink-0" />
+          </div>
+          <span className={`shrink-0 px-0.5 text-[13px] font-black tabular-nums ${m.status === 'in_progress' ? 'text-emerald-600 dark:text-emerald-400' : 'text-ink-1'}`}>
             {m.status !== 'scheduled' ? `${m.home_score ?? 0}–${m.away_score ?? 0}` : '–'}
           </span>
-          <span className={`text-[12px] font-black uppercase tracking-tight ${selected ? 'text-ink-1' : 'text-ink-2'}`}>
-            {m.away_team.fifa_code || m.away_team.name.slice(0, 3).toUpperCase()}
-          </span>
-          <TeamCrest name={m.away_team.name} logoUrl={m.away_team.logo_url} flagUrl={m.away_team.flag_url} fifaCode={m.away_team.fifa_code} size={20} className="shrink-0" />
+          <div className="flex min-w-0 items-center gap-1">
+            <TeamCrest name={m.away_team.name} logoUrl={m.away_team.logo_url} flagUrl={m.away_team.flag_url} fifaCode={m.away_team.fifa_code} size={17} className="shrink-0" />
+            <span className={`truncate text-[11px] font-black uppercase tracking-tight ${selected ? 'text-ink-1' : 'text-ink-2'}`}>
+              {m.away_team.fifa_code || m.away_team.name.slice(0, 3).toUpperCase()}
+            </span>
+          </div>
         </div>
       </div>
     )
@@ -1685,9 +1689,11 @@ function RealPlayerRow({
             ? p.is_mvp
               ? 'border-amber-300 bg-[#090b12] shadow-[0_0_30px_-2px_rgba(255,200,61,0.82)]'
               : 'border-indigo-400/80 bg-[#090b12] shadow-sm shadow-indigo-500/20'
-            : ownedSpine
-              ? 'border-ink-1/25 bg-ink-1/[0.06]'
-              : 'border-hairline bg-glass-2'
+            : p.is_mvp
+              ? 'border-amber-300 bg-amber-400/[0.1] shadow-[0_0_24px_-4px_rgba(255,200,61,0.75)]'
+              : ownedSpine
+                ? 'border-ink-1/25 bg-ink-1/[0.06]'
+                : 'border-hairline bg-glass-2'
       } ${depth > 0 ? 'ml-2 sm:ml-3' : ''} ${flashClass}`}
       style={exclusiveMvp ? { background: 'linear-gradient(100deg, #090b12 0%, #130912 55%, #22091a 100%)' } : undefined}
     >
