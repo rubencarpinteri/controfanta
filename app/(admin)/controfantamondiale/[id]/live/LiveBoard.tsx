@@ -679,7 +679,9 @@ function MatchChip({ match: m, selected = false, compact = false, dense = false 
         <div className="flex items-center gap-0.5">
           <MatchStatusBadge status={m.status} minute={m.minute} minuteAdded={m.minute_added} />
           <span className="truncate text-[8px] font-semibold text-ink-4 tabular-nums capitalize">
-            {m.status === 'scheduled' ? fmtKickoff(m.kickoff_at) : fmtMatchDate(m.kickoff_at)}
+            {m.status === 'scheduled'
+              ? `${fmtMatchDate(m.kickoff_at)} · ${fmtKickoff(m.kickoff_at)}`
+              : fmtMatchDate(m.kickoff_at)}
           </span>
           {fantasyCount > 0 && (
             <span className="ml-auto shrink-0 text-[8px] font-bold text-ink-5 tabular-nums" title={`${fantasyCount} giocatori nel pool`}>
