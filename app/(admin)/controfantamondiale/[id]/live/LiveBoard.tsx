@@ -180,10 +180,39 @@ function immunityRemovedMalus(p: LiveSnapshotPlayer): number {
   return p.yellow_cards * FALLBACK_CARD_MALUS.yellow + p.red_cards * FALLBACK_CARD_MALUS.red
 }
 
+// Nobiliary / compound-surname particles that belong WITH the family name
+// (e.g. "van de Ven", "von Bergwijn", "de Jong") rather than being treated as
+// given names. Kept lowercase for case-insensitive matching.
+const SURNAME_PARTICLES = new Set([
+  'van', 'von', 'de', 'der', 'den', 'del', 'della', 'di', 'da', 'das', 'dos',
+  'do', 'la', 'le', 'el', 'al', 'bin', 'ben', 'ter', 'ten', 'op', 'mac', 'mc',
+  'st', 'san', 'santa', 'dello', 'degli', 'vande', 'vander',
+])
+
+// Card-friendly name: drop given names entirely and show only the surname,
+// keeping any leading particles ("Micky van de Ven" → "van de Ven",
+// "Jan Paul van Hecke" → "van Hecke"). This reads cleaner on the fixed-size
+// player cards than a "M. van de Ven" initial that still overflows.
+// Desktop sticky side columns: park them just below the live nav (whose real
+// height is published as --cf-livenav-h) and cap their height so long lists
+// scroll internally instead of running off-screen.
+const COLUMN_STICKY_TOP = 'calc(var(--cf-livenav-h, 70px) + 12px)'
+const COLUMN_STICKY_MAXH = 'calc(100vh - var(--cf-livenav-h, 70px) - 28px)'
+
 function shortPlayerName(name: string): string {
   const parts = name.trim().split(/\s+/)
   if (parts.length < 2) return name
-  return `${parts[0]![0]!.toUpperCase()}. ${parts.slice(1).join(' ')}`
+  // Start from the last token (surname core) and absorb preceding particles —
+  // either known nobiliary words or any lowercase-leading token — but never
+  // consume the very first token, so we always drop at least the given name.
+  let start = parts.length - 1
+  while (start > 1) {
+    const prev = parts[start - 1]!
+    const isParticle = SURNAME_PARTICLES.has(prev.toLowerCase()) || prev[0] === prev[0]!.toLowerCase()
+    if (!isParticle) break
+    start--
+  }
+  return parts.slice(start).join(' ')
 }
 
 function fmtKickoff(iso: string): string {
@@ -447,13 +476,29 @@ export function LiveBoard({
             : 'lg:grid-cols-[190px_minmax(0,1fr)_190px] xl:grid-cols-[198px_minmax(0,1fr)_198px]'
         }`}
       >
-        <MatchListPanel
-          matches={snapshot.matches}
-          selectedMatchId={selectedMatch?.match_id ?? null}
-          onSelect={handleSelectMatch}
-          collapsed={matchListCollapsed}
-          onToggleCollapse={() => setMatchListCollapsed((v) => !v)}
-        />
+        {/* Left column sticks while the center lineup scrolls — match info stays
+            in view during live. A centred edge handle collapses it. */}
+        <div className="relative lg:sticky lg:self-start" style={{ top: COLUMN_STICKY_TOP }}>
+          <div className="lg:overflow-y-auto scrollbar-none" style={{ maxHeight: COLUMN_STICKY_MAXH }}>
+            <MatchListPanel
+              matches={snapshot.matches}
+              selectedMatchId={selectedMatch?.match_id ?? null}
+              onSelect={handleSelectMatch}
+              collapsed={matchListCollapsed}
+              onToggleCollapse={() => setMatchListCollapsed((v) => !v)}
+            />
+          </div>
+          {!matchListCollapsed && (
+            <button
+              onClick={() => setMatchListCollapsed(true)}
+              title="Riduci partite"
+              aria-label="Riduci colonna partite"
+              className="absolute -right-2.5 top-1/2 z-20 hidden h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-hairline-strong bg-surface-1 text-[13px] leading-none text-ink-4 shadow-md transition-colors hover:bg-glass-3 hover:text-ink-1 lg:flex"
+            >
+              ‹
+            </button>
+          )}
+        </div>
         <CenterPanel
           match={selectedMatch}
           team={selectedTeam}
@@ -464,15 +509,17 @@ export function LiveBoard({
           liveField={liveField}
           ownership={snapshot.ownership}
         />
-        <StandingsPanel
-          teams={snapshot.teams}
-          standings={snapshot.standings}
-          classifica={snapshot.classifica}
-          roundName={roundName}
-          myTeamId={myTeamId}
-          selectedTeamId={selectedTeamId}
-          onSelect={handleSelectTeam}
-        />
+        <div className="lg:sticky lg:self-start lg:overflow-y-auto scrollbar-none" style={{ top: COLUMN_STICKY_TOP, maxHeight: COLUMN_STICKY_MAXH }}>
+          <StandingsPanel
+            teams={snapshot.teams}
+            standings={snapshot.standings}
+            classifica={snapshot.classifica}
+            roundName={roundName}
+            myTeamId={myTeamId}
+            selectedTeamId={selectedTeamId}
+            onSelect={handleSelectTeam}
+          />
+        </div>
       </div>
 
       {/* ── Mobile: tab bar ── */}
@@ -615,16 +662,6 @@ function MatchListPanel({
         <p className="text-[9px] font-bold uppercase tracking-wider text-ink-5">
           Partite del turno
         </p>
-        {onToggleCollapse && (
-          <button
-            onClick={onToggleCollapse}
-            title="Riduci partite"
-            className="-mr-0.5 inline-flex h-6 w-6 items-center justify-center rounded-md border border-hairline bg-glass-2 text-[12px] leading-none text-ink-4 transition-colors hover:border-hairline-strong hover:bg-glass-3 hover:text-ink-1"
-            aria-label="Riduci colonna partite"
-          >
-            «
-          </button>
-        )}
       </div>
       {matches.map((m) => (
         <button
@@ -939,12 +976,13 @@ function MatchDetailPanel({
   const hasGoalEvents = goalEntries.length > 0
 
   return (
-    <div className="rounded-xl border border-hairline bg-glass-1">
+    <div>
       {/* header — sticks below the live nav as a floating pill while the lineups
-          scroll underneath, matching the Squadre team header treatment. */}
+          scroll underneath, matching the Squadre team header treatment. No outer
+          card frame, so the rounded pill never sits on a clashing square edge. */}
       <div
         style={{ top: 'calc(var(--cf-livenav-h, 70px) + 6px)' }}
-        className="sticky z-20 mx-1 mt-1 rounded-2xl border border-hairline-strong bg-surface-1/95 px-4 py-3 shadow-lg shadow-black/10 backdrop-blur-xl"
+        className="sticky z-20 rounded-2xl border border-hairline-strong bg-surface-1/95 px-4 py-3 shadow-lg shadow-black/10 backdrop-blur-xl"
       >
         <div className="flex items-center justify-center gap-4">
           <div className="flex flex-1 flex-col items-center gap-1.5">

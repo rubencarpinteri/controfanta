@@ -71,7 +71,7 @@ export function FMUserTabNav({
 
   return (
     <div ref={navRef} className="sticky top-0 z-30 -mx-4 mb-5 bg-surface-0/75 px-4 py-2 backdrop-blur-2xl md:-mx-8 md:px-8">
-      <div className="flex flex-wrap gap-1 rounded-[18px] border border-hairline bg-glass-tint p-1 shadow-1 backdrop-blur-2xl">
+      <div className="flex flex-wrap gap-1 rounded-[18px] border border-hairline-strong bg-surface-1/85 p-1 shadow-lg shadow-black/10 backdrop-blur-xl">
         {TABS.map((tab) => {
           const href = `${base}${tab.suffix}`
           const isActive =
