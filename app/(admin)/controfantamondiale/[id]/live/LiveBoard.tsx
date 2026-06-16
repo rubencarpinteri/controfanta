@@ -895,6 +895,7 @@ function MatchDetailPanel({
 
   const [view, setView] = useState<TeamLineupView>('list')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null)
   const toggle = (id: string) => setSelectedId((cur) => (cur === id ? null : id))
   const selected = m.players.find((p) => p.player_id === selectedId) ?? null
   const selectedTeamRef = selected
@@ -999,7 +1000,7 @@ function MatchDetailPanel({
 
       {/* real-match lineups — Campo (pitch) by default, Lista as a fallback */}
       {m.players.length > 0 ? (
-        <div className="p-2 space-y-2 sm:p-3">
+        <div className="p-2 space-y-2 sm:p-3" onClickCapture={(e) => setAnchor({ x: e.clientX, y: e.clientY })}>
           <div className="flex justify-center">
             <TeamViewToggle view={view} onChange={setView} />
           </div>
@@ -1067,10 +1068,10 @@ function MatchDetailPanel({
             </div>
           )}
 
-          {selected && selectedTeamRef && (
-            <div className="mt-3 border-t border-hairline pt-3">
+          {selected && selectedTeamRef && anchor && (
+            <FloatingSheet anchor={anchor} onClose={() => setSelectedId(null)}>
               <RealPlayerSheet p={selected} teamRef={selectedTeamRef} matchStatus={m.status} totalTeams={totalTeams} onClose={() => setSelectedId(null)} />
-            </div>
+            </FloatingSheet>
           )}
         </div>
       ) : (
@@ -1478,7 +1479,7 @@ function RealPlayerSheet({ p, teamRef, matchStatus, totalTeams, onClose }: { p: 
   const displayedFinal = calculatedFinal ?? p.final_score_now
   const hasFinalOverlay = displayedFinal != null && v.kind === 'score'
   return (
-    <div className="rounded-2xl border border-hairline bg-glass-1 p-3.5 shadow-1">
+    <div className="rounded-2xl border border-hairline-strong bg-surface-0 p-3.5 shadow-1">
       <div className="flex items-center gap-2.5">
         <RealCrest teamRef={teamRef} live={realOnPitch(p, matchStatus)} size={30} />
         <div className="min-w-0 flex-1">
