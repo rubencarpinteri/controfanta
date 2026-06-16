@@ -1678,12 +1678,13 @@ function RealPlayerRow({
   const flash = useFlash(p.player_id)
   const flashClass = flashTintClass(flash, ownedTitolare && !exclusiveMvp)
   const darkVotoPill = ownedTitolare && !exclusiveMvp
-  const RatingContainer = onSelect ? 'button' : 'span'
-  const ratingContainerProps = onSelect ? { type: 'button' as const, onClick: onSelect } : {}
 
   return (
     <div
+      {...(onSelect ? { role: 'button' as const, tabIndex: 0, onClick: onSelect } : {})}
       className={`relative flex min-h-[50px] items-center gap-1 overflow-hidden rounded-md border py-1 pl-[26px] pr-1.5 sm:gap-1.5 sm:pl-[30px] sm:pr-2 ${
+        onSelect ? 'cursor-pointer transition-transform active:scale-[0.98]' : ''
+      } ${
         exclusiveMvp
           ? 'border-[#FF0090]/90 bg-[#090b12] shadow-[0_0_32px_-2px_rgba(255,0,144,0.88)]'
           : ownedTitolare
@@ -1746,11 +1747,8 @@ function RealPlayerRow({
         </span>
       </span>
 
-      <RatingContainer
-        {...ratingContainerProps}
+      <span
         className={`shrink-0 self-center w-9 overflow-hidden rounded-md border text-center tabular-nums shadow-sm sm:w-11 ${
-          onSelect ? 'cursor-pointer transition-all hover:scale-105 active:scale-95' : ''
-        } ${
           darkVotoPill
             ? 'border-white/15 bg-[#111827]'
             : 'border-hairline bg-surface-2'
@@ -1794,7 +1792,7 @@ function RealPlayerRow({
             {v.text}
           </span>
         )}
-      </RatingContainer>
+      </span>
     </div>
   )
 }
@@ -2679,7 +2677,7 @@ function FloatingSheet({
 
   return createPortal(
     <div className="fixed inset-0 z-[60]" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px]" />
+      <div className="absolute inset-0 bg-black/35 backdrop-blur-[3px]" />
       <div
         ref={cardRef}
         onClick={(e) => e.stopPropagation()}
