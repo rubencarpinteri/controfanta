@@ -1617,9 +1617,14 @@ type VotoDisplay =
 
 function computeVoto(p: LiveSnapshotPlayer): VotoDisplay {
   const penNow = p.popularity_penalty_now
-  // A voto exists only when the engine produced a base rating. A player who was
-  // on the pitch but has no rating yet is S.V. (senza voto) — never show 0.0.
-  const baseVoto = p.display_voto_base ?? p.voto_base ?? p.rating
+  // A voto exists only when the ENGINE produced a gated base voto. We must NOT
+  // fall back to the raw SportMonks `rating`: that bypasses the minutes gate
+  // (minutes_min_for_voto), so a player under the gate — the first ~15' of the
+  // match, or a sub who played too few minutes — would wrongly show a score
+  // (and a 0.0 total) here while the campo/lista views correctly show S.V.
+  // Until the engine scores him he is S.V., matching the official photo where a
+  // sub-gate appearance always stays senza voto.
+  const baseVoto = p.display_voto_base ?? p.voto_base
   if (baseVoto != null) {
     const totalNum = (p.display_voto_total ?? p.final_score_now) + p.mvp_bonus - penNow
     return {
@@ -1973,11 +1978,7 @@ function TeamDetailPanel({
   const toggle = (id: string) => setSelectedId((cur) => (cur === id ? null : id))
 
   return (
-    <div
-      className={`rounded-xl border bg-glass-1 ${
-        isMine ? 'border-indigo-500/40' : 'border-hairline'
-      }`}
-    >
+    <div>
       <TeamDetailHeader team={team} isMine={isMine} liveCounts={liveCounts} notFielded={notFielded} sticky />
 
       {notFielded ? (
@@ -2043,12 +2044,14 @@ function TeamDetailHeader({
   return (
     <div
       style={sticky ? { top: 'calc(var(--cf-livenav-h, 70px) + 6px)' } : undefined}
-      className={`flex items-center gap-2 rounded-t-xl border-b px-4 py-3 ${
-        sticky ? 'sticky z-20 bg-surface-1 backdrop-blur-xl' : ''
+      className={`flex items-center gap-2 bg-gradient-to-r px-4 py-3 ${
+        sticky
+          ? 'sticky z-20 mb-1 rounded-2xl border bg-surface-1/95 shadow-lg shadow-black/10 backdrop-blur-xl'
+          : 'rounded-t-xl border-b'
       } ${
         isMine
-          ? 'border-indigo-500/40 bg-gradient-to-r from-indigo-500/22 via-indigo-500/8 to-transparent'
-          : 'border-hairline bg-gradient-to-r from-accent/18 via-accent/6 to-transparent'
+          ? 'border-indigo-500/40 from-indigo-500/22 via-indigo-500/8 to-transparent'
+          : 'border-hairline-strong from-accent/18 via-accent/6 to-transparent'
       }`}
     >
       <span
@@ -3570,19 +3573,21 @@ function MobileTeamCard({
   const toggle = (id: string) => setSelectedId((cur) => (cur === id ? null : id))
   return (
     <div
-      className={`rounded-xl border bg-glass-1 ${expanded ? '' : 'overflow-hidden'} ${
-        isMine ? 'border-indigo-500/30' : 'border-hairline'
-      }`}
+      className={
+        expanded
+          ? ''
+          : `overflow-hidden rounded-xl border bg-glass-1 ${isMine ? 'border-indigo-500/30' : 'border-hairline'}`
+      }
     >
       <button
         onClick={onToggle}
         style={expanded ? { top: 'calc(var(--cf-livenav-h, 70px) + 6px)' } : undefined}
-        className={`w-full flex items-center gap-2 px-3 py-2.5 border-b ${
+        className={`w-full flex items-center gap-2 px-3 py-2.5 ${
           expanded
             ? isMine
-              ? 'sticky z-20 mx-1 mb-1 rounded-2xl border border-indigo-500/40 bg-surface-1/95 bg-gradient-to-r from-indigo-500/22 via-indigo-500/8 to-transparent shadow-lg shadow-black/10 backdrop-blur-xl'
-              : 'sticky z-20 mx-1 mb-1 rounded-2xl border border-hairline-strong bg-surface-1/95 bg-gradient-to-r from-accent/18 via-accent/6 to-transparent shadow-lg shadow-black/10 backdrop-blur-xl'
-            : 'rounded-t-xl border-hairline bg-glass-2'
+              ? 'sticky z-20 mb-1 rounded-2xl border border-indigo-500/40 bg-surface-1/95 bg-gradient-to-r from-indigo-500/22 via-indigo-500/8 to-transparent shadow-lg shadow-black/10 backdrop-blur-xl'
+              : 'sticky z-20 mb-1 rounded-2xl border border-hairline-strong bg-surface-1/95 bg-gradient-to-r from-accent/18 via-accent/6 to-transparent shadow-lg shadow-black/10 backdrop-blur-xl'
+            : 'rounded-t-xl border-b border-hairline bg-glass-2'
         }`}
       >
         <span className="w-4 shrink-0 text-center text-[12px] font-bold text-ink-5">{rank}</span>
