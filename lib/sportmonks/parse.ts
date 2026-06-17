@@ -315,11 +315,77 @@ export function parseFixture(fixture: SMFixture): ParsedFixture {
     if (p) p.own_goals = Math.max(p.own_goals, count)
   }
 
-  // Clean sheet: minutes_played >= 60 AND team conceded 0
-  const teamConceded = new Map<number, number>()
-  for (const p of byPlayer.values()) {
-    teamConceded.set(p.sportmonks_team_id, Math.max(teamConceded.get(p.sportmonks_team_id) ?? 0, p.goals_conceded))
+  // Scoreline: prefer SportMonks' authoritative CURRENT score (include=scores),
+  // which correctly counts own goals. Summing players' GOALS misses own goals
+  // (an OG is credited to the scorer, not the beneficiary team), producing a
+  // wrong scoreline and — via `result` below — wrong coach points. Fall back to
+  // the summed goals only when the scores include is absent.
+  function authoritativeScore(teamId: number | null): number | null {
+    if (teamId == null) return null
+    const current = (fixture.scores ?? []).filter((s) => s.description === 'CURRENT')
+    const entry = current.find((s) => s.participant_id === teamId)
+    const goals = entry?.score?.goals
+    return typeof goals === 'number' ? goals : null
   }
+  const homeScore =
+    authoritativeScore(homeId) ?? (homeId != null ? teamGoals.get(homeId) ?? 0 : null)
+  const awayScore =
+    authoritativeScore(awayId) ?? (awayId != null ? teamGoals.get(awayId) ?? 0 : null)
+
+  // How many goals each team conceded, taken from the AUTHORITATIVE scoreline
+  // (a team concedes exactly the opponent's score). This is the single source
+  // of truth for both the keeper's goals_conceded malus and clean sheets —
+  // never the per-player GOALS_CONCEDED lineup stat, which lags the scoreline
+  // by many minutes live (a 1-1 can sit with the keeper's stat still at 0,
+  // silently dropping his -1). See live ingest hardening.
+  const teamConceded = new Map<number, number>()
+  if (homeId != null) teamConceded.set(homeId, awayScore ?? 0)
+  if (awayId != null) teamConceded.set(awayId, homeScore ?? 0)
+
+  // Charge each team's conceded goals (count from the authoritative scoreline)
+  // to the GK who was on the pitch when they went in. Events are used ONLY to
+  // locate the keeper per goal minute, never to count goals — so a SportMonks
+  // event over/undercount can't inflate or drop the malus. When the goal
+  // events for a team exactly match its conceded count we split per keeper
+  // (handles the rare mid-match keeper sub); otherwise we charge the whole
+  // conceded count to the current on-pitch GK.
+  const goalMinutesAgainst = new Map<number, number[]>()
+  for (const ev of events) {
+    const dev = ev.type?.developer_name
+    if (!dev) continue
+    let concedingTeamId: number | null = null
+    if (dev === 'GOAL' || dev === 'PENALTY') {
+      concedingTeamId = ev.participant_id === homeId ? awayId : ev.participant_id === awayId ? homeId : null
+    } else if (dev === 'OWN_GOAL') {
+      concedingTeamId = ev.participant_id ?? null // own goal: scorer's team concedes
+    } else {
+      continue
+    }
+    if (concedingTeamId == null) continue
+    const list = goalMinutesAgainst.get(concedingTeamId) ?? []
+    list.push(ev.minute ?? 0)
+    goalMinutesAgainst.set(concedingTeamId, list)
+  }
+  const concededByGk = new Map<number, number>()
+  for (const [teamId, conceded] of teamConceded) {
+    if (conceded <= 0) continue
+    const minutes = goalMinutesAgainst.get(teamId) ?? []
+    if (minutes.length === conceded) {
+      for (const minute of minutes) {
+        const gk = resolveGoalkeeperAtMinute(lineups, events, teamId, minute)
+        if (gk != null) concededByGk.set(gk, (concededByGk.get(gk) ?? 0) + 1)
+      }
+    } else {
+      const gk = resolveGoalkeeperAtMinute(lineups, events, teamId, Number.MAX_SAFE_INTEGER)
+      if (gk != null) concededByGk.set(gk, (concededByGk.get(gk) ?? 0) + conceded)
+    }
+  }
+  for (const p of byPlayer.values()) {
+    const derived = concededByGk.get(p.sportmonks_player_id)
+    if (derived != null) p.goals_conceded = derived
+  }
+
+  // Clean sheet: minutes_played >= 60 AND the team conceded 0 (authoritative).
   for (const p of byPlayer.values()) {
     if (p.minutes_played >= 60 && (teamConceded.get(p.sportmonks_team_id) ?? 0) === 0) {
       p.clean_sheet = true
@@ -338,23 +404,6 @@ export function parseFixture(fixture: SMFixture): ParsedFixture {
     if (mvp == null || beatsForMvp(p, mvp)) mvp = p
   }
   if (mvp) mvp.is_mvp = true
-
-  // Scoreline: prefer SportMonks' authoritative CURRENT score (include=scores),
-  // which correctly counts own goals. Summing players' GOALS misses own goals
-  // (an OG is credited to the scorer, not the beneficiary team), producing a
-  // wrong scoreline and — via `result` below — wrong coach points. Fall back to
-  // the summed goals only when the scores include is absent.
-  function authoritativeScore(teamId: number | null): number | null {
-    if (teamId == null) return null
-    const current = (fixture.scores ?? []).filter((s) => s.description === 'CURRENT')
-    const entry = current.find((s) => s.participant_id === teamId)
-    const goals = entry?.score?.goals
-    return typeof goals === 'number' ? goals : null
-  }
-  const homeScore =
-    authoritativeScore(homeId) ?? (homeId != null ? teamGoals.get(homeId) ?? 0 : null)
-  const awayScore =
-    authoritativeScore(awayId) ?? (awayId != null ? teamGoals.get(awayId) ?? 0 : null)
 
   // Outcome: prefer the SportMonks winner flag (it names the advancer even when
   // a knockout tie is decided on penalties). Fall back to the scoreline, which
