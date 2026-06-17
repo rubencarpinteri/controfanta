@@ -12,6 +12,7 @@ import {
 } from './substitution'
 import { scoreCoach } from './coachScore'
 import { aggregateTeamRoundScore } from './roundScore'
+import { fetchAllRows } from './fetchAllRows'
 import { computeBattleRoyale } from './battleRoyale'
 import type { FMEnginePlayerInput, FMEngineCoachInput, FMPlayerMatchScoreResult } from './types'
 
@@ -109,13 +110,16 @@ export async function runRoundEngine(roundId: string, supabase: Supabase): Promi
   if (playerErr) throw new Error(`Players load failed: ${playerErr.message}`)
   const playerById = new Map((players ?? []).map((p) => [p.id, p]))
 
-  const { data: allStats, error: statsErr } = await supabase
-    .from('fm_player_match_stats')
-    .select(
-      'real_match_id, player_id, minutes_played, rating, goals, penalties_scored, assists, yellow_cards, red_cards, penalties_saved, penalties_missed, own_goals, goals_conceded, is_mvp'
-    )
-    .in('real_match_id', matchIds)
-  if (statsErr) throw new Error(`Stats load failed: ${statsErr.message}`)
+  // A full round (24 matches × ~50 rows) exceeds PostgREST's default 1000-row
+  // cap; paging past it keeps final scores from silently losing stats rows.
+  const allStats = await fetchAllRows<Database['public']['Tables']['fm_player_match_stats']['Row']>(() =>
+    supabase
+      .from('fm_player_match_stats')
+      .select(
+        'real_match_id, player_id, minutes_played, rating, goals, penalties_scored, assists, yellow_cards, red_cards, penalties_saved, penalties_missed, own_goals, goals_conceded, is_mvp'
+      )
+      .in('real_match_id', matchIds)
+  )
   const statsByKey = new Map((allStats ?? []).map((s) => [`${s.player_id}:${s.real_match_id}`, s]))
 
   const { data: phaseSquads, error: squadErr } = await supabase

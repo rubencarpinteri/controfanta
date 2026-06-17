@@ -29,6 +29,7 @@ import { loadFMUnifiedConfigForLega } from '@/lib/fantamondiale/loadUnifiedConfi
 import { scorePlayerRaw, finalizePlayerForLega, hasDecisiveEvent } from './playerScore'
 import { scoreCoach } from './coachScore'
 import { applySubstitutions, type FMRole, type SubStarter, type SubBench } from './substitution'
+import { fetchAllRows } from './fetchAllRows'
 import type { FMEngineCoachInput } from './types'
 
 type CoachTier = FMEngineCoachInput['tier']
@@ -438,10 +439,16 @@ export async function computeLiveRoundSnapshot(
   // Also fetch ALL fm_player rows for national teams in this round's matches
   // so the match detail panel can show the full real lineup, not just drafted players.
   const matchTeamIds = [...new Set((matches ?? []).flatMap((m) => [m.home_team_id, m.away_team_id]))]
-  const { data: allMatchPlayers } = await supabase
-    .from('fm_player')
-    .select('id, name, role, national_team_id')
-    .in('national_team_id', matchTeamIds.length > 0 ? matchTeamIds : ['00000000-0000-0000-0000-000000000000'])
+  // Up to ~48 national teams × ~26 players exceeds PostgREST's default 1000-row
+  // cap, so page past it explicitly — a truncated pool silently drops players
+  // from the live board.
+  const allMatchPlayers = await fetchAllRows<{ id: string; name: string; role: string; national_team_id: string }>(
+    () =>
+      supabase
+        .from('fm_player')
+        .select('id, name, role, national_team_id')
+        .in('national_team_id', matchTeamIds.length > 0 ? matchTeamIds : ['00000000-0000-0000-0000-000000000000']),
+  )
   // Merge into playerById so scoring lookups still work
   for (const p of allMatchPlayers ?? []) {
     if (!playerById.has(p.id)) {
@@ -467,12 +474,19 @@ export async function computeLiveRoundSnapshot(
     .in('sportmonks_fixture_id', sportmonksFixtureIds.length > 0 ? sportmonksFixtureIds : [-1])
   const cachedFixtureById = new Map((cachedFixtures ?? []).map((f) => [f.sportmonks_fixture_id, f.raw_payload]))
 
-  const { data: allStats } = await supabase
-    .from('fm_player_match_stats')
-    .select(
-      'real_match_id, player_id, minutes_played, rating, goals, penalties_scored, assists, yellow_cards, red_cards, penalties_saved, penalties_missed, own_goals, goals_conceded, is_mvp, is_starter, jersey_number, subbed_on_minute, subbed_off_minute, replaced_player_id, replacement_player_id',
-    )
-    .in('real_match_id', matchIds.length > 0 ? matchIds : ['00000000-0000-0000-0000-000000000000'])
+  // A full round (24 matches × ~50 rows) exceeds PostgREST's default 1000-row
+  // cap, which silently truncated later matches' stats and dropped their
+  // players from the board — page past it explicitly.
+  type StatRow = Database['public']['Tables']['fm_player_match_stats']['Row']
+  const allStats = await fetchAllRows<StatRow>(
+    () =>
+      supabase
+        .from('fm_player_match_stats')
+        .select(
+          'real_match_id, player_id, minutes_played, rating, goals, penalties_scored, assists, yellow_cards, red_cards, penalties_saved, penalties_missed, own_goals, goals_conceded, is_mvp, is_starter, jersey_number, subbed_on_minute, subbed_off_minute, replaced_player_id, replacement_player_id',
+        )
+        .in('real_match_id', matchIds.length > 0 ? matchIds : ['00000000-0000-0000-0000-000000000000']),
+  )
   const statsByKey = new Map((allStats ?? []).map((s) => [`${s.player_id}:${s.real_match_id}`, s]))
   const missingStatPlayerIds = [
     ...new Set((allStats ?? []).map((s) => s.player_id).filter((id) => !playerById.has(id))),
