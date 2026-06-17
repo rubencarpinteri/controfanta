@@ -380,9 +380,15 @@ export function parseFixture(fixture: SMFixture): ParsedFixture {
       if (gk != null) concededByGk.set(gk, (concededByGk.get(gk) ?? 0) + conceded)
     }
   }
+  // Two independent sources back each other up: the authoritative-scoreline
+  // derivation above and the per-player GOALS_CONCEDED lineup stat already read
+  // into p.goals_conceded. Take the higher so whichever updates first wins and
+  // neither can ever drop a goal the other already saw — the scoreline rescues
+  // the lagging per-player stat (the original bug), and the per-player stat
+  // covers any case the scoreline/keeper-sub split under-attributes.
   for (const p of byPlayer.values()) {
     const derived = concededByGk.get(p.sportmonks_player_id)
-    if (derived != null) p.goals_conceded = derived
+    if (derived != null) p.goals_conceded = Math.max(p.goals_conceded, derived)
   }
 
   // Clean sheet: minutes_played >= 60 AND the team conceded 0 (authoritative).
