@@ -139,17 +139,26 @@ export async function toggleSquadPlayerAction(fd: FormData): Promise<ToggleSquad
   if (existing) {
     // Reshaping the rosa is allowed while the phase window is open — even after a
     // formazione has been submitted. But the two must stay in sync: if this
-    // player is in a submitted lineup for any round of this phase, drop him from
-    // that lineup too. Otherwise the saved entry would be an orphan — illegal
-    // ("non è nella tua rosa") on the next save and, worse, scored as a phantom
-    // by the live engine, which reads lineup players with no rosa cross-check.
-    // The manager is warned that the affected formazione must be resubmitted.
+    // player is in a submitted lineup for a STILL-OPEN round of this phase, drop
+    // him from that lineup too. Otherwise the saved entry would be an orphan —
+    // illegal ("non è nella tua rosa") on the next save and, worse, scored as a
+    // phantom by the live engine, which reads lineup players with no rosa
+    // cross-check. The manager is warned that the affected formazione must be
+    // resubmitted.
+    //
+    // Crucially we ONLY cascade into rounds whose status is 'open'. A locked (or
+    // finished) round's lineup is immutable: the player was legitimately fielded
+    // and must keep being scored even if he is later dropped from the rosa while
+    // preparing a future round of the same phase. A single group-stage phase
+    // spans every matchday, so without this guard a mid-week rosa edit silently
+    // gutted already-locked lineups (the FantaGayrage MD1 incident).
     const { data: affected } = await supabase
       .from('fm_matchday_lineup_player')
-      .select('id, fm_matchday_lineup!inner(fantasy_team_id, fm_scoring_round!inner(name, phase_id))')
+      .select('id, fm_matchday_lineup!inner(fantasy_team_id, fm_scoring_round!inner(name, phase_id, status))')
       .eq('player_id', playerId)
       .eq('fm_matchday_lineup.fantasy_team_id', fantasyTeamId)
       .eq('fm_matchday_lineup.fm_scoring_round.phase_id', phaseId)
+      .eq('fm_matchday_lineup.fm_scoring_round.status', 'open')
 
     if (affected && affected.length > 0) {
       await supabase
