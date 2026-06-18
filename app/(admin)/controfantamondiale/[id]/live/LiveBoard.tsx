@@ -378,12 +378,16 @@ export function LiveBoard({
   myTeamId,
   initialSnapshot,
   previewMode = false,
+  live = true,
 }: {
   legaCompRef: string
   roundName: string
   myTeamId: string | null
   initialSnapshot: LiveRoundSnapshot | null
   previewMode?: boolean
+  // false when browsing a finished round's archive — the poll endpoint only
+  // returns the ACTIVE round, so polling would clobber the historic snapshot.
+  live?: boolean
 }) {
   const [snapshot, setSnapshot] = useState<LiveRoundSnapshot | null>(initialSnapshot)
   const [activeTab, setActiveTab] = useState<Tab>('partite')
@@ -397,6 +401,9 @@ export function LiveBoard({
   const flashes = useRatingFlash(snapshot)
 
   useEffect(() => {
+    // Historic/archive view: the round is finished and the poll endpoint only
+    // serves the active round, so never poll — keep the server-rendered snapshot.
+    if (!live) return
     let cancelled = false
     async function poll() {
       try {
@@ -414,7 +421,7 @@ export function LiveBoard({
       cancelled = true
       if (timer.current) clearInterval(timer.current)
     }
-  }, [legaCompRef])
+  }, [legaCompRef, live])
 
   const handleSelectMatch = useCallback((matchId: string) => {
     setUserPickedMatch(true)
