@@ -119,6 +119,26 @@ export async function toggleSquadPlayerAction(fd: FormData): Promise<ToggleSquad
     .single()
   if (!phase || phase.status !== 'open') return { ok: false, error: 'La fase non è aperta per la selezione della rosa' }
 
+  // The rosa is drafted ONCE per stage. As soon as the FIRST round of this phase
+  // has locked, the squad is frozen for the rest of the stage: from then on a
+  // manager may only change the formazione per round (MD2, MD3…), never the squad
+  // itself. (A fresh redraft happens in the NEXT phase / stage.) The group-stage
+  // phase stays `status='open'` across every matchday, so the phase-open check
+  // above is NOT enough on its own — without this guard the rosa would stay
+  // editable mid-stage. See [[project_wc2026_squads_and_livescore]].
+  const { data: lockedRounds } = await supabase
+    .from('fm_scoring_round')
+    .select('id')
+    .eq('phase_id', phaseId)
+    .in('status', ['locked', 'scoring', 'published'])
+    .limit(1)
+  if (lockedRounds && lockedRounds.length > 0) {
+    return {
+      ok: false,
+      error: 'La rosa è bloccata: la fase è già iniziata. In questa fase puoi cambiare solo la formazione, non la rosa.',
+    }
+  }
+
   // Price and budget are authoritative server-side — never trust the client.
   const config = await loadFMUnifiedConfigForLega(supabase, legaCompId)
   const phaseSettings = await getLegaPhaseSettings(supabase, legaCompId, phaseId)

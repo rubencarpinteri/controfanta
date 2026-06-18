@@ -92,8 +92,19 @@ export default async function RosaPage({ params }: { params: Promise<{ id: strin
     }
   }
 
+  // Rosa freezes once the FIRST round of the phase has locked — from then on
+  // only the formazione changes per round (MD2/MD3), never the squad. Mirrors
+  // the server guard in toggleSquadPlayerAction.
+  const { data: lockedRoundRows } = await supabase
+    .from('fm_scoring_round')
+    .select('id')
+    .eq('phase_id', activePhase.id)
+    .in('status', ['locked', 'scoring', 'published'])
+    .limit(1)
+  const stageStarted = (lockedRoundRows?.length ?? 0) > 0
+
   // For admins viewing without a team: show all players but read-only
-  const isReadOnly = !ctx.fantasyTeamId || activePhase.status !== 'open'
+  const isReadOnly = !ctx.fantasyTeamId || activePhase.status !== 'open' || stageStarted
 
   const [teams, players, coaches] = await Promise.all([
     getFMTeams(ctx.competition.id),
@@ -158,6 +169,13 @@ export default async function RosaPage({ params }: { params: Promise<{ id: strin
       {isReadOnly && activePhase.status !== 'open' && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-[13px] text-amber-600 dark:text-amber-300">
           La rosa è chiusa — puoi solo visualizzarla.
+        </div>
+      )}
+
+      {isReadOnly && activePhase.status === 'open' && stageStarted && ctx.fantasyTeamId && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-[13px] text-amber-600 dark:text-amber-300">
+          La rosa è bloccata: la fase è iniziata. In questa fase puoi cambiare solo la
+          formazione di giornata, non la rosa.
         </div>
       )}
 
