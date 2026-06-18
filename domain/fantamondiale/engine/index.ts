@@ -227,25 +227,31 @@ export async function runRoundEngine(roundId: string, supabase: Supabase): Promi
     }
   }
 
-  // MVP per fixture = highest BASE voto (voto_base, BEFORE football bonus/malus),
-  // not raw SportMonks rating and not the bonus-inclusive subtotal. Bonuses like
-  // the clean sheet are excluded so a 0-0 keeper can't steal the badge from a
-  // higher-rated outfielder. Override the ingest-time flag here, kept in sync
-  // with the live snapshot. Ties break on lower player_id.
+  // MVP per fixture = highest SportMonks rating among ALL players on the pitch
+  // (owned or not), matching the live board (liveSnapshot.ts) — the trademark
+  // "real Man of the Match" rule. The bonus only actually lands when that player
+  // is owned, applied via finalizePlayerForLega below; an unowned MVP simply
+  // means no team gets the bonus that fixture. We scan `allStats` (every player
+  // in the round's matches), NOT just `rawByKey` (owned/lineup players only) —
+  // restricting to owned players was awarding the badge to the best OWNED player
+  // instead of the actual match MVP. Override the ingest-time flag here. Ties
+  // break on lower player_id for determinism, same as the live snapshot.
   {
     const bestByMatch = new Map<string, number>()
     const mvpByMatch = new Map<string, string>()
-    for (const r of rawByKey.values()) {
-      if (r.voto_base == null) continue // s.v. can't be MVP
-      const best = bestByMatch.get(r.real_match_id)
-      const cur = mvpByMatch.get(r.real_match_id)
+    for (const s of allStats ?? []) {
+      const rating = s.rating != null ? Number(s.rating) : null
+      if (rating == null) continue // s.v. can't be MVP
+      const mid = s.real_match_id
+      const best = bestByMatch.get(mid)
+      const cur = mvpByMatch.get(mid)
       if (
         best == null ||
-        r.voto_base > best ||
-        (r.voto_base === best && cur != null && r.player_id < cur)
+        rating > best ||
+        (rating === best && cur != null && s.player_id < cur)
       ) {
-        bestByMatch.set(r.real_match_id, r.voto_base)
-        mvpByMatch.set(r.real_match_id, r.player_id)
+        bestByMatch.set(mid, rating)
+        mvpByMatch.set(mid, s.player_id)
       }
     }
     for (const r of rawByKey.values()) {
