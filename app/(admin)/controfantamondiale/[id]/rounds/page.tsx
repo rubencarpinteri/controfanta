@@ -23,7 +23,14 @@ const STATUS_BADGE: Record<string, string> = {
 
 function fmt(dt: string | null) {
   if (!dt) return '—'
-  return new Intl.DateTimeFormat('it-IT', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(dt))
+  // Render in Italian wall-clock time. This is a server component and Vercel's
+  // runtime TZ is UTC, so without an explicit timeZone the lock showed 2h early
+  // (e.g. 15:59 UTC instead of the real 17:59 Italian kickoff-minus-one).
+  return new Intl.DateTimeFormat('it-IT', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+    timeZone: 'Europe/Rome',
+  }).format(new Date(dt))
 }
 
 export default async function RoundsPage({ params }: { params: Promise<{ id: string }> }) {

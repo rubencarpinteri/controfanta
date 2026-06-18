@@ -93,6 +93,8 @@ export default async function LivePage({
             month: 'short',
             hour: '2-digit',
             minute: '2-digit',
+            // Server component on a UTC runtime — pin to Italian wall-clock.
+            timeZone: 'Europe/Rome',
           })
         : null
     return (
