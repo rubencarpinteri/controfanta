@@ -140,7 +140,7 @@ export default async function RisultatiPage({
     supabase
       .from('fm_fantasy_team')
       .select('id, name')
-      .eq('competition_id', id),
+      .eq('league_competition_id', ctx.legaCompetition.id),
     ctx.fantasyTeamId
       ? supabase
           .from('fm_battle_royale_matchup')
@@ -150,8 +150,11 @@ export default async function RisultatiPage({
       : Promise.resolve({ data: [] }),
   ])
 
-  const teamScores = teamScoresRes.data ?? []
+  // Scope the giornata leaderboard to THIS Lega only. fm_fantasy_team_round_score
+  // is round-wide across every Lega instance of the tournament, so without this
+  // filter both Leghe (20 teams) were mixed into a single table.
   const teamMap = new Map((fantasyTeamsRes.data ?? []).map((t) => [t.id, t.name]))
+  const teamScores = (teamScoresRes.data ?? []).filter((s) => teamMap.has(s.fantasy_team_id))
   const myMatchups = brMatchupsRes.data ?? []
 
   // ---- user-specific breakdown ----------------------------------------
