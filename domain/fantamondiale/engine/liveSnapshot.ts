@@ -776,7 +776,7 @@ export async function computeLiveRoundSnapshot(
         if (st !== 'played') riskByRole.set(role, (riskByRole.get(role) ?? 0) + 1)
       } else {
         const bo = lp.bench_order ?? 999
-        benchNow.push({ player_id: lp.player_id, role, bench_order: bo, played: st === 'played' })
+        benchNow.push({ player_id: lp.player_id, role, bench_order: bo, playState: st })
         if (st !== 'not_played') {
           const arr = benchByRole.get(role) ?? []
           arr.push({ id: lp.player_id, order: bo })
@@ -859,7 +859,7 @@ export async function computeLiveRoundSnapshot(
           player_id: lp.player_id,
           role,
           bench_order: lp.bench_order ?? 999,
-          played: st === 'played',
+          playState: st,
         })
       }
     }
@@ -879,20 +879,16 @@ export async function computeLiveRoundSnapshot(
     subForByTeam.set(lineup.fantasy_team_id, subFor)
     replacedByByTeam.set(lineup.fantasy_team_id, replacedBy)
 
-    // For each unfilled slot, is a same-role bench candidate still to play? If
-    // so the substitution is merely PENDING (he'll come on once his match runs);
-    // if every same-role bench player's match is over, the team plays short.
-    const usedSet = new Set(now.benchUsed)
+    // For each unfilled slot, the engine already reserved the higher-priority
+    // bench candidate whose match is still pending (he'll come on once it runs).
+    // A slot with no reservation means every same-role bench player's match is
+    // over → the team plays short there.
     const pending = new Set<string>()
     const candidates = new Map<string, string>()
-    const benchByOrder = [...benchNow].sort((a, b) => a.bench_order - b.bench_order)
     for (const slot of now.emptySlots) {
-      const candidate = benchByOrder.find(
-        (b) => b.role === slot.role && !usedSet.has(b.player_id) && stateOf(b.player_id) === 'pending',
-      )
-      if (candidate) {
+      if (slot.reserved_by) {
         pending.add(slot.starter_player_id)
-        candidates.set(slot.starter_player_id, candidate.player_id)
+        candidates.set(slot.starter_player_id, slot.reserved_by)
       }
     }
     pendingShortByTeam.set(lineup.fantasy_team_id, pending)

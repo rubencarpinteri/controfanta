@@ -346,7 +346,9 @@ export async function runRoundEngine(roundId: string, supabase: Supabase): Promi
           player_id: lp.player_id,
           role,
           bench_order: lp.bench_order ?? 999,
-          played,
+          // Finalization runs once every match is over, so there is no
+          // 'pending' — the trigger is a hard played/not_played.
+          playState: played ? 'played' : 'not_played',
         })
       }
     }
