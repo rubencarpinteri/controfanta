@@ -15,6 +15,16 @@ import { autoAdvanceRounds, autoEliminateNations } from '@/lib/fantamondiale/aut
 const ENDPOINT = 'sportmonks-ratings-tick'
 
 /**
+ * Heartbeat throttle for skipped ticks. The cron fires every minute, but a
+ * "no fixtures live" skip is logged only at :00/:15/:30/:45 — keeping the
+ * cron-status heartbeat fresh to within 15 minutes while writing ~93% fewer
+ * rows. Live (`ok`) and `error` runs are always logged at full fidelity.
+ */
+function shouldLogSkip(at: Date): boolean {
+  return at.getMinutes() % 15 === 0
+}
+
+/**
  * GET /api/cron/sportmonks-ratings-tick
  *
  * Every 1 minute. Cheap pre-check: any fixture in the live window
@@ -54,26 +64,30 @@ export async function GET(req: NextRequest) {
   const inWindow = await hasFixturesInLiveWindow(db)
   if (!inWindow) {
     const body = { message: 'No fixtures in live window', live: 0, sched, elim }
-    await logCronRun(db, {
-      endpoint: ENDPOINT,
-      started_at,
-      status: 'skipped',
-      http_status: 200,
-      summary: body,
-    })
+    if (shouldLogSkip(started_at)) {
+      await logCronRun(db, {
+        endpoint: ENDPOINT,
+        started_at,
+        status: 'skipped',
+        http_status: 200,
+        summary: body,
+      })
+    }
     return NextResponse.json(body)
   }
 
   const refs = await listActiveLeagueRefs(db)
   if (!refs.length) {
     const body = { message: 'No active SportMonks leagues', live: 0, sched, elim }
-    await logCronRun(db, {
-      endpoint: ENDPOINT,
-      started_at,
-      status: 'skipped',
-      http_status: 200,
-      summary: body,
-    })
+    if (shouldLogSkip(started_at)) {
+      await logCronRun(db, {
+        endpoint: ENDPOINT,
+        started_at,
+        status: 'skipped',
+        http_status: 200,
+        summary: body,
+      })
+    }
     return NextResponse.json(body)
   }
 
