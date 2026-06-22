@@ -153,6 +153,18 @@ function fmt(n: number | null | undefined, d = 1): string {
   return Number(n).toFixed(d)
 }
 
+// Truncate (never round up) the team total to 1 decimal. The BR goal thresholds
+// are whole numbers, so a value like 61.98 — which is BELOW the 62 soglia and
+// scores 0 goals — must not render as "62.0" (which rounding would do) and look
+// like it met the threshold. Truncating keeps displayed ≤ real value, so "62.0"
+// always means the soglia is genuinely reached. The 1e-6 nudge absorbs binary
+// float error (e.g. 61.9 * 10 === 618.999…) without affecting real 2-decimal
+// data, whose granularity is 0.01.
+function fmtFloor(n: number | null | undefined): string {
+  if (n == null) return '—'
+  return (Math.floor(n * 10 + 1e-6) / 10).toFixed(1)
+}
+
 function popularityPenaltyState(p: LiveSnapshotPlayer): {
   nowPct: number
   maxPct: number
@@ -2083,7 +2095,7 @@ function TeamDetailHeader({
         </div>
       </div>
       <span className="text-[22px] font-black tabular-nums text-emerald-500 dark:text-emerald-400">
-        {fmt(team.live_total, 1)}
+        {fmtFloor(team.live_total)}
       </span>
     </div>
   )
@@ -3405,7 +3417,7 @@ function GiornataLivePanel({
               </div>
 
               <span className="shrink-0 self-start text-[18px] font-black tabular-nums text-ink-1 leading-none">
-                {fmt(total, 1)}
+                {fmtFloor(total)}
               </span>
             </div>
           </button>
@@ -3515,7 +3527,7 @@ function MaskedTeamPanel({ team }: { team: LiveSnapshotTeam }) {
           <p className="text-[10px] text-ink-5">{team.formation ?? '—'}</p>
         </div>
         <span className="text-[22px] font-black tabular-nums text-emerald-400">
-          {fmt(team.live_total, 1)}
+          {fmtFloor(team.live_total)}
         </span>
       </div>
       <div className="p-4 text-center space-y-2">
@@ -3648,7 +3660,7 @@ function MobileTeamCard({
           <div className="flex w-[52px] flex-col items-center">
             <span className="text-[7.5px] font-bold uppercase tracking-wider text-ink-5">Totale</span>
             <span className={`flex h-6 items-center justify-center text-[23px] font-black tabular-nums leading-none ${brGoalColor(standings?.goals_scored ?? 0)}`}>
-              {fmt(team.live_total, 1)}
+              {fmtFloor(team.live_total)}
             </span>
           </div>
         </div>
