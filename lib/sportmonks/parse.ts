@@ -205,7 +205,14 @@ export function parseFixture(fixture: SMFixture): ParsedFixture {
   // Build per-player base rows from lineups.details
   const byPlayer = new Map<number, ParsedPlayerStat>()
   for (const l of lineups) {
-    const minutes = readStatN(l.details, 'MINUTES_PLAYED')
+    // SportMonks sends MINUTES_PLAYED as an incremental (per-update) value
+    // during live matches, which resets to a small number each tick. Use
+    // CUMULATIVE_MINUTES_PLAYED (the running total) when available; fall back
+    // to MINUTES_PLAYED for older payloads that only have the non-cumulative key.
+    const minutes = Math.max(
+      readStatN(l.details, 'CUMULATIVE_MINUTES_PLAYED'),
+      readStatN(l.details, 'MINUTES_PLAYED'),
+    )
     const rating = readStat(l.details, 'RATING')
     const goals = readStatN(l.details, 'GOALS')
     const assists = readStatN(l.details, 'ASSISTS')
