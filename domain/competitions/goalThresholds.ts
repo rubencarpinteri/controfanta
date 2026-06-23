@@ -21,19 +21,22 @@ export interface GoalThreshold {
  * Admins may override per league or per competition.
  */
 export const DEFAULT_MANTRA_THRESHOLDS: GoalThreshold[] = [
-  { min: 0,     goals: 0  },
-  { min: 64.5,  goals: 1  },
-  { min: 70.5,  goals: 2  },
-  { min: 76.5,  goals: 3  },
-  { min: 82.5,  goals: 4  },
-  { min: 88.5,  goals: 5  },
-  { min: 94.5,  goals: 6  },
-  { min: 100.5, goals: 7  },
-  { min: 106.5, goals: 8  },
-  { min: 112.5, goals: 9  },
-  { min: 118.5, goals: 10 },
-  { min: 124.5, goals: 11 },
-  { min: 130.5, goals: 12 },
+  { min: 0,   goals: 0  },
+  { min: 62,  goals: 1  },
+  { min: 66,  goals: 2  },
+  { min: 70,  goals: 3  },
+  { min: 74,  goals: 4  },
+  { min: 78,  goals: 5  },
+  { min: 82,  goals: 6  },
+  { min: 86,  goals: 7  },
+  { min: 90,  goals: 8  },
+  { min: 94,  goals: 9  },
+  { min: 98,  goals: 10 },
+  { min: 102, goals: 11 },
+  { min: 106, goals: 12 },
+  { min: 110, goals: 13 },
+  { min: 114, goals: 14 },
+  { min: 118, goals: 15 },
 ]
 
 /**

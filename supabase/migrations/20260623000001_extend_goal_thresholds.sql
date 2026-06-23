@@ -1,27 +1,28 @@
--- Extend goal_thresholds for leagues that still use the old 6-entry default
--- (stopped at { min: 94.5, goals: 6 }). Appends entries up to 12 goals so
--- high-scoring teams in WC2026 are no longer capped at 6.
---
--- Only patches rows where the array length is exactly 7 (the 0-goal sentinel
--- plus 6 scoring entries) AND the last entry is { min: 94.5, goals: 6 }.
--- Leagues with custom thresholds are left untouched.
+-- Extend goal_thresholds for leagues using the step-4 pattern that stopped at
+-- { min: 90, goals: 8 }. Continues the same step-4 cadence up to 15 goals so
+-- high-scoring teams in WC2026 are no longer capped.
+
+-- First migration (extend_goal_thresholds) was a no-op — it targeted step-6
+-- rows which don't exist. This one correctly targets step-4 rows stopping at 90.
 
 UPDATE public.league_engine_config
 SET goal_thresholds = '[
-  {"min": 0,     "goals": 0},
-  {"min": 64.5,  "goals": 1},
-  {"min": 70.5,  "goals": 2},
-  {"min": 76.5,  "goals": 3},
-  {"min": 82.5,  "goals": 4},
-  {"min": 88.5,  "goals": 5},
-  {"min": 94.5,  "goals": 6},
-  {"min": 100.5, "goals": 7},
-  {"min": 106.5, "goals": 8},
-  {"min": 112.5, "goals": 9},
-  {"min": 118.5, "goals": 10},
-  {"min": 124.5, "goals": 11},
-  {"min": 130.5, "goals": 12}
+  {"min": 0,   "goals": 0},
+  {"min": 62,  "goals": 1},
+  {"min": 66,  "goals": 2},
+  {"min": 70,  "goals": 3},
+  {"min": 74,  "goals": 4},
+  {"min": 78,  "goals": 5},
+  {"min": 82,  "goals": 6},
+  {"min": 86,  "goals": 7},
+  {"min": 90,  "goals": 8},
+  {"min": 94,  "goals": 9},
+  {"min": 98,  "goals": 10},
+  {"min": 102, "goals": 11},
+  {"min": 106, "goals": 12},
+  {"min": 110, "goals": 13},
+  {"min": 114, "goals": 14},
+  {"min": 118, "goals": 15}
 ]'::jsonb
-WHERE jsonb_array_length(goal_thresholds) = 7
-  AND goal_thresholds @> '[{"min": 94.5, "goals": 6}]'::jsonb
-  AND NOT goal_thresholds @> '[{"min": 100.5}]'::jsonb;
+WHERE goal_thresholds @> '[{"min": 90, "goals": 8}]'::jsonb
+  AND NOT goal_thresholds @> '[{"min": 94}]'::jsonb;
