@@ -639,13 +639,26 @@ export async function computeLiveRoundSnapshot(
       continue
     }
 
+    // SportMonks does not reliably update MINUTES_PLAYED during live play —
+    // starters show e.g. 3 min even at the 38th minute. For in-progress
+    // matches, use the match clock as a floor so the minutes gate in
+    // scorePlayerRaw doesn't falsely treat every live player as s.v.
+    const matchMinuteLive =
+      !matchFinal && match.status === 'in_progress'
+        ? ((match as typeof match & { minute?: number | null }).minute ?? null)
+        : null
+    const effectiveMinutes =
+      matchMinuteLive != null && stats.subbed_off_minute == null
+        ? Math.max(stats.minutes_played ?? 0, matchMinuteLive)
+        : (stats.minutes_played ?? 0)
+
     const raw = scorePlayerRaw(
       {
         playerId: pid,
         role: player.role as FMRole,
         nationalTeamId: player.national_team_id,
         stats: {
-          minutes_played: stats.minutes_played,
+          minutes_played: effectiveMinutes,
           rating: stats.rating != null ? Number(stats.rating) : null,
           goals: stats.goals,
           penalties_scored: stats.penalties_scored ?? 0,
@@ -679,9 +692,9 @@ export async function computeLiveRoundSnapshot(
     } else {
       played =
         hasUsableScore &&
-        (stats.minutes_played >= sub.min_minutes ||
+        (effectiveMinutes >= sub.min_minutes ||
           hasDecisiveEvent({
-            minutes_played: stats.minutes_played,
+            minutes_played: effectiveMinutes,
             rating: stats.rating != null ? Number(stats.rating) : null,
             goals: stats.goals,
             penalties_scored: stats.penalties_scored ?? 0,
