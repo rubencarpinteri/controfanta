@@ -126,8 +126,9 @@ function flashTintClass(flash: Flash | undefined, onInk = false): string {
   return flash.dir === 'up' ? 'rating-flash-up' : 'rating-flash-down'
 }
 
-// Floating delta badge — sits in the top-right corner (the role nail owns the
-// top-left) and fades out over the same 15s window as the card tint, so the
+// Floating delta badge — anchored to the center-left of the voto-finale pill it
+// is rendered inside (the parent must be `relative`), so it never overlaps the
+// voto itself. Fades out over the same 15s window as the card tint, so the
 // "how much did the voto move" signal dies exactly when the colour does.
 function FlashDeltaBadge({ playerId, size = 'md' }: { playerId: string; size?: 'sm' | 'md' }) {
   const flash = useFlash(playerId)
@@ -137,7 +138,7 @@ function FlashDeltaBadge({ playerId, size = 'md' }: { playerId: string; size?: '
   return (
     <span
       aria-hidden
-      className={`pointer-events-none absolute right-1 top-1 z-[2] rounded-full font-black leading-none tabular-nums shadow-sm rating-delta-badge ${pad} ${flash.dir === 'up' ? 'rating-delta-up' : 'rating-delta-down'}`}
+      className={`pointer-events-none absolute right-full top-1/2 z-[3] mr-1 -translate-y-1/2 whitespace-nowrap rounded-full font-black leading-none tabular-nums shadow-sm rating-delta-badge ${pad} ${flash.dir === 'up' ? 'rating-delta-up' : 'rating-delta-down'}`}
     >
       {sign}
       {Math.abs(flash.delta).toFixed(1)}
@@ -1379,18 +1380,18 @@ function RealVotoPill({ p, matchStatus, width }: { p: LiveSnapshotRealPlayer; ma
     p.display_voto_base ?? p.voto_base ?? (p.play_state === 'played' && p.voto != null ? p.voto : null)
   const v = votoDisplay(storedBase, p.display_voto_total ?? p.voto, p.minutes_played, p.play_state, matchStatus)
   return (
-    <span
-      className="block overflow-hidden rounded-md border border-white/15 bg-[#111827] text-center tabular-nums shadow-sm"
-      style={{ width }}
-    >
-      {v.kind === 'score' ? (
-        <>
-          <span className="block border-b border-white/15 bg-[#1b2236] px-1 text-[10px] font-bold leading-[1.55] text-white">{v.base}</span>
-          <span className={`block px-1 text-[12px] font-black leading-[1.45] ${v.totalOnBgCls}`} style={{ background: v.totalBg }}>{v.total}</span>
-        </>
-      ) : (
-        <span className={`block px-1 py-1.5 text-[12px] font-bold leading-none ${v.text === 'S.V.' ? v.cls : 'text-ink-5 dark:text-white/70'}`}>{v.text}</span>
-      )}
+    <span className="relative block" style={{ width }}>
+      <FlashDeltaBadge playerId={p.player_id} size="sm" />
+      <span className="block overflow-hidden rounded-md border border-white/15 bg-[#111827] text-center tabular-nums shadow-sm">
+        {v.kind === 'score' ? (
+          <>
+            <span className="block border-b border-white/15 bg-[#1b2236] px-1 text-[10px] font-bold leading-[1.55] text-white">{v.base}</span>
+            <span className={`block px-1 text-[12px] font-black leading-[1.45] ${v.totalOnBgCls}`} style={{ background: v.totalBg }}>{v.total}</span>
+          </>
+        ) : (
+          <span className={`block px-1 py-1.5 text-[12px] font-bold leading-none ${v.text === 'S.V.' ? v.cls : 'text-ink-5 dark:text-white/70'}`}>{v.text}</span>
+        )}
+      </span>
     </span>
   )
 }
@@ -1435,7 +1436,6 @@ function RealPitchChip({ p, teamRef, matchStatus, totalTeams, selected, onSelect
       style={boxShadow ? { boxShadow } : undefined}
     >
       <RoleNail role={p.role} onDark={ownedTitolare} />
-      <FlashDeltaBadge playerId={p.player_id} />
 
       <RealCrest teamRef={teamRef} live={realOnPitch(p, matchStatus)} size={26} />
 
@@ -1517,7 +1517,6 @@ function RealSubChip({ p, teamRef, matchStatus, totalTeams, selected, onSelect }
   return (
     <button type="button" onClick={onSelect} className={`relative flex w-full items-center gap-1.5 overflow-hidden rounded-[10px] border pl-5 pr-1.5 py-1 text-left shadow-sm transition-transform active:scale-[0.98] ${selected ? 'ring-2 ring-accent' : ''} ${cardClass} ${flashClass}`}>
       <RoleNail role={p.role} onDark={ownedTitolare} />
-      <FlashDeltaBadge playerId={p.player_id} />
       <RealCrest teamRef={teamRef} live={realOnPitch(p, matchStatus)} size={18} />
       <span className="flex min-w-0 flex-1 flex-col leading-tight">
         <span className="flex min-w-0 items-center gap-1">
@@ -1805,7 +1804,6 @@ function RealPlayerRow({
       style={exclusiveMvp ? { background: 'linear-gradient(100deg, #090b12 0%, #130912 55%, #22091a 100%)' } : undefined}
     >
       <RoleNail role={p.role} onDark={ownedTitolare} />
-      <FlashDeltaBadge playerId={p.player_id} />
       {depth > 0 && <span className="self-center text-[10px] text-emerald-500 dark:text-emerald-400">↳</span>}
 
       <span className="min-w-0 flex-1">
@@ -1853,8 +1851,10 @@ function RealPlayerRow({
         </span>
       </span>
 
+      <span className="relative shrink-0 self-center w-9 sm:w-11">
+      <FlashDeltaBadge playerId={p.player_id} size="sm" />
       <span
-        className={`shrink-0 self-center w-9 overflow-hidden rounded-md border text-center tabular-nums shadow-sm sm:w-11 ${
+        className={`block w-full overflow-hidden rounded-md border text-center tabular-nums shadow-sm ${
           darkVotoPill
             ? 'border-white/15 bg-[#111827]'
             : 'border-hairline bg-surface-2'
@@ -1898,6 +1898,7 @@ function RealPlayerRow({
             {v.text}
           </span>
         )}
+      </span>
       </span>
     </div>
   )
@@ -2645,7 +2646,6 @@ function FantasyPitchChip({
       } ${flashClass}`}
     >
       <RoleNail role={p.role} />
-      <FlashDeltaBadge playerId={p.player_id} />
       <PlayerCrest p={p} live={liveState === 'field'} size={28} />
 
       <span className="flex w-full items-center justify-center gap-0.5">
@@ -2666,15 +2666,18 @@ function FantasyPitchChip({
       )}
 
       {/* voto base / total */}
-      <span className="block w-full max-w-[46px] overflow-hidden rounded-md border border-hairline bg-surface-2 tabular-nums">
-        {v.kind === 'score' ? (
-          <>
-            <span className="block border-b border-hairline px-1 text-[10px] font-bold leading-[1.45] text-ink-2">{v.base}</span>
-            <span className={`block px-1 text-[12px] font-black leading-[1.4] ${v.totalCls}`}>{v.total}</span>
-          </>
-        ) : (
-          <span className={`block px-1 py-1 text-[12px] font-bold leading-none ${v.cls}`}>{v.text}</span>
-        )}
+      <span className="relative block w-full max-w-[46px]">
+        <FlashDeltaBadge playerId={p.player_id} size="sm" />
+        <span className="block w-full overflow-hidden rounded-md border border-hairline bg-surface-2 tabular-nums">
+          {v.kind === 'score' ? (
+            <>
+              <span className="block border-b border-hairline px-1 text-[10px] font-bold leading-[1.45] text-ink-2">{v.base}</span>
+              <span className={`block px-1 text-[12px] font-black leading-[1.4] ${v.totalCls}`}>{v.total}</span>
+            </>
+          ) : (
+            <span className={`block px-1 py-1 text-[12px] font-bold leading-none ${v.cls}`}>{v.text}</span>
+          )}
+        </span>
       </span>
 
       {/* single meta strip pinned to the bottom — glyphs, popularity and ownership
@@ -2720,7 +2723,6 @@ function BenchChip({
       } ${flashClass}`}
     >
       <RoleNail role={p.role} />
-      <FlashDeltaBadge playerId={p.player_id} size="sm" />
       <PlayerCrest p={p} live={liveState === 'field'} size={20} />
       <span className="flex min-w-0 flex-1 flex-col leading-tight">
         <span className="truncate text-[12px] font-semibold text-ink-2">{shortPlayerName(p.name)}</span>
@@ -2731,8 +2733,11 @@ function BenchChip({
         )}
       </span>
       <OwnershipMini owners={p.owners} />
-      <span className={`shrink-0 text-[12px] font-bold tabular-nums ${v.kind === 'score' ? v.totalCls : v.cls}`}>
-        {v.kind === 'score' ? v.total : v.text}
+      <span className="relative shrink-0">
+        <FlashDeltaBadge playerId={p.player_id} size="sm" />
+        <span className={`text-[12px] font-bold tabular-nums ${v.kind === 'score' ? v.totalCls : v.cls}`}>
+          {v.kind === 'score' ? v.total : v.text}
+        </span>
       </span>
     </button>
   )
@@ -3107,7 +3112,6 @@ function FantasyPlayerRow({
       } ${flashClass}`}
     >
       <RoleNail role={p.role} />
-      <FlashDeltaBadge playerId={p.player_id} />
       <TeamCrest
         name={p.national_team?.name ?? ''}
         logoUrl={p.national_team?.logo_url ?? null}
@@ -3188,9 +3192,11 @@ function FantasyPlayerRow({
 
       <LivePlayerDot state={liveState} />
 
+      <span className="relative shrink-0">
+      <FlashDeltaBadge playerId={p.player_id} />
       <RatingContainer
         {...ratingContainerProps}
-        className={`shrink-0 w-16 overflow-hidden rounded-lg border border-hairline bg-surface-2 text-center tabular-nums shadow-sm ${
+        className={`block w-16 overflow-hidden rounded-lg border border-hairline bg-surface-2 text-center tabular-nums shadow-sm ${
           onSelect ? 'cursor-pointer transition-all hover:scale-105 active:scale-95' : ''
         }`}
       >
@@ -3207,6 +3213,7 @@ function FantasyPlayerRow({
           <span className={`block px-1.5 py-2.5 text-[14px] font-bold leading-none ${v.cls}`}>{v.text}</span>
         )}
       </RatingContainer>
+      </span>
     </div>
   )
 }
