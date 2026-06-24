@@ -10,9 +10,31 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, Json } from '@/types/database.types'
 import { fetchTeamSquad, fetchTeamCoach } from './squad'
 import { positionIdToFMRole } from './positions'
+import { fetchFixtureWithDetail } from './fixtures'
+import { parseFixture } from './parse'
 import type { ParsedFixture, SMFixture } from './types'
 
 type DB = SupabaseClient<Database>
+
+/**
+ * Is this SportMonks fixture state terminal (the match is over)?
+ *
+ * The 1-minute live tick reads `/livescores/inplay`, which drops a fixture the
+ * moment it ends — so the FT transition is observed only if a poll happens to
+ * land in that narrow window AND the inplay API is healthy at that second. A
+ * group-stage match ends in plain Full Time (state 5); knockouts can end After
+ * Extra Time (7) or after a shootout. We treat all of those as finished, and
+ * fall back to the state name so a less-common terminal state still settles.
+ *
+ * Deliberately conservative: live Extra Time / live Penalties must NOT match
+ * (the name regex requires the "after" qualifier, and their ids are excluded).
+ */
+const FINISHED_STATE_IDS = new Set<number>([5, 7])
+export function isFinishedState(stateId: number | null, stateName: string | null): boolean {
+  if (stateId != null && FINISHED_STATE_IDS.has(stateId)) return true
+  const n = (stateName ?? '').toLowerCase()
+  return /full[- ]?time|after extra time|after pen|finished|\baet\b/.test(n)
+}
 
 // ============================================================
 // Active leagues
@@ -414,7 +436,7 @@ export async function upsertFMPlayerStats(
   if (!match) return { stats_upserted: 0, match_updated: false }
 
   // 2. Update score + status on the match
-  const matchStatus: 'scheduled' | 'in_progress' | 'finished' = parsed.state_id === 5
+  const matchStatus: 'scheduled' | 'in_progress' | 'finished' = isFinishedState(parsed.state_id, parsed.state_name)
     ? 'finished'
     : parsed.state_id === 1
       ? 'scheduled'
@@ -488,6 +510,62 @@ export async function upsertFMPlayerStats(
   if (error) throw new Error(`upsertFMPlayerStats: ${error.message}`)
 
   return { stats_upserted: rows.length, match_updated: true }
+}
+
+/**
+ * Finalize FM matches that fell off the live feed without ever being observed
+ * at Full Time.
+ *
+ * `/livescores/inplay` drops a fixture the instant it ends. If no tick caught
+ * the FT state (inplay API blip, or the match simply vanished between polls),
+ * the match is frozen `in_progress` forever — stuck "live" on the board, and
+ * its round never finalizes / knockouts never eliminate. The weekly reconcile
+ * eventually fixes it, but that can be days away.
+ *
+ * Backstop: any FM match still `in_progress` (kickoff within the last 6h) whose
+ * fixture is NOT in this tick's live set is re-fetched by id with full detail.
+ * If SportMonks now reports a terminal state we run the normal upsert, which
+ * flips it to `finished` and freezes authoritative final stats. Transient fetch
+ * failures are swallowed — the next tick retries.
+ */
+export async function finalizeStrandedFMMatches(
+  db: DB,
+  fmCompetitionIds: string[],
+  liveFixtureIds: Set<number>,
+): Promise<{ checked: number; finalized: number; fixture_ids: number[] }> {
+  if (!fmCompetitionIds.length) return { checked: 0, finalized: 0, fixture_ids: [] }
+
+  const recent = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
+  const { data: stuck } = await db
+    .from('fm_real_match')
+    .select('id, sportmonks_fixture_id')
+    .eq('status', 'in_progress')
+    .gte('kickoff_at', recent)
+
+  const candidates = (stuck ?? []).filter(
+    (m): m is { id: string; sportmonks_fixture_id: number } =>
+      m.sportmonks_fixture_id != null && !liveFixtureIds.has(m.sportmonks_fixture_id),
+  )
+
+  const fixture_ids: number[] = []
+  for (const m of candidates) {
+    let fx: SMFixture
+    try {
+      fx = await fetchFixtureWithDetail(m.sportmonks_fixture_id)
+    } catch {
+      continue // transient — leave it for the next tick
+    }
+    const parsed = parseFixture(fx)
+    if (!isFinishedState(parsed.state_id, parsed.state_name)) continue
+    // Resolve players against whichever competition owns this match; the others
+    // simply find no players and skip rows. upsert flips status regardless.
+    for (const compId of fmCompetitionIds) {
+      await upsertFMPlayerStats(db, compId, parsed)
+    }
+    fixture_ids.push(m.sportmonks_fixture_id)
+  }
+
+  return { checked: candidates.length, finalized: fixture_ids.length, fixture_ids }
 }
 
 // ============================================================

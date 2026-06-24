@@ -4,6 +4,7 @@ import { fetchInplayForLeague } from '@/lib/sportmonks/livescores'
 import { fetchFixtureWithDetail, fetchFixtureLineupsOnly } from '@/lib/sportmonks/fixtures'
 import { parseFixture } from '@/lib/sportmonks/parse'
 import {
+  finalizeStrandedFMMatches,
   hasFixturesInLiveWindow,
   listActiveLeagueRefs,
   upsertFMPlayerStats,
@@ -198,6 +199,27 @@ export async function GET(req: NextRequest) {
     })
   }
 
+  // Finalize matches that fell off the inplay feed without an observed FT.
+  // `/livescores/inplay` drops a fixture the instant it ends, so a match can go
+  // straight from in-play to gone — leaving it frozen `in_progress`. Re-fetch
+  // any such FM match by id and settle it from its authoritative state. Cheap:
+  // only fires for matches that were live and just disappeared. Never throws.
+  const liveFixtureIds = new Set<number>()
+  for (const fxs of liveByLeague.values()) {
+    for (const fx of fxs) liveFixtureIds.add(fx.id)
+  }
+  const fmCompetitionIds = refs.filter((r) => r.product === 'fm').map((r) => r.owner_id)
+  let stranded: Awaited<ReturnType<typeof finalizeStrandedFMMatches>> = {
+    checked: 0,
+    finalized: 0,
+    fixture_ids: [],
+  }
+  try {
+    stranded = await finalizeStrandedFMMatches(db, fmCompetitionIds, liveFixtureIds)
+  } catch (e) {
+    console.error('[ratings-tick] stranded finalize failed:', e)
+  }
+
   // After stats are upserted, recompute live snapshots for every currently
   // live round (per lega). Never throws — folds its own errors into summary.
   let liveSnapshots: Awaited<ReturnType<typeof writeLiveSnapshots>> | undefined
@@ -222,7 +244,10 @@ export async function GET(req: NextRequest) {
   let anomaly: string | undefined
   if (liveFixturesTotal > 0 && statsTotal === 0) {
     anomaly = `${liveFixturesTotal} live fixture(s) but 0 player stats ingested — check ID matching / parse.`
-  } else if (allFetchesEmpty) {
+  } else if (allFetchesEmpty && stranded.finalized === 0) {
+    // Empty inplay is only an anomaly if it ISN'T explained by matches that just
+    // ended — the live-window override keeps the window open until they finalize,
+    // and the stranded finalizer above settles them. Don't cry wolf for that.
     anomaly = 'In live window but every SportMonks inplay fetch returned empty/failed — check token / API.'
   }
   if (anomaly) {
@@ -239,7 +264,7 @@ export async function GET(req: NextRequest) {
     if (!recentSame?.length) await sendCronAlert(anomaly)
   }
 
-  const body = { live: liveByLeague.size, results, liveSnapshots, anomaly, sched, elim }
+  const body = { live: liveByLeague.size, results, stranded, liveSnapshots, anomaly, sched, elim }
   const hadError = !!anomaly || results.some((r) => r.error) || (liveSnapshots?.errors.length ?? 0) > 0
   await logCronRun(db, {
     endpoint: ENDPOINT,

@@ -12,7 +12,7 @@
 import { fetchSportMonks } from './client'
 import type { SMFixture } from './types'
 
-const FIXTURE_DETAIL_INCLUDES = 'participants;lineups.details.type;events.type;scores'
+const FIXTURE_DETAIL_INCLUDES = 'participants;lineups.details.type;events.type;scores;state'
 
 /** Format a Date or "YYYY-MM-DD" to "YYYY-MM-DD" (UTC). */
 function ymd(d: Date | string): string {
