@@ -537,6 +537,28 @@ table {
   }
 }
 
+/* Live rating-change delta badge: a small +0.x / −0.x pill that pops in then
+   fades out over the same 15s window as the card tint, so the magnitude signal
+   dies exactly when the colour does. */
+.rating-delta-badge {
+  color: #fff;
+  animation: ratingDeltaFade 15s ease-out forwards;
+}
+.rating-delta-up {
+  background: rgb(16 185 129 / 0.95);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.35), 0 0 8px rgb(16 185 129 / 0.6);
+}
+.rating-delta-down {
+  background: rgb(244 63 94 / 0.95);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.35), 0 0 8px rgb(244 63 94 / 0.6);
+}
+@keyframes ratingDeltaFade {
+  0%   { opacity: 0; transform: translateY(-2px) scale(0.85); }
+  6%   { opacity: 1; transform: none; }
+  70%  { opacity: 1; }
+  100% { opacity: 0; transform: scale(0.95); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }

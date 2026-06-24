@@ -28,13 +28,23 @@ const RATING_FLASH_MS = 15_000
 // ─────────────────────────────────────────────
 
 type FlashDir = 'up' | 'down'
-const RatingFlashContext = createContext<Map<string, FlashDir>>(new Map())
+// A flash carries its direction and the signed delta, expressed in the SAME
+// 1-decimal granularity the voto is actually rendered at — so the badge reads
+// exactly the move the manager can see (+0.2, −0.4), never a hidden 2nd-decimal
+// wobble.
+type Flash = { dir: FlashDir; delta: number }
+const RatingFlashContext = createContext<Map<string, Flash>>(new Map())
 
-function useRatingFlash(snapshot: LiveRoundSnapshot | null): Map<string, FlashDir> {
+// Round to the 1 decimal the board displays. We compare these rounded values so
+// a sub-decimal change (e.g. 6.74 → 6.78, both shown as "6.7"/"6.8"… here both
+// "6.7") never triggers a flash that isn't reflected on screen.
+const round1 = (n: number) => Math.round(n * 10) / 10
+
+function useRatingFlash(snapshot: LiveRoundSnapshot | null): Map<string, Flash> {
   const prev = useRef<Map<string, number>>(new Map())
   const seeded = useRef(false)
   const timers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
-  const [flashes, setFlashes] = useState<Map<string, FlashDir>>(new Map())
+  const [flashes, setFlashes] = useState<Map<string, Flash>>(new Map())
 
   useEffect(() => {
     if (!snapshot) return
@@ -42,14 +52,14 @@ function useRatingFlash(snapshot: LiveRoundSnapshot | null): Map<string, FlashDi
     for (const t of snapshot.teams) {
       for (const p of t.players) {
         const v = p.display_voto_base ?? p.voto_base ?? p.rating
-        if (v != null) current.set(p.player_id, Number(v))
+        if (v != null) current.set(p.player_id, round1(Number(v)))
       }
     }
     for (const m of snapshot.matches) {
       for (const p of m.players) {
         if (current.has(p.player_id)) continue
         const v = p.display_voto_base ?? p.voto_base ?? p.voto
-        if (v != null) current.set(p.player_id, Number(v))
+        if (v != null) current.set(p.player_id, round1(Number(v)))
       }
     }
 
@@ -60,23 +70,25 @@ function useRatingFlash(snapshot: LiveRoundSnapshot | null): Map<string, FlashDi
       return
     }
 
-    const changed: Array<[string, FlashDir]> = []
+    const changed: Array<[string, Flash]> = []
     for (const [id, v] of current) {
       const old = prev.current.get(id)
-      if (old != null && Math.abs(v - old) > 0.001) changed.push([id, v > old ? 'up' : 'down'])
+      // Only flash when the displayed (1-decimal) voto actually moves.
+      if (old != null && Math.abs(v - old) >= 0.05) {
+        changed.push([id, { dir: v > old ? 'up' : 'down', delta: round1(v - old) }])
+      }
       prev.current.set(id, v)
     }
     if (!changed.length) return
 
     setFlashes((cur) => {
       const next = new Map(cur)
-      for (const [id, dir] of changed) next.set(id, dir)
+      for (const [id, f] of changed) next.set(id, f)
       return next
     })
-    for (const [id, dir] of changed) {
+    for (const [id] of changed) {
       const existing = timers.current.get(id)
       if (existing) clearTimeout(existing)
-      void dir
       const handle = setTimeout(() => {
         setFlashes((cur) => {
           const next = new Map(cur)
@@ -104,14 +116,33 @@ function fmtGoalMinute(event: Pick<LiveSnapshotGoalEvent, 'minute' | 'extra_minu
   return event.extra_minute ? `${event.minute}+${event.extra_minute}'` : `${event.minute}'`
 }
 
-function useFlash(playerId: string): FlashDir | undefined {
+function useFlash(playerId: string): Flash | undefined {
   return useContext(RatingFlashContext).get(playerId)
 }
 
-function flashTintClass(dir: FlashDir | undefined, onInk = false): string {
-  if (!dir) return ''
-  if (onInk) return dir === 'up' ? 'rating-flash-up-on-ink' : 'rating-flash-down-on-ink'
-  return dir === 'up' ? 'rating-flash-up' : 'rating-flash-down'
+function flashTintClass(flash: Flash | undefined, onInk = false): string {
+  if (!flash) return ''
+  if (onInk) return flash.dir === 'up' ? 'rating-flash-up-on-ink' : 'rating-flash-down-on-ink'
+  return flash.dir === 'up' ? 'rating-flash-up' : 'rating-flash-down'
+}
+
+// Floating delta badge — sits in the top-right corner (the role nail owns the
+// top-left) and fades out over the same 15s window as the card tint, so the
+// "how much did the voto move" signal dies exactly when the colour does.
+function FlashDeltaBadge({ playerId, size = 'md' }: { playerId: string; size?: 'sm' | 'md' }) {
+  const flash = useFlash(playerId)
+  if (!flash) return null
+  const sign = flash.delta > 0 ? '+' : '−'
+  const pad = size === 'sm' ? 'px-1 py-px text-[8px]' : 'px-1.5 py-0.5 text-[9px]'
+  return (
+    <span
+      aria-hidden
+      className={`pointer-events-none absolute right-1 top-1 z-[2] rounded-full font-black leading-none tabular-nums shadow-sm rating-delta-badge ${pad} ${flash.dir === 'up' ? 'rating-delta-up' : 'rating-delta-down'}`}
+    >
+      {sign}
+      {Math.abs(flash.delta).toFixed(1)}
+    </span>
+  )
 }
 
 const ROLE_ORDER = ['P', 'D', 'C', 'A'] as const
@@ -1404,6 +1435,7 @@ function RealPitchChip({ p, teamRef, matchStatus, totalTeams, selected, onSelect
       style={boxShadow ? { boxShadow } : undefined}
     >
       <RoleNail role={p.role} onDark={ownedTitolare} />
+      <FlashDeltaBadge playerId={p.player_id} />
 
       <RealCrest teamRef={teamRef} live={realOnPitch(p, matchStatus)} size={26} />
 
@@ -1485,6 +1517,7 @@ function RealSubChip({ p, teamRef, matchStatus, totalTeams, selected, onSelect }
   return (
     <button type="button" onClick={onSelect} className={`relative flex w-full items-center gap-1.5 overflow-hidden rounded-[10px] border pl-5 pr-1.5 py-1 text-left shadow-sm transition-transform active:scale-[0.98] ${selected ? 'ring-2 ring-accent' : ''} ${cardClass} ${flashClass}`}>
       <RoleNail role={p.role} onDark={ownedTitolare} />
+      <FlashDeltaBadge playerId={p.player_id} />
       <RealCrest teamRef={teamRef} live={realOnPitch(p, matchStatus)} size={18} />
       <span className="flex min-w-0 flex-1 flex-col leading-tight">
         <span className="flex min-w-0 items-center gap-1">
@@ -1772,6 +1805,7 @@ function RealPlayerRow({
       style={exclusiveMvp ? { background: 'linear-gradient(100deg, #090b12 0%, #130912 55%, #22091a 100%)' } : undefined}
     >
       <RoleNail role={p.role} onDark={ownedTitolare} />
+      <FlashDeltaBadge playerId={p.player_id} />
       {depth > 0 && <span className="self-center text-[10px] text-emerald-500 dark:text-emerald-400">↳</span>}
 
       <span className="min-w-0 flex-1">
@@ -2611,6 +2645,7 @@ function FantasyPitchChip({
       } ${flashClass}`}
     >
       <RoleNail role={p.role} />
+      <FlashDeltaBadge playerId={p.player_id} />
       <PlayerCrest p={p} live={liveState === 'field'} size={28} />
 
       <span className="flex w-full items-center justify-center gap-0.5">
@@ -2685,6 +2720,7 @@ function BenchChip({
       } ${flashClass}`}
     >
       <RoleNail role={p.role} />
+      <FlashDeltaBadge playerId={p.player_id} size="sm" />
       <PlayerCrest p={p} live={liveState === 'field'} size={20} />
       <span className="flex min-w-0 flex-1 flex-col leading-tight">
         <span className="truncate text-[12px] font-semibold text-ink-2">{shortPlayerName(p.name)}</span>
@@ -3071,6 +3107,7 @@ function FantasyPlayerRow({
       } ${flashClass}`}
     >
       <RoleNail role={p.role} />
+      <FlashDeltaBadge playerId={p.player_id} />
       <TeamCrest
         name={p.national_team?.name ?? ''}
         logoUrl={p.national_team?.logo_url ?? null}
