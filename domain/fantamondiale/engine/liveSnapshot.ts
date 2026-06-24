@@ -36,7 +36,7 @@ type CoachTier = FMEngineCoachInput['tier']
 
 type Supabase = SupabaseClient<Database>
 
-type PlayState = 'played' | 'not_played' | 'pending'
+type PlayState = 'played' | 'not_played' | 'sv' | 'pending'
 
 type CachedSportmonksFixture = {
   participants?: Array<{
@@ -696,7 +696,10 @@ export async function computeLiveRoundSnapshot(
           }))
     }
 
-    stateByPlayer.set(pid, played ? 'played' : matchFinal ? 'not_played' : 'pending')
+    // 'sv': stats exist (player entered the match) but didn't earn a vote —
+    // under the minutes threshold with no decisive event. Displayed as "S.V.",
+    // not "Non ha giocato", because they physically played.
+    stateByPlayer.set(pid, played ? 'played' : matchFinal ? 'sv' : 'pending')
   }
 
   // ── MVP per fixture = highest SportMonks rating ────────────────────────
@@ -767,8 +770,8 @@ export async function computeLiveRoundSnapshot(
       const st = stateOf(lp.player_id)
 
       if (lp.is_starter) {
-        startersNow.push({ player_id: lp.player_id, role, played: st !== 'not_played' })
-        if (st !== 'not_played') {
+        startersNow.push({ player_id: lp.player_id, role, played: st !== 'not_played' && st !== 'sv' })
+        if (st !== 'not_played' && st !== 'sv') {
           const arr = startersByRole.get(role) ?? []
           arr.push(lp.player_id)
           startersByRole.set(role, arr)
@@ -777,7 +780,7 @@ export async function computeLiveRoundSnapshot(
       } else {
         const bo = lp.bench_order ?? 999
         benchNow.push({ player_id: lp.player_id, role, bench_order: bo, playState: st })
-        if (st !== 'not_played') {
+        if (st !== 'not_played' && st !== 'sv') {
           const arr = benchByRole.get(role) ?? []
           arr.push({ id: lp.player_id, order: bo })
           benchByRole.set(role, arr)
@@ -853,7 +856,7 @@ export async function computeLiveRoundSnapshot(
       const role = player.role as FMRole
       const st = stateOf(lp.player_id)
       if (lp.is_starter) {
-        startersNow.push({ player_id: lp.player_id, role, played: st !== 'not_played' })
+        startersNow.push({ player_id: lp.player_id, role, played: st !== 'not_played' && st !== 'sv' })
       } else {
         benchNow.push({
           player_id: lp.player_id,

@@ -24,7 +24,10 @@
 export type FMRole = 'P' | 'D' | 'C' | 'A'
 
 /** Whether a player's match has resolved, and how, per the league trigger. */
-export type PlayState = 'played' | 'not_played' | 'pending'
+// 'sv' = player entered the match but didn't earn a vote (< minutes threshold,
+// no decisive event). Treated identically to 'not_played' for substitution
+// purposes, but displayed differently in the UI.
+export type PlayState = 'played' | 'not_played' | 'sv' | 'pending'
 
 export interface SubStarter {
   player_id: string
@@ -105,7 +108,7 @@ export function applySubstitutions(
       (b) =>
         !consumed.has(b.player_id) &&
         b.role === starter.role &&
-        b.playState !== 'not_played',
+        b.playState !== 'not_played' && b.playState !== 'sv',
     )
 
     if (!candidate) {

@@ -2535,17 +2535,19 @@ function OwnershipMini({ owners, isMvp = false }: { owners: LiveOwnerRef[]; isMv
   )
 }
 
-// Empty slot on the pitch: a titolare who didn't play and isn't (yet) replaced.
+// Empty slot on the pitch: a titolare who didn't earn a vote and isn't (yet) replaced.
 // Keeps his muted flag + struck-through name so it's clearly HIS slot, then
 // moves the X below the name instead of covering the crest.
 function GhostPitchSlot({ p }: { p: LiveSnapshotPlayer }) {
   const pending = p.replacement_pending === true
+  const isSv = p.status === 'sv'
+  const dnpLabel = isSv ? 'ha giocato pochi minuti (S.V.)' : 'non ha giocato'
   return (
     <div
       title={
         pending
-          ? `${p.name} non ha giocato — ${p.replacement_candidate ? `se gioca entra ${p.replacement_candidate.name}` : 'in attesa di un subentrante di ruolo'}`
-          : `${p.name} non ha giocato — nessun subentrante di ruolo, si gioca in inferiorità`
+          ? `${p.name} ${dnpLabel} — ${p.replacement_candidate ? `se gioca entra ${p.replacement_candidate.name}` : 'in attesa di un subentrante di ruolo'}`
+          : `${p.name} ${dnpLabel} — nessun subentrante di ruolo, si gioca in inferiorità`
       }
       className="relative flex min-h-[126px] min-w-0 flex-col items-center gap-1 overflow-hidden rounded-[12px] border border-dashed border-white/35 bg-black/30 px-1 py-1.5 text-center grayscale"
     >
@@ -2560,7 +2562,7 @@ function GhostPitchSlot({ p }: { p: LiveSnapshotPlayer }) {
         ✕
       </span>
       <span className="mt-auto rounded-md bg-white/14 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-white/80 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)]">
-        Non ha giocato
+        {isSv ? 'S.V.' : 'Non ha giocato'}
       </span>
       {pending && (
         <span
@@ -3093,14 +3095,16 @@ function FantasyPlayerRow({
             <span
               className="shrink-0 rounded bg-rose-500 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-white shadow-sm"
               title={
-                p.replaced_by
-                  ? `Non ha giocato — sostituito da ${p.replaced_by.name}`
-                  : p.replacement_pending
-                    ? `Non ha giocato — ${p.replacement_candidate ? `se gioca entra ${p.replacement_candidate.name}` : 'in attesa di un subentrante di ruolo'}`
-                    : 'Non ha giocato — nessun subentrante di ruolo, si gioca in inferiorità'
+                p.status === 'sv'
+                  ? `Pochi minuti (S.V.)${p.replaced_by ? ` — sostituito da ${p.replaced_by.name}` : p.replacement_pending ? ` — ${p.replacement_candidate ? `se gioca entra ${p.replacement_candidate.name}` : 'in attesa di un subentrante di ruolo'}` : ' — nessun subentrante di ruolo, si gioca in inferiorità'}`
+                  : p.replaced_by
+                    ? `Non ha giocato — sostituito da ${p.replaced_by.name}`
+                    : p.replacement_pending
+                      ? `Non ha giocato — ${p.replacement_candidate ? `se gioca entra ${p.replacement_candidate.name}` : 'in attesa di un subentrante di ruolo'}`
+                      : 'Non ha giocato — nessun subentrante di ruolo, si gioca in inferiorità'
               }
             >
-              ✕ Non ha giocato
+              {p.status === 'sv' ? 'S.V.' : '✕ Non ha giocato'}
               {p.replaced_by
                 ? ` → ${shortPlayerName(p.replaced_by.name)}`
                 : p.replacement_pending
