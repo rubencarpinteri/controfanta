@@ -41,7 +41,9 @@ export async function writeLiveSnapshots(db: DB): Promise<LiveSnapshotWriteSumma
   // the tick that marks a round's last live match finished excludes that round
   // from the pass below (it's no longer scheduled/in_progress), leaving a stale
   // snapshot frozen at e.g. "90+6 in_progress" forever.
-  const recentlyFinishedIso = new Date(now.getTime() - 20 * 60 * 1000).toISOString()
+  // 60-min window (up from 20) so manually-corrected matches also get a refresh
+  // even when the cron's live-window gate would otherwise exit early.
+  const recentlyFinishedIso = new Date(now.getTime() - 60 * 60 * 1000).toISOString()
 
   // Rounds with ≥1 match that has kicked off and isn't finished/cancelled,
   // PLUS rounds whose last live match just finished (caught via updated_at).

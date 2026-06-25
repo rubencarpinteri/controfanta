@@ -64,7 +64,22 @@ export async function GET(req: NextRequest) {
 
   const inWindow = await hasFixturesInLiveWindow(db)
   if (!inWindow) {
-    const body = { message: 'No fixtures in live window', live: 0, sched, elim }
+    // Even on skip ticks, run writeLiveSnapshots so recently-finished matches
+    // get one final snapshot refresh. The snapshot writer has its own grace
+    // window (recently finished = last 60 min) and exits early if nothing is
+    // live — cost is at most 1 cheap DB query per skip tick.
+    let liveSnapshots: Awaited<ReturnType<typeof writeLiveSnapshots>> | undefined
+    try {
+      liveSnapshots = await writeLiveSnapshots(db)
+    } catch (e) {
+      liveSnapshots = {
+        live_rounds: 0,
+        legas_processed: 0,
+        snapshots_written: 0,
+        errors: [e instanceof Error ? e.message : String(e)],
+      }
+    }
+    const body = { message: 'No fixtures in live window', live: 0, sched, elim, liveSnapshots }
     if (shouldLogSkip(started_at)) {
       await logCronRun(db, {
         endpoint: ENDPOINT,
