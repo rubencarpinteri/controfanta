@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { fetchInplayForLeague } from '@/lib/sportmonks/livescores'
+import { fetchFixtureWithDetail } from '@/lib/sportmonks/fixtures'
 import { parseFixture } from '@/lib/sportmonks/parse'
 import {
   hasFixturesInLiveWindow,
@@ -134,7 +135,20 @@ export async function GET(req: NextRequest) {
 
     try {
       for (const fx of live) {
-        const parsed = parseFixture(fx)
+        let parsed = parseFixture(fx)
+        // Inplay endpoint sometimes omits lineups for a fixture even while it's
+        // in progress (SportMonks data lag). Fall back to the single-fixture
+        // detail endpoint which tends to have lineup data even when the batch
+        // inplay response doesn't.
+        if (parsed.players.length === 0 && parsed.state_id !== 1) {
+          try {
+            const detail = await fetchFixtureWithDetail(fx.id)
+            const parsedDetail = parseFixture(detail)
+            if (parsedDetail.players.length > 0) parsed = parsedDetail
+          } catch (e) {
+            console.error(`[ratings-tick] detail fallback failed for fixture ${fx.id}:`, e)
+          }
+        }
         if (ref.product === 'fm') {
           const r = await upsertFMPlayerStats(db, ref.owner_id, parsed)
           if (r.match_updated) fixtures_upserted += 1
