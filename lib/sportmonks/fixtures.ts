@@ -69,3 +69,18 @@ export async function fetchFixtureWithDetail(fixtureId: number): Promise<SMFixtu
   )
   return env.data
 }
+
+/**
+ * Fetch lineup entries for a fixture directly from the /lineups endpoint.
+ * This is a fallback for cases where the fixture's lineups include returns
+ * empty even though the match is in progress — the dedicated endpoint
+ * sometimes has data the batch fixture endpoint doesn't.
+ */
+export async function fetchFixtureLineupsOnly(fixtureId: number): Promise<import('./types').SMLineupEntry[]> {
+  const env = await fetchSportMonks<import('./types').SMLineupEntry[]>(
+    '/lineups',
+    { filters: `fixtureId:${fixtureId}`, include: 'details.type' },
+    'Fixture',
+  )
+  return env.data ?? []
+}
