@@ -55,9 +55,12 @@ export default async function LivePage({
   // Look-back: any round that has at least locked can be browsed via ?round=<id>
   // (its snapshot is persisted and the reveal gate below passes for past rounds).
   // Always keep the active round selectable so there's a way back to "now".
+  // getFMRounds already orders by (phase display_order, round display_order),
+  // so knockout rounds land after all group-stage rounds. Don't re-sort by
+  // display_order alone — that would slot Sedicesimi (display_order=1) back
+  // between Giornata 1 and Giornata 2. filter() preserves the incoming order.
   const browsable = rounds
     .filter((r) => ['locked', 'scoring', 'published'].includes(r.status) || r.id === activeRound?.id)
-    .sort((a, b) => a.display_order - b.display_order)
 
   const requestedId = typeof sp['round'] === 'string' ? sp['round'] : undefined
   const selectedRound =
