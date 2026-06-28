@@ -240,12 +240,19 @@ export async function getFMPhases(competitionId: string): Promise<FMPhase[]> {
 
 export async function getFMRounds(competitionId: string): Promise<FMScoringRound[]> {
   const supabase = await createClient()
-  const { data } = await supabase
-    .from('fm_scoring_round')
-    .select('*')
-    .eq('competition_id', competitionId)
-    .order('display_order', { ascending: true })
-  return data ?? []
+  const [{ data: rounds }, { data: phases }] = await Promise.all([
+    supabase.from('fm_scoring_round').select('*').eq('competition_id', competitionId),
+    supabase.from('fm_phase').select('id, display_order').eq('competition_id', competitionId),
+  ])
+  const phaseOrder = new Map((phases ?? []).map((p) => [p.id, p.display_order]))
+  // Sort by owning phase display_order first, then the round's own display_order.
+  // Without this, Sedicesimi (phase 2, round display_order=1) sorts between
+  // Giornata 1 and Giornata 2 (both phase 1).
+  return (rounds ?? []).sort((a, b) => {
+    const pa = phaseOrder.get(a.phase_id) ?? 0
+    const pb = phaseOrder.get(b.phase_id) ?? 0
+    return pa !== pb ? pa - pb : a.display_order - b.display_order
+  })
 }
 
 export async function getFMTeams(competitionId: string): Promise<FMNationalTeam[]> {
