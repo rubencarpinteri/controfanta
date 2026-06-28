@@ -46,6 +46,26 @@ function RoleTag({ role, size = 'md' }: { role: string; size?: 'md' | 'lg' }) {
   )
 }
 
+// Tiny group-stage score chip — coloured number, labelled G1/G2/G3.
+function ScoreChip({ label, score }: { label: string; score: number | null }) {
+  const col =
+    score == null
+      ? 'text-ink-5'
+      : score >= 7.5
+      ? 'text-emerald-500'
+      : score >= 6
+      ? 'text-amber-500'
+      : 'text-rose-500'
+  return (
+    <span className="flex items-baseline gap-[2px]">
+      <span className="text-[9px] font-medium text-ink-5">{label}</span>
+      <span className={`text-[10px] font-bold tabular-nums ${col}`}>
+        {score == null ? '—' : score.toFixed(1)}
+      </span>
+    </span>
+  )
+}
+
 // Big, prominent credit value for a player row.
 function PriceTag({ value }: { value: number }) {
   return (
@@ -71,6 +91,8 @@ const PlayerPoolRow = memo(function PlayerPoolRow({
   isReadOnly,
   isPending,
   onToggle,
+  scores,
+  nextOpponent,
 }: {
   player: PlayerWithTeam
   price: number
@@ -79,12 +101,15 @@ const PlayerPoolRow = memo(function PlayerPoolRow({
   isReadOnly: boolean
   isPending: boolean
   onToggle: (player: PlayerWithTeam) => void
+  scores?: (number | null)[]
+  nextOpponent?: string
 }) {
+  const hasExtra = scores != null || nextOpponent != null
   return (
     <button
       onClick={() => onToggle(player)}
       disabled={isReadOnly || isPending || (!isIn && !canAdd)}
-      className={`flex w-full items-center gap-3 px-3.5 py-3 text-left transition-colors ${
+      className={`flex w-full items-center gap-3 px-3.5 py-2.5 text-left transition-colors ${
         isIn
           ? 'bg-accent-muted hover:bg-accent-muted'
           : canAdd
@@ -94,7 +119,25 @@ const PlayerPoolRow = memo(function PlayerPoolRow({
     >
       <RoleTag role={player.role} />
       <TeamCrest name={player.fm_national_team.name} logoUrl={player.fm_national_team.logo_url} flagUrl={player.fm_national_team.flag_url} fifaCode={player.fm_national_team.fifa_code} size={22} className="w-6" />
-      <span className="min-w-0 flex-1 truncate text-[14.5px] font-semibold text-ink-1">{player.name}</span>
+      <div className="min-w-0 flex-1">
+        <span className="block truncate text-[14.5px] font-semibold text-ink-1">{player.name}</span>
+        {hasExtra && (
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0">
+            {scores != null && (
+              <>
+                <ScoreChip label="G1" score={scores[0] ?? null} />
+                <ScoreChip label="G2" score={scores[1] ?? null} />
+                <ScoreChip label="G3" score={scores[2] ?? null} />
+              </>
+            )}
+            {nextOpponent && (
+              <span className="text-[10px] font-medium text-ink-4">
+                <span className="text-ink-5">vs </span>{nextOpponent}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
       <PriceTag value={price} />
       <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
         isIn ? 'border-accent bg-accent' : 'border-ink-5'
@@ -133,6 +176,9 @@ interface Props {
   roleQuotas: FMRoleQuota
   isReadOnly: boolean
   isSuperAdmin: boolean
+  // Knockout extras: group-stage scores + next opponent per player/team
+  playerGroupScores?: Map<string, (number | null)[]>
+  teamR32Opponent?: Map<string, string>
 }
 
 export function SquadBuilder({
@@ -150,6 +196,8 @@ export function SquadBuilder({
   poolSize,
   roleQuotas,
   isReadOnly,
+  playerGroupScores,
+  teamR32Opponent,
 }: Props) {
   const [selected, setSelected] = useState<Set<string>>(initialSelected)
   const [coachId, setCoachId] = useState<string | null>(initialCoach)
@@ -554,6 +602,8 @@ export function SquadBuilder({
                   isReadOnly={isReadOnly}
                   isPending={pendingPlayerIds.has(player.id)}
                   onToggle={handleToggle}
+                  scores={playerGroupScores?.get(player.id)}
+                  nextOpponent={teamR32Opponent?.get(player.national_team_id ?? '')}
                 />
               )
             })}
@@ -579,10 +629,31 @@ export function SquadBuilder({
                 <div className="divide-y divide-hairline">
                   {rolePlayers.map((player) => {
                     const price = priceMap.get(player.id) ?? 0
+                    const scores = playerGroupScores?.get(player.id)
+                    const nextOpponent = teamR32Opponent?.get(player.national_team_id ?? '')
+                    const hasExtra = scores != null || nextOpponent != null
                     return (
                       <div key={player.id} className="flex items-center gap-3 px-3.5 py-2.5">
                         <TeamCrest name={player.fm_national_team.name} logoUrl={player.fm_national_team.logo_url} flagUrl={player.fm_national_team.flag_url} fifaCode={player.fm_national_team.fifa_code} size={22} className="w-6" />
-                        <span className="min-w-0 flex-1 truncate text-[14.5px] font-semibold text-ink-1">{player.name}</span>
+                        <div className="min-w-0 flex-1">
+                          <span className="block truncate text-[14.5px] font-semibold text-ink-1">{player.name}</span>
+                          {hasExtra && (
+                            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0">
+                              {scores != null && (
+                                <>
+                                  <ScoreChip label="G1" score={scores[0] ?? null} />
+                                  <ScoreChip label="G2" score={scores[1] ?? null} />
+                                  <ScoreChip label="G3" score={scores[2] ?? null} />
+                                </>
+                              )}
+                              {nextOpponent && (
+                                <span className="text-[10px] font-medium text-ink-4">
+                                  <span className="text-ink-5">vs </span>{nextOpponent}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
                         <PriceTag value={price} />
                         {!isReadOnly && (
                           <button

@@ -113,6 +113,88 @@ export default async function RosaPage({ params }: { params: Promise<{ id: strin
     getFMCoaches(ctx.competition.id, { activeTeamsOnly: isKnockout }),
   ])
 
+  // ── Knockout extras: group-stage scores + R32 opponent per player ─────────
+  // Only fetched for knockout phases; group stage shows neither.
+  let playerGroupScores: Map<string, (number | null)[]> | undefined
+  let teamR32Opponent: Map<string, string> | undefined
+
+  if (isKnockout) {
+    // Group stage rounds (ordered) — source of the 3 past scores
+    const { data: gsPhaseRow } = await supabase
+      .from('fm_phase')
+      .select('id')
+      .eq('competition_id', ctx.competition.id)
+      .eq('kind', 'group_stage')
+      .maybeSingle()
+
+    const [gsRoundsRes, r32MatchesRes] = await Promise.all([
+      gsPhaseRow
+        ? supabase
+            .from('fm_scoring_round')
+            .select('id, display_order')
+            .eq('phase_id', gsPhaseRow.id)
+            .order('display_order')
+        : Promise.resolve({ data: [] }),
+      // R32 scoring round — first (only) round in the active phase
+      supabase
+        .from('fm_scoring_round')
+        .select('id')
+        .eq('phase_id', activePhase.id)
+        .order('display_order')
+        .limit(1)
+        .maybeSingle()
+        .then(async (res) => {
+          if (!res.data) return { data: [] }
+          return supabase
+            .from('fm_real_match')
+            .select('home_team_id, away_team_id')
+            .eq('scoring_round_id', res.data.id)
+        }),
+    ])
+
+    const gsRoundIds = (gsRoundsRes.data ?? []).map((r: { id: string }) => r.id)
+
+    // Fetch all player scores for the 3 group stage rounds in one shot
+    if (gsRoundIds.length > 0) {
+      const { data: scoreRows } = await supabase
+        .from('fm_player_match_score')
+        .select('player_id, scoring_round_id, raw_subtotal')
+        .in('scoring_round_id', gsRoundIds)
+
+      playerGroupScores = new Map()
+      for (const p of players) playerGroupScores.set(p.id, [null, null, null])
+      for (const row of scoreRows ?? []) {
+        const idx = gsRoundIds.indexOf(row.scoring_round_id)
+        if (idx === -1) continue
+        const arr = playerGroupScores.get(row.player_id)
+        if (!arr) continue
+        arr[idx] = (arr[idx] ?? 0) + (row.raw_subtotal as number)
+      }
+    }
+
+    // Build teamId → opponent fifa_code for the R32
+    const r32Matches = (r32MatchesRes.data ?? []) as { home_team_id: string; away_team_id: string }[]
+    if (r32Matches.length > 0) {
+      const teamIds = new Set<string>()
+      for (const m of r32Matches) {
+        if (m.home_team_id) teamIds.add(m.home_team_id)
+        if (m.away_team_id) teamIds.add(m.away_team_id)
+      }
+      const { data: teamFifaCodes } = await supabase
+        .from('fm_national_team')
+        .select('id, fifa_code')
+        .in('id', Array.from(teamIds))
+      const codeByTeam = new Map((teamFifaCodes ?? []).map((t: { id: string; fifa_code: string }) => [t.id, t.fifa_code]))
+      teamR32Opponent = new Map()
+      for (const m of r32Matches) {
+        if (m.home_team_id && m.away_team_id) {
+          teamR32Opponent.set(m.home_team_id, codeByTeam.get(m.away_team_id) ?? '')
+          teamR32Opponent.set(m.away_team_id, codeByTeam.get(m.home_team_id) ?? '')
+        }
+      }
+    }
+  }
+
   // Competition-level frozen coach tiers (shown next to each coach so managers
   // can weigh favoredness when picking an allenatore).
   const { data: tierRows } = await supabase
@@ -196,6 +278,8 @@ export default async function RosaPage({ params }: { params: Promise<{ id: strin
         roleQuotas={config.squad.role_quotas}
         isReadOnly={isReadOnly}
         isSuperAdmin={ctx.isSuperAdmin}
+        playerGroupScores={playerGroupScores}
+        teamR32Opponent={teamR32Opponent}
       />
     </div>
   )
