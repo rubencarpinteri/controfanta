@@ -106,10 +106,11 @@ export default async function RosaPage({ params }: { params: Promise<{ id: strin
   // For admins viewing without a team: show all players but read-only
   const isReadOnly = !ctx.fantasyTeamId || activePhase.status !== 'open' || stageStarted
 
+  const isKnockout = activePhase.kind !== 'group_stage'
   const [teams, players, coaches] = await Promise.all([
     getFMTeams(ctx.competition.id),
-    getFMPlayers(ctx.competition.id, { activeOnly: true }),
-    getFMCoaches(ctx.competition.id),
+    getFMPlayers(ctx.competition.id, { activeOnly: true, activeTeamsOnly: isKnockout }),
+    getFMCoaches(ctx.competition.id, { activeTeamsOnly: isKnockout }),
   ])
 
   // Competition-level frozen coach tiers (shown next to each coach so managers

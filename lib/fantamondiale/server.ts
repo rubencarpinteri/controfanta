@@ -260,9 +260,22 @@ export async function getFMTeams(competitionId: string): Promise<FMNationalTeam[
 
 export async function getFMPlayers(
   competitionId: string,
-  opts?: { teamId?: string; role?: string; activeOnly?: boolean }
+  opts?: { teamId?: string; role?: string; activeOnly?: boolean; activeTeamsOnly?: boolean }
 ): Promise<(FMPlayer & { fm_national_team: Pick<FMNationalTeam, 'name' | 'fifa_code' | 'flag_emoji' | 'logo_url' | 'flag_url'> })[]> {
   const supabase = await createClient()
+
+  // Resolve active team IDs once up-front when the caller wants eliminated
+  // nations excluded (e.g. the knockout-phase squad builder).
+  let activeTeamIds: string[] | null = null
+  if (opts?.activeTeamsOnly) {
+    const { data: activeTeams } = await supabase
+      .from('fm_national_team')
+      .select('id')
+      .eq('competition_id', competitionId)
+      .eq('status', 'active')
+    activeTeamIds = (activeTeams ?? []).map((t) => t.id)
+  }
+
   // PostgREST caps each response at 1000 rows (db-max-rows). The full WC
   // pool is ~1250 players, so we MUST page through or teams silently lose
   // their alphabetically-late players. Fetch in 1000-row chunks until done.
@@ -279,6 +292,8 @@ export async function getFMPlayers(
     // (injured / final-cut) drop out of the draftable pool. Admin pages
     // omit it to keep managing inactive rows.
     if (opts?.activeOnly) q = q.eq('is_active', true)
+    // Knockout redraft: restrict to players whose nation is still alive.
+    if (activeTeamIds) q = q.in('national_team_id', activeTeamIds)
     const { data, error } = await q
       .order('name', { ascending: true })
       .range(from, from + PAGE - 1)
@@ -291,14 +306,24 @@ export async function getFMPlayers(
 }
 
 export async function getFMCoaches(
-  competitionId: string
+  competitionId: string,
+  opts?: { activeTeamsOnly?: boolean }
 ): Promise<(FMCoach & { fm_national_team: Pick<FMNationalTeam, 'name' | 'fifa_code' | 'flag_emoji' | 'logo_url' | 'flag_url'> })[]> {
   const supabase = await createClient()
-  const { data } = await supabase
+  let q = supabase
     .from('fm_coach')
     .select('*, fm_national_team(name, fifa_code, flag_emoji, logo_url, flag_url)')
     .eq('competition_id', competitionId)
-    .order('fm_national_team(name)', { ascending: true })
+  if (opts?.activeTeamsOnly) {
+    const { data: activeTeams } = await supabase
+      .from('fm_national_team')
+      .select('id')
+      .eq('competition_id', competitionId)
+      .eq('status', 'active')
+    const activeTeamIds = (activeTeams ?? []).map((t) => t.id)
+    q = q.in('national_team_id', activeTeamIds)
+  }
+  const { data } = await q.order('fm_national_team(name)', { ascending: true })
   return (data ?? []) as unknown as (FMCoach & { fm_national_team: Pick<FMNationalTeam, 'name' | 'fifa_code' | 'flag_emoji' | 'logo_url' | 'flag_url'> })[]
 }
 
