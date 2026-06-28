@@ -154,21 +154,38 @@ export default async function RosaPage({ params }: { params: Promise<{ id: strin
 
     const gsRoundIds = (gsRoundsRes.data ?? []).map((r: { id: string }) => r.id)
 
-    // Fetch all player scores for the 3 group stage rounds in one shot
+    // Fetch all player ratings for the 3 group stage rounds.
+    // Use fm_player_match_stats (one row per player per real match, all players)
+    // rather than fm_player_match_score (only owned players). Join through
+    // fm_real_match to resolve scoring_round_id.
     if (gsRoundIds.length > 0) {
-      const { data: scoreRows } = await supabase
-        .from('fm_player_match_score')
-        .select('player_id, scoring_round_id, raw_subtotal')
+      const { data: matchRows } = await supabase
+        .from('fm_real_match')
+        .select('id, scoring_round_id')
         .in('scoring_round_id', gsRoundIds)
+      const roundByMatch = new Map(
+        (matchRows ?? []).map((m: { id: string; scoring_round_id: string }) => [m.id, m.scoring_round_id])
+      )
+      const matchIds = (matchRows ?? []).map((m: { id: string }) => m.id)
 
       playerGroupScores = new Map()
-      for (const p of players) playerGroupScores.set(p.id, [null, null, null])
-      for (const row of scoreRows ?? []) {
-        const idx = gsRoundIds.indexOf(row.scoring_round_id)
-        if (idx === -1) continue
-        const arr = playerGroupScores.get(row.player_id)
-        if (!arr) continue
-        arr[idx] = (arr[idx] ?? 0) + (row.raw_subtotal as number)
+      if (matchIds.length > 0) {
+        const { data: statRows } = await supabase
+          .from('fm_player_match_stats')
+          .select('player_id, real_match_id, rating')
+          .in('real_match_id', matchIds)
+
+        for (const row of statRows ?? []) {
+          const roundId = roundByMatch.get(row.real_match_id)
+          if (!roundId) continue
+          const idx = gsRoundIds.indexOf(roundId)
+          if (idx === -1) continue
+          if (!playerGroupScores.has(row.player_id)) {
+            playerGroupScores.set(row.player_id, [null, null, null])
+          }
+          const arr = playerGroupScores.get(row.player_id)!
+          arr[idx] = row.rating as number
+        }
       }
     }
 
