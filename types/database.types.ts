@@ -2124,11 +2124,13 @@ export type Database = {
       }
       fm_real_match: {
         Row: {
+          away_pen_score: number | null
           away_score: number | null
           away_team_id: string
           created_at: string
           fotmob_match_id: number | null
           fotmob_url: string | null
+          home_pen_score: number | null
           home_score: number | null
           home_team_id: string
           id: string
@@ -2142,11 +2144,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          away_pen_score?: number | null
           away_score?: number | null
           away_team_id: string
           created_at?: string
           fotmob_match_id?: number | null
           fotmob_url?: string | null
+          home_pen_score?: number | null
           home_score?: number | null
           home_team_id: string
           id?: string
@@ -2160,11 +2164,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          away_pen_score?: number | null
           away_score?: number | null
           away_team_id?: string
           created_at?: string
           fotmob_match_id?: number | null
           fotmob_url?: string | null
+          home_pen_score?: number | null
           home_score?: number | null
           home_team_id?: string
           id?: string

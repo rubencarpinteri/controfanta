@@ -339,6 +339,19 @@ export function parseFixture(fixture: SMFixture): ParsedFixture {
   const awayScore =
     authoritativeScore(awayId) ?? (awayId != null ? teamGoals.get(awayId) ?? 0 : null)
 
+  // Penalty-shootout score (description === 'PENALTY_SHOOTOUT'). Only present
+  // when the match was actually decided on penalties; null otherwise.
+  function penScore(teamId: number | null): number | null {
+    if (teamId == null) return null
+    const entry = (fixture.scores ?? []).find(
+      (s) => s.description === 'PENALTY_SHOOTOUT' && s.participant_id === teamId,
+    )
+    const goals = entry?.score?.goals
+    return typeof goals === 'number' ? goals : null
+  }
+  const homePenScore = penScore(homeId)
+  const awayPenScore = penScore(awayId)
+
   // How many goals each team conceded, taken from the AUTHORITATIVE scoreline
   // (a team concedes exactly the opponent's score). This is the single source
   // of truth for both the keeper's goals_conceded malus and clean sheets —
@@ -451,6 +464,8 @@ export function parseFixture(fixture: SMFixture): ParsedFixture {
     live_minute_added: live?.added ?? 0,
     home_score: homeScore,
     away_score: awayScore,
+    home_pen_score: homePenScore,
+    away_pen_score: awayPenScore,
     result,
     players: Array.from(byPlayer.values()),
   }

@@ -211,6 +211,8 @@ export default async function LivePage({
         away_team: toRef(m.away_team_id),
         home_score: m.home_score,
         away_score: m.away_score,
+        home_pen_score: null,
+        away_pen_score: null,
         minute: m.minute,
         minute_added: m.minute_added,
         status: (m.status as LiveRoundSnapshot['matches'][number]['status']),

@@ -444,6 +444,8 @@ export async function upsertFMPlayerStats(
   await db.from('fm_real_match').update({
     home_score: parsed.home_score,
     away_score: parsed.away_score,
+    home_pen_score: parsed.home_pen_score,
+    away_pen_score: parsed.away_pen_score,
     result: parsed.result,
     status: matchStatus,
     // Live elapsed minute from the ticking period. When finished, freeze at the

@@ -274,6 +274,9 @@ export type ParsedFixture = {
   live_minute_added: number
   home_score: number | null
   away_score: number | null
+  /** Penalty-shootout goals (e.g. 4 / 3); null when the match wasn't decided on penalties. */
+  home_pen_score: number | null
+  away_pen_score: number | null
   /**
    * Match outcome from the SportMonks participant winner flag. For a level
    * knockout tie decided on penalties this names the side that advanced;

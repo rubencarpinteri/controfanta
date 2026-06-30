@@ -752,6 +752,9 @@ function MatchChip({ match: m, selected = false, compact = false, dense = false 
           </div>
           <span className={`text-[12px] font-black tabular-nums ${live ? 'text-emerald-600 dark:text-emerald-400' : 'text-ink-1'}`}>
             {m.status === 'scheduled' ? fmtKickoff(m.kickoff_at) : `${m.home_score ?? 0}–${m.away_score ?? 0}`}
+            {m.home_pen_score != null && m.away_pen_score != null && (
+              <span className="ml-0.5 text-[9px] font-semibold text-ink-4">{`(${m.home_pen_score}–${m.away_pen_score} p)`}</span>
+            )}
           </span>
           <div className="flex min-w-0 items-center justify-end gap-1">
             <span className={`text-[12px] font-black uppercase tracking-tight ${selected ? 'text-ink-1' : 'text-ink-2'}`}>
@@ -790,9 +793,12 @@ function MatchChip({ match: m, selected = false, compact = false, dense = false 
             </span>
             <TeamCrest name={m.home_team.name} logoUrl={m.home_team.logo_url} flagUrl={m.home_team.flag_url} fifaCode={m.home_team.fifa_code} size={17} className="shrink-0" />
           </div>
-          <span className={`shrink-0 px-0.5 text-[13px] font-black tabular-nums ${m.status === 'in_progress' ? 'text-emerald-600 dark:text-emerald-400' : 'text-ink-1'}`}>
+          <div className={`shrink-0 px-0.5 text-center text-[13px] font-black tabular-nums ${m.status === 'in_progress' ? 'text-emerald-600 dark:text-emerald-400' : 'text-ink-1'}`}>
             {m.status !== 'scheduled' ? `${m.home_score ?? 0}–${m.away_score ?? 0}` : '–'}
-          </span>
+            {m.home_pen_score != null && m.away_pen_score != null && (
+              <div className="text-[8px] font-semibold text-ink-4">{`(${m.home_pen_score}–${m.away_pen_score} p)`}</div>
+            )}
+          </div>
           <div className="flex min-w-0 items-center gap-1">
             <TeamCrest name={m.away_team.name} logoUrl={m.away_team.logo_url} flagUrl={m.away_team.flag_url} fifaCode={m.away_team.fifa_code} size={17} className="shrink-0" />
             <span className={`truncate text-[11px] font-black uppercase tracking-tight ${selected ? 'text-ink-1' : 'text-ink-2'}`}>
@@ -831,13 +837,16 @@ function MatchChip({ match: m, selected = false, compact = false, dense = false 
           </span>
         </div>
 
-        <span
-          className={`text-[14px] font-black tabular-nums ${
+        <div
+          className={`text-center text-[14px] font-black tabular-nums ${
             m.status === 'in_progress' ? 'text-emerald-600 dark:text-emerald-400' : 'text-ink-1'
           }`}
         >
           {m.status !== 'scheduled' ? `${m.home_score ?? 0}–${m.away_score ?? 0}` : '–'}
-        </span>
+          {m.home_pen_score != null && m.away_pen_score != null && (
+            <div className="text-[9px] font-semibold text-ink-4">{`(${m.home_pen_score}–${m.away_pen_score} p)`}</div>
+          )}
+        </div>
 
         <div className="flex min-w-0 items-center justify-end gap-1">
           <span className={`text-[14px] font-black tabular-nums uppercase tracking-tight ${selected ? 'text-ink-1' : 'text-ink-2'}`}>
@@ -1048,9 +1057,14 @@ function MatchDetailPanel({
           </div>
           <div className="flex flex-col items-center gap-0.5">
             {m.status !== 'scheduled' ? (
-              <span className="text-[28px] font-black tabular-nums text-ink-1 leading-none">
-                {m.home_score ?? 0}–{m.away_score ?? 0}
-              </span>
+              <>
+                <span className="text-[28px] font-black tabular-nums text-ink-1 leading-none">
+                  {m.home_score ?? 0}–{m.away_score ?? 0}
+                </span>
+                {m.home_pen_score != null && m.away_pen_score != null && (
+                  <span className="text-[11px] font-semibold text-ink-4">{`(${m.home_pen_score}–${m.away_pen_score} d.c.r.)`}</span>
+                )}
+              </>
             ) : (
               <span className="text-[16px] font-bold text-ink-5">vs</span>
             )}
