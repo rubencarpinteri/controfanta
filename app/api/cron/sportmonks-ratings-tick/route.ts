@@ -7,6 +7,7 @@ import {
   finalizeStrandedFMMatches,
   hasFixturesInLiveWindow,
   listActiveLeagueRefs,
+  resyncRecentlyFinishedFMMatches,
   upsertFMPlayerStats,
   upsertSerieAPlayerStats,
 } from '@/lib/sportmonks/db'
@@ -220,6 +221,26 @@ export async function GET(req: NextRequest) {
     console.error('[ratings-tick] stranded finalize failed:', e)
   }
 
+  // One-shot resync of matches that finalized cleanly 10-20 minutes ago.
+  // SportMonks occasionally revises a per-player stat (e.g. an assist) shortly
+  // after FT, and a fixture that ended cleanly is never polled again once it
+  // drops off /livescores/inplay — this catches that late correction. Cheap:
+  // only fires for matches whose finish falls in the 10-20min window and that
+  // haven't already been resynced. Never throws.
+  // If stat changes are detected, the round's fantasy scoring is automatically
+  // recomputed. Scoring errors don't block the resync mark but are surfaced.
+  let postFinishResync: Awaited<ReturnType<typeof resyncRecentlyFinishedFMMatches>> = {
+    checked: 0,
+    resynced: 0,
+    fixture_ids: [],
+    scoring_errors: [],
+  }
+  try {
+    postFinishResync = await resyncRecentlyFinishedFMMatches(db, fmCompetitionIds)
+  } catch (e) {
+    console.error('[ratings-tick] post-finish resync failed:', e)
+  }
+
   // After stats are upserted, recompute live snapshots for every currently
   // live round (per lega). Never throws — folds its own errors into summary.
   let liveSnapshots: Awaited<ReturnType<typeof writeLiveSnapshots>> | undefined
@@ -264,7 +285,7 @@ export async function GET(req: NextRequest) {
     if (!recentSame?.length) await sendCronAlert(anomaly)
   }
 
-  const body = { live: liveByLeague.size, results, stranded, liveSnapshots, anomaly, sched, elim }
+  const body = { live: liveByLeague.size, results, stranded, postFinishResync, liveSnapshots, anomaly, sched, elim }
   const hadError = !!anomaly || results.some((r) => r.error) || (liveSnapshots?.errors.length ?? 0) > 0
   await logCronRun(db, {
     endpoint: ENDPOINT,

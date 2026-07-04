@@ -430,7 +430,7 @@ export async function upsertFMPlayerStats(
   // 1. Resolve fm_real_match by sportmonks_fixture_id
   const { data: match } = await db
     .from('fm_real_match')
-    .select('id, status')
+    .select('id, status, finished_at')
     .eq('sportmonks_fixture_id', parsed.sportmonks_fixture_id)
     .maybeSingle()
   if (!match) return { stats_upserted: 0, match_updated: false }
@@ -456,6 +456,11 @@ export async function upsertFMPlayerStats(
       : parsed.live_minute,
     // Stoppage overflow (90+4); only meaningful while in progress.
     minute_added: matchStatus === 'finished' ? null : (parsed.live_minute_added || null),
+    // Stamp the moment this match first settles into 'finished'. Anchor for the
+    // one-shot post-finish resync below — deliberately NOT re-stamped on every
+    // subsequent finished-state upsert (e.g. the resync itself), so the window
+    // check in resyncRecentlyFinishedFMMatches stays fixed to the original FT.
+    ...(matchStatus === 'finished' && !match.finished_at ? { finished_at: new Date().toISOString() } : {}),
   }).eq('id', match.id)
 
   // 3. Resolve fm_player UUIDs by sportmonks_player_id (one query)
@@ -568,6 +573,182 @@ export async function finalizeStrandedFMMatches(
   }
 
   return { checked: candidates.length, finalized: fixture_ids.length, fixture_ids }
+}
+
+/**
+ * One-shot resync of FM matches that finalized cleanly a while ago.
+ *
+ * SportMonks sometimes revises a per-player stat (e.g. an assist) a few
+ * minutes AFTER a fixture is marked finished. `/livescores/inplay` drops a
+ * fixture the instant it ends, so once a tick sees the clean FT state we never
+ * poll that fixture again — a late correction is silently missed forever.
+ *
+ * Backstop: any FM match with status='finished' whose `finished_at` falls in
+ * a 10–20 minute-old window (wide enough that the once-a-minute cron can't
+ * skip it) and that hasn't been resynced yet is re-fetched by id and
+ * re-upserted through the normal stats path (full-row overwrite, so it's
+ * idempotent). Marked via `post_finish_resynced_at` so it only ever fires
+ * once per match. Transient fetch failures are swallowed — next tick retries
+ * (the row isn't marked resynced until the fetch + upsert succeed).
+ *
+ * If re-upserting detects stat changes (e.g. assists increased), the round's
+ * fantasy scoring is automatically recomputed via runRoundEngine. Scoring
+ * errors don't block the resync mark — the match is still considered resynced,
+ * but a scoring error is logged for operational visibility.
+ */
+export async function resyncRecentlyFinishedFMMatches(
+  db: DB,
+  fmCompetitionIds: string[],
+): Promise<{ checked: number; resynced: number; fixture_ids: number[]; scoring_errors: Array<{ fixture_id: number; error: string }> }> {
+  if (!fmCompetitionIds.length) return { checked: 0, resynced: 0, fixture_ids: [], scoring_errors: [] }
+
+  const windowStart = new Date(Date.now() - 20 * 60 * 1000).toISOString()
+  const windowEnd = new Date(Date.now() - 10 * 60 * 1000).toISOString()
+  const { data: candidates } = await db
+    .from('fm_real_match')
+    .select('id, sportmonks_fixture_id, scoring_round_id')
+    .eq('status', 'finished')
+    .is('post_finish_resynced_at', null)
+    .not('finished_at', 'is', null)
+    .gte('finished_at', windowStart)
+    .lte('finished_at', windowEnd)
+
+  const rows = (candidates ?? []).filter(
+    (m): m is { id: string; sportmonks_fixture_id: number; scoring_round_id: string } =>
+      m.sportmonks_fixture_id != null && m.scoring_round_id != null,
+  )
+
+  const fixture_ids: number[] = []
+  const scoring_errors: Array<{ fixture_id: number; error: string }> = []
+  const roundsNeedingRescore = new Set<string>()
+
+  for (const m of rows) {
+    let fx: SMFixture
+    try {
+      fx = await fetchFixtureWithDetail(m.sportmonks_fixture_id)
+    } catch {
+      continue // transient — leave unmarked, next tick's window may still catch it
+    }
+    const parsed = parseFixture(fx)
+
+    // Before upsert, fetch the old stats to detect changes
+    const oldStats = await fetchMatchPlayerStatsForComparison(db, m.id, fmCompetitionIds)
+
+    // Resolve players against whichever competition owns this match; the others
+    // simply find no players and skip rows.
+    for (const compId of fmCompetitionIds) {
+      await upsertFMPlayerStats(db, compId, parsed)
+    }
+
+    // After upsert, check if any stats changed
+    const statsChanged = detectStatChanges(oldStats, parsed)
+    if (statsChanged) {
+      roundsNeedingRescore.add(m.scoring_round_id)
+    }
+
+    await db.from('fm_real_match').update({ post_finish_resynced_at: new Date().toISOString() }).eq('id', m.id)
+    fixture_ids.push(m.sportmonks_fixture_id)
+  }
+
+  // Recompute scores for any round that had stat changes
+  for (const roundId of roundsNeedingRescore) {
+    try {
+      const { runRoundEngine } = await import('@/domain/fantamondiale/engine/index')
+      await runRoundEngine(roundId, db)
+    } catch (err) {
+      const fixtureIds = rows
+        .filter((r) => r.scoring_round_id === roundId)
+        .map((r) => r.sportmonks_fixture_id)
+      const errorMsg = err instanceof Error ? err.message : String(err)
+      for (const fxId of fixtureIds) {
+        scoring_errors.push({ fixture_id: fxId, error: errorMsg })
+      }
+      console.error(`[resyncRecentlyFinishedFMMatches] scoring recompute failed for round ${roundId}:`, err)
+    }
+  }
+
+  return { checked: rows.length, resynced: fixture_ids.length, fixture_ids, scoring_errors }
+}
+
+/**
+ * Fetch old player stats for a match before re-upserting, to detect changes.
+ * Returns a map keyed by SportMonks player ID with old stat values for comparison.
+ */
+async function fetchMatchPlayerStatsForComparison(
+  db: DB,
+  matchId: string,
+  fmCompetitionIds: string[],
+): Promise<Map<number, { goals: number; assists: number; rating: number | null }>> {
+  const oldStats = new Map<number, { goals: number; assists: number; rating: number | null }>()
+
+  // Fetch old stats
+  const { data: rows } = await db
+    .from('fm_player_match_stats')
+    .select('player_id, goals, assists, rating')
+    .eq('real_match_id', matchId)
+
+  if (!rows?.length) return oldStats
+
+  // Get SportMonks player IDs for all the players
+  const playerIds = rows.map((r) => r.player_id)
+  const { data: players } = await db
+    .from('fm_player')
+    .select('id, sportmonks_player_id')
+    .in('id', playerIds)
+
+  const smIdByPlayerId = new Map<string, number>()
+  for (const p of players ?? []) {
+    if (p.sportmonks_player_id != null) {
+      smIdByPlayerId.set(p.id, p.sportmonks_player_id)
+    }
+  }
+
+  for (const row of rows) {
+    const smPlayerId = smIdByPlayerId.get(row.player_id)
+    if (smPlayerId != null) {
+      oldStats.set(smPlayerId, {
+        goals: row.goals ?? 0,
+        assists: row.assists ?? 0,
+        rating: row.rating != null ? Number(row.rating) : null,
+      })
+    }
+  }
+
+  return oldStats
+}
+
+/**
+ * Compare old stats (fetched before upsert) with new parsed stats.
+ * Returns true if any player's goals, assists, or rating changed.
+ */
+function detectStatChanges(
+  oldStats: Map<number, { goals: number; assists: number; rating: number | null }>,
+  parsed: ParsedFixture,
+): boolean {
+  // If old had players but new doesn't, or vice versa, that's a change
+  if (oldStats.size !== parsed.players.length) {
+    return true
+  }
+
+  // Check each player in the new parsed data
+  for (const newPlayer of parsed.players) {
+    const old = oldStats.get(newPlayer.sportmonks_player_id)
+    if (!old) {
+      // New player not in old stats — that's a change
+      return true
+    }
+
+    // Compare key stat fields
+    if (
+      newPlayer.goals_scored !== old.goals ||
+      newPlayer.assists !== old.assists ||
+      (newPlayer.rating != null ? Number(newPlayer.rating) : null) !== old.rating
+    ) {
+      return true
+    }
+  }
+
+  return false
 }
 
 // ============================================================

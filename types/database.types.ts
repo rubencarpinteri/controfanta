@@ -2128,6 +2128,7 @@ export type Database = {
           away_score: number | null
           away_team_id: string
           created_at: string
+          finished_at: string | null
           fotmob_match_id: number | null
           fotmob_url: string | null
           home_pen_score: number | null
@@ -2137,6 +2138,7 @@ export type Database = {
           kickoff_at: string
           minute: number | null
           minute_added: number | null
+          post_finish_resynced_at: string | null
           result: Database["public"]["Enums"]["fm_match_result"] | null
           scoring_round_id: string
           sportmonks_fixture_id: number | null
@@ -2148,6 +2150,7 @@ export type Database = {
           away_score?: number | null
           away_team_id: string
           created_at?: string
+          finished_at?: string | null
           fotmob_match_id?: number | null
           fotmob_url?: string | null
           home_pen_score?: number | null
@@ -2157,6 +2160,7 @@ export type Database = {
           kickoff_at: string
           minute?: number | null
           minute_added?: number | null
+          post_finish_resynced_at?: string | null
           result?: Database["public"]["Enums"]["fm_match_result"] | null
           scoring_round_id: string
           sportmonks_fixture_id?: number | null
@@ -2168,6 +2172,7 @@ export type Database = {
           away_score?: number | null
           away_team_id?: string
           created_at?: string
+          finished_at?: string | null
           fotmob_match_id?: number | null
           fotmob_url?: string | null
           home_pen_score?: number | null
@@ -2177,6 +2182,7 @@ export type Database = {
           kickoff_at?: string
           minute?: number | null
           minute_added?: number | null
+          post_finish_resynced_at?: string | null
           result?: Database["public"]["Enums"]["fm_match_result"] | null
           scoring_round_id?: string
           sportmonks_fixture_id?: number | null
