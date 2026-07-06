@@ -1,6 +1,7 @@
 import { requireFMContext, getFMRounds } from '@/lib/fantamondiale/server'
 import { createClient } from '@/lib/supabase/server'
 import { computeLiveRoundSnapshot, type LiveRoundSnapshot } from '@/domain/fantamondiale/engine/liveSnapshot'
+import { shortRoundName } from '@/lib/fantamondiale/roundName'
 import { LiveBoard } from './LiveBoard'
 
 function needsLiveSnapshotShapeRefresh(snapshot: LiveRoundSnapshot | null): boolean {
@@ -69,8 +70,10 @@ export default async function LivePage({
   const roundSelector =
     browsable.length > 1 ? (
       // Segmented control — same family as the partite/squadre/classifica
-      // switcher (rounded-full glass container, pill items), just one size down.
-      <div className="flex w-fit max-w-full flex-wrap gap-1 rounded-full border border-hairline bg-glass-1 p-1 shadow-sm">
+      // switcher (glass container, pill items), just one size down. Fixed
+      // radius, not rounded-full: when the pills wrap to two rows a fully
+      // round container curves so deep the active pill pokes outside it.
+      <div className="flex w-fit max-w-full flex-wrap gap-1 rounded-[22px] border border-hairline bg-glass-1 p-1.5 shadow-sm">
         {browsable.map((r) => {
           const isActive = r.id === selectedRound?.id
           return (
@@ -83,7 +86,7 @@ export default async function LivePage({
                   : 'text-ink-4 hover:text-ink-2'
               }`}
             >
-              {r.name}
+              {shortRoundName(r.name)}
               {r.id === activeRound?.id && !isActive ? ' ·' : ''}
             </a>
           )
@@ -243,7 +246,7 @@ export default async function LivePage({
       {roundSelector && <div className="hidden lg:block">{roundSelector}</div>}
       {isHistoric && (
         <div className="rounded-lg border border-indigo-500/30 bg-indigo-500/5 px-3 py-2 text-[11px] text-indigo-700 dark:text-indigo-300">
-          Stai guardando lo storico di {selectedRound.name} — schieramenti, voti e MVP definitivi.
+          Stai guardando lo storico di {shortRoundName(selectedRound.name)} — schieramenti, voti e MVP definitivi.
         </div>
       )}
       {previewMode && (
@@ -253,7 +256,7 @@ export default async function LivePage({
       )}
       <LiveBoard
         legaCompRef={id}
-        roundName={selectedRound.name}
+        roundName={shortRoundName(selectedRound.name)}
         myTeamId={ctx.fantasyTeamId}
         initialSnapshot={snapshot}
         previewMode={previewMode}

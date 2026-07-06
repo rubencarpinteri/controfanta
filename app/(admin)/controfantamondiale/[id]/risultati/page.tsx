@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { Route } from 'next'
 import { requireFMContext, getFMRounds } from '@/lib/fantamondiale/server'
+import { shortRoundName } from '@/lib/fantamondiale/roundName'
 import { createClient } from '@/lib/supabase/server'
 import { finalizePlayerForLega } from '@/domain/fantamondiale/engine/playerScore'
 import { fmCompetitionConfigSchema } from '@/domain/fantamondiale/config/schema'
@@ -385,7 +386,7 @@ export default async function RisultatiPage({
                   : 'bg-glass-2 text-ink-3 hover:text-ink-1 border border-hairline'
               }`}
             >
-              {r.name}
+              {shortRoundName(r.name)}
             </Link>
           ))}
         </div>

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { Route } from 'next'
 import { requireFMContext, getFMRounds } from '@/lib/fantamondiale/server'
+import { shortRoundName } from '@/lib/fantamondiale/roundName'
 import { createClient } from '@/lib/supabase/server'
 
 function n(v: number | string | null | undefined, decimals = 1) {
@@ -104,7 +105,7 @@ export default async function ClassificaPage({
       <div className="space-y-2 border-t border-hairline pt-5">
         <div className="flex items-center justify-between">
           <h2 className="text-[16px] font-semibold text-ink-1">Classifica di giornata</h2>
-          {selectedRound && <p className="text-[11px] text-ink-4">{selectedRound.name}</p>}
+          {selectedRound && <p className="text-[11px] text-ink-4">{shortRoundName(selectedRound.name)}</p>}
         </div>
 
         {scoredRounds.length > 1 && (
@@ -119,7 +120,7 @@ export default async function ClassificaPage({
                     : 'bg-glass-2 text-ink-3 hover:text-ink-1 border border-hairline'
                 }`}
               >
-                {r.name}
+                {shortRoundName(r.name)}
               </Link>
             ))}
           </div>

@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useLayoutEffect, use
 import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import { TeamCrest } from '@/components/fm/TeamCrest'
+import { shortRoundName } from '@/lib/fantamondiale/roundName'
 import { CoachTierBadge } from '@/components/fm/CoachTierBadge'
 import type {
   LiveRoundSnapshot,
@@ -536,7 +537,7 @@ export function LiveBoard({
       {/* status bar */}
       <div className="flex items-center gap-2 text-[11px] text-ink-4">
         <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-        <span>Live — {snapshot.round.name}</span>
+        <span>Live — {shortRoundName(snapshot.round.name)}</span>
         {updatedAt && <span className="ml-auto tabular-nums">Aggiornato {updatedAt}</span>}
       </div>
 
@@ -718,10 +719,11 @@ function MatchListPanel({
   }
 
   if (inline) {
-    // All matches visible at once in a 2-column grid — tap any to open its
-    // detail below, no horizontal scrolling/hunting.
+    // All matches visible at once in a grid — tap any to open its detail
+    // below, no horizontal scrolling/hunting. Two columns on phones: three
+    // squeezed the FIFA codes down to a single letter + ellipsis.
     return (
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
         {matches.map((m) => (
           <button
             key={m.match_id}
@@ -820,7 +822,7 @@ function MatchChip({ match: m, selected = false, compact = false, dense = false 
         </div>
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-0.5 overflow-hidden">
           <div className="flex min-w-0 items-center justify-end gap-1">
-            <span className={`truncate text-[11px] font-black uppercase tracking-tight ${selected ? 'text-ink-1' : 'text-ink-2'}`}>
+            <span className={`whitespace-nowrap text-[11px] font-black uppercase tracking-tight ${selected ? 'text-ink-1' : 'text-ink-2'}`}>
               {m.home_team.fifa_code || m.home_team.name.slice(0, 3).toUpperCase()}
             </span>
             <TeamCrest name={m.home_team.name} logoUrl={m.home_team.logo_url} flagUrl={m.home_team.flag_url} fifaCode={m.home_team.fifa_code} size={17} className="shrink-0" />
@@ -833,7 +835,7 @@ function MatchChip({ match: m, selected = false, compact = false, dense = false 
           </div>
           <div className="flex min-w-0 items-center gap-1">
             <TeamCrest name={m.away_team.name} logoUrl={m.away_team.logo_url} flagUrl={m.away_team.flag_url} fifaCode={m.away_team.fifa_code} size={17} className="shrink-0" />
-            <span className={`truncate text-[11px] font-black uppercase tracking-tight ${selected ? 'text-ink-1' : 'text-ink-2'}`}>
+            <span className={`whitespace-nowrap text-[11px] font-black uppercase tracking-tight ${selected ? 'text-ink-1' : 'text-ink-2'}`}>
               {m.away_team.fifa_code || m.away_team.name.slice(0, 3).toUpperCase()}
             </span>
           </div>
@@ -1457,10 +1459,14 @@ function RealPitchChip({ p, teamRef, matchStatus, totalTeams, selected, onSelect
   // in dark mode, softer in light) so the tiers separate on either field.
   const exclusiveOwn = p.owners.length === 1
   // Literal class strings (Tailwind JIT can't see interpolated ones).
+  // Owned-titolare cards get a soft ownership-coloured glow on top of the dark
+  // fill + border, so a picked player pops even in dark mode where the black
+  // card alone barely separates from the background. (MVP's inline boxShadow
+  // below intentionally overrides this.)
   const tierClass = ownedTitolare
     ? exclusiveOwn
-      ? 'bg-[#090b12] border-[#FF0090]/80 dark:border-[#FF0090]/90'
-      : 'bg-[#090b12] border-indigo-400/80 dark:border-indigo-400/90'
+      ? 'bg-[#090b12] border-[#FF0090]/80 dark:border-[#FF0090]/90 shadow-[0_0_18px_-4px_rgba(255,0,144,0.55)]'
+      : 'bg-[#090b12] border-indigo-400/80 dark:border-indigo-400/90 shadow-[0_0_18px_-4px_rgba(99,102,241,0.60)]'
     : ownedPanchina
       ? exclusiveOwn
         ? 'bg-[#FF0090]/12 dark:bg-[#FF0090]/22 border-[#FF0090]/45 dark:border-[#FF0090]/60'
@@ -1515,7 +1521,7 @@ function RealPitchChip({ p, teamRef, matchStatus, totalTeams, selected, onSelect
       </span>
 
       <span className="flex min-h-[12px] flex-wrap items-center justify-center gap-0.5">
-        <BonusMalusIcons p={p} />
+        <BonusMalusIcons p={p} inverted={ownedTitolare} />
       </span>
 
       <RealVotoPill p={p} matchStatus={matchStatus} width={40} />
@@ -1967,9 +1973,10 @@ type BonusMalusPlayer = Pick<
 
 function BonusMalusIcons({ p, inverted = false }: { p: BonusMalusPlayer; inverted?: boolean }) {
   const items: { key: string; node: ReactNode }[] = []
-  // On an inverted (solid-ink) owned row the default dark-on-faint chip vanishes,
-  // so flip to a light-on-translucent variant that reads in both themes.
-  const positiveIconClass = inverted ? 'bg-surface-0/20 text-surface-0' : 'bg-ink-5/10 text-ink-2'
+  // On an inverted (solid-ink) owned card the chip sits on #090b12 in BOTH
+  // themes, so it must be literally white — text-surface-0 flips dark in dark
+  // mode and made the ×N counter invisible.
+  const positiveIconClass = inverted ? 'bg-white/20 text-white' : 'bg-ink-5/10 text-ink-2'
   if (p.goals > 0)
     items.push({ key: 'g', node: <BonusIcon title="Gol" icon="⚽" count={p.goals} className={positiveIconClass} /> })
   if (p.assists > 0)
@@ -3342,14 +3349,14 @@ function OwnerPills({
         return (
           <span
             key={`${owner.team_name}-${owner.status}-${i}`}
-            className={`inline-flex shrink-0 items-center rounded-full border font-semibold ${chipCls} ${
+            className={`inline-flex shrink-0 items-center overflow-hidden rounded-full border font-semibold ${chipCls} ${
               showNames
                 ? `min-w-0 gap-1 ${compact ? 'max-w-[130px] px-2 py-0.5 text-[10px]' : 'max-w-[190px] px-2.5 py-0.5 text-[11px]'}`
                 : 'justify-center px-1.5 py-0.5'
             }`}
             title={`${owner.team_name} — ${isStarter ? 'titolare' : 'panchina'}`}
           >
-            {showNames && <span className="truncate">{owner.team_name}</span>}
+            {showNames && <span className="min-w-0 truncate">{owner.team_name}</span>}
             {glyph}
           </span>
         )
