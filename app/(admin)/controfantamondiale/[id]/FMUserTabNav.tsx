@@ -9,12 +9,15 @@ import { ADMIN_TABS, type AdminTab } from './FMTabNav'
 
 const STATUS_POLL_MS = 45_000
 
+// Tabs marked desktopOnly are already in the mobile bottom bar (see
+// AdminSidebar's FM mode), so the top strip hides them below md to avoid
+// showing the same destinations twice.
 const TABS = [
-  { label: 'Live',       suffix: '/live' },
-  { label: 'Classifica', suffix: '/classifica' },
+  { label: 'Live',       suffix: '/live',       desktopOnly: true },
+  { label: 'Classifica', suffix: '/classifica', desktopOnly: true },
   { label: 'Risultati',  suffix: '/risultati' },
-  { label: 'La Mia Rosa', suffix: '/rosa' },
-  { label: 'Formazione', suffix: '/formazione' },
+  { label: 'La Mia Rosa', suffix: '/rosa',       desktopOnly: true },
+  { label: 'Formazione', suffix: '/formazione', desktopOnly: true },
   { label: 'Nazionali',  suffix: '/nazionali' },
   { label: 'Regole',     suffix: '/regole' },
 ]
@@ -85,7 +88,9 @@ export function FMUserTabNav({
               key={tab.suffix}
               href={href as Route}
               aria-current={isActive ? 'page' : undefined}
-              className={`relative inline-flex min-h-9 shrink-0 items-center justify-center gap-1.5 rounded-[14px] px-3.5 text-[12px] font-semibold transition-all ${
+              className={`relative min-h-9 shrink-0 items-center justify-center gap-1.5 rounded-[14px] px-3.5 text-[12px] font-semibold transition-all ${
+                tab.desktopOnly ? 'hidden md:inline-flex' : 'inline-flex'
+              } ${
                 isActive
                   ? 'bg-glass-3 text-ink-1 shadow-[0_1px_0_rgba(255,255,255,0.55)_inset,0_8px_24px_-18px_rgba(0,0,0,0.55)] dark:shadow-[0_1px_0_rgba(255,255,255,0.10)_inset,0_10px_26px_-18px_rgba(0,0,0,0.9)]'
                   : 'text-ink-4 hover:bg-glass-1 hover:text-ink-2'

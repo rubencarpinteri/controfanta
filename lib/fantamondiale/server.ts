@@ -50,40 +50,74 @@ export interface FMContext {
  */
 export const requireFMContext = cache(async (legaCompRef: string): Promise<FMContext> => {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+
+  // Wave 1 — nothing here depends on anything else, so pay all three
+  // round-trips at once instead of serially. Every FM navigation runs this,
+  // so each wave saved is user-visible latency on every tab tap.
+  const [{ data: { user } }, isSuperAdmin, { data: legaComp }] = await Promise.all([
+    supabase.auth.getUser(),
+    // Effective super-admin: false while previewing as a manager, so a
+    // previewing admin without a team is gated exactly like a real manager.
+    getEffectiveSuperAdmin(),
+    // The Lega instance — joins template (fm_competition) + Lega (leagues)
+    // ids. Resolve by slug or UUID so both clean and legacy URLs work.
+    supabase
+      .from('fm_league_competition')
+      .select('*')
+      .eq(isUuid(legaCompRef) ? 'id' : 'slug', legaCompRef)
+      .maybeSingle(),
+  ])
+
   if (!user) redirect('/login')
-
-  // Effective super-admin: false while previewing as a manager, so a previewing
-  // admin without a team is gated exactly like a real non-admin manager.
-  const isSuperAdmin = await getEffectiveSuperAdmin()
-
-  // The Lega instance — joins template (fm_competition) + Lega (leagues) ids.
-  // Resolve by slug or UUID so both clean and legacy URLs work.
-  const { data: legaComp } = await supabase
-    .from('fm_league_competition')
-    .select('*')
-    .eq(isUuid(legaCompRef) ? 'id' : 'slug', legaCompRef)
-    .maybeSingle()
-
   if (!legaComp) redirect('/dashboard' as Route)
 
-  // User's team in this Lega instance (if any).
-  const { data: team } = await supabase
-    .from('fm_fantasy_team')
-    .select('id')
-    .eq('league_competition_id', legaComp.id)
-    .eq('manager_id', user.id)
-    .maybeSingle()
+  // Wave 2 — everything below only needs user.id + the legaComp row
+  // (fm_competition_id is denormalized on it), so it all runs in parallel.
+  const [
+    { data: team },
+    { data: membership },
+    { data: competition },
+    { data: globalConfig },
+    { data: legaConfig },
+  ] = await Promise.all([
+    // User's team in this Lega instance (if any).
+    supabase
+      .from('fm_fantasy_team')
+      .select('id')
+      .eq('league_competition_id', legaComp.id)
+      .eq('manager_id', user.id)
+      .maybeSingle(),
+    // League-admin of the Lega that owns this instance — gates the
+    // league-admin-editable fantasy surfaces. Independent of super-admin and
+    // of the previewing flag (a previewing super-admin who is also the real
+    // league_admin keeps it).
+    supabase
+      .from('league_users')
+      .select('role')
+      .eq('league_id', legaComp.league_id)
+      .eq('user_id', user.id)
+      .maybeSingle(),
+    // Global tournament template (fm_competition row the Lega is playing).
+    supabase
+      .from('fm_competition')
+      .select('*')
+      .eq('id', legaComp.fm_competition_id)
+      .single(),
+    // Fantasy config: prefer this Lega's own per-league config; fall back to
+    // the global template row for the `config` blob so leagues enrolled
+    // before the per-league layer (or any missing key) keep working.
+    supabase
+      .from('fm_competition_config')
+      .select('*')
+      .eq('competition_id', legaComp.fm_competition_id)
+      .single(),
+    supabase
+      .from('fm_league_competition_config')
+      .select('config')
+      .eq('league_competition_id', legaComp.id)
+      .maybeSingle(),
+  ])
 
-  // League-admin of the Lega that owns this instance — gates the league-admin-
-  // editable fantasy surfaces. Independent of super-admin and of the previewing
-  // flag (a previewing super-admin who is also the real league_admin keeps it).
-  const { data: membership } = await supabase
-    .from('league_users')
-    .select('role')
-    .eq('league_id', legaComp.league_id)
-    .eq('user_id', user.id)
-    .maybeSingle()
   const isLeagueAdmin = membership?.role === 'league_admin'
 
   // A Lega member without a Mondiale fantasy team is allowed into the instance
@@ -92,30 +126,7 @@ export const requireFMContext = cache(async (legaCompRef: string): Promise<FMCon
 
   const fantasyTeamId: string | null = team?.id ?? null
 
-  // Global tournament template (fm_competition row the Lega is playing).
-  const { data: competition } = await supabase
-    .from('fm_competition')
-    .select('*')
-    .eq('id', legaComp.fm_competition_id)
-    .single()
-
   if (!competition) redirect('/dashboard' as Route)
-
-  // Fantasy config: prefer this Lega's own per-league config; fall back to the
-  // global template row for the `config` blob so leagues enrolled before the
-  // per-league layer (or any missing key) keep working.
-  const [{ data: globalConfig }, { data: legaConfig }] = await Promise.all([
-    supabase
-      .from('fm_competition_config')
-      .select('*')
-      .eq('competition_id', competition.id)
-      .single(),
-    supabase
-      .from('fm_league_competition_config')
-      .select('config')
-      .eq('league_competition_id', legaComp.id)
-      .maybeSingle(),
-  ])
 
   const config: FMCompetitionConfigRow | null = globalConfig
     ? { ...globalConfig, config: legaConfig?.config ?? globalConfig.config }

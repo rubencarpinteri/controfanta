@@ -20,14 +20,8 @@ export default async function ClassificaPage({
   const ctx = await requireFMContext(id)
   const supabase = await createClient()
 
-  const rounds = await getFMRounds(ctx.competition.id)
-  const scoredRounds = rounds.filter((r) => r.status === 'published' || r.status === 'scoring')
-  const selectedRound =
-    scoredRounds.find((r) => r.id === roundParam) ??
-    scoredRounds[scoredRounds.length - 1] ??
-    null
-
-  const [standingsRes, teamsRes, roundScoresRes] = await Promise.all([
+  const [rounds, standingsRes, teamsRes] = await Promise.all([
+    getFMRounds(ctx.competition.id),
     supabase
       .from('fm_competition_standing')
       .select('fantasy_team_id, br_points_total, round_wins, raw_score_total, rank')
@@ -37,14 +31,22 @@ export default async function ClassificaPage({
       .from('fm_fantasy_team')
       .select('id, name')
       .eq('league_competition_id', ctx.legaCompetition.id),
-    selectedRound
-      ? supabase
-          .from('fm_fantasy_team_round_score')
-          .select('fantasy_team_id, raw_total, goals_scored, br_wins, br_draws, br_losses, br_points')
-          .eq('scoring_round_id', selectedRound.id)
-          .order('raw_total', { ascending: false })
-      : Promise.resolve({ data: [] }),
   ])
+
+  const scoredRounds = rounds.filter((r) => r.status === 'published' || r.status === 'scoring')
+  const selectedRound =
+    scoredRounds.find((r) => r.id === roundParam) ??
+    scoredRounds[scoredRounds.length - 1] ??
+    null
+
+  const { data: roundScoresData } = selectedRound
+    ? await supabase
+        .from('fm_fantasy_team_round_score')
+        .select('fantasy_team_id, raw_total, goals_scored, br_wins, br_draws, br_losses, br_points')
+        .eq('scoring_round_id', selectedRound.id)
+        .order('raw_total', { ascending: false })
+    : { data: [] }
+  const roundScoresRes = { data: roundScoresData }
 
   const teamMap = new Map((teamsRes.data ?? []).map((t) => [t.id, t.name]))
   const standings = standingsRes.data ?? []
