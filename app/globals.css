@@ -220,6 +220,12 @@ table.tabular,
 ::-webkit-scrollbar-thumb { background: rgba(20,24,60,0.12); border-radius: 8px; }
 .dark ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.12); }
 
+/* Scroll containers that should scroll without showing a bar (e.g. the live
+   board's sticky side columns, which would otherwise stack an inner scrollbar
+   next to the page one). */
+.scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
+
 table {
   border-collapse: collapse;
   width: 100%;

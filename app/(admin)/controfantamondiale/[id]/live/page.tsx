@@ -68,17 +68,19 @@ export default async function LivePage({
 
   const roundSelector =
     browsable.length > 1 ? (
-      <div className="flex flex-wrap gap-1.5">
+      // Segmented control — same family as the partite/squadre/classifica
+      // switcher (rounded-full glass container, pill items), just one size down.
+      <div className="flex w-fit max-w-full flex-wrap gap-1 rounded-full border border-hairline bg-glass-1 p-1 shadow-sm">
         {browsable.map((r) => {
           const isActive = r.id === selectedRound?.id
           return (
             <a
               key={r.id}
               href={`/controfantamondiale/${id}/live?round=${r.id}`}
-              className={`rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+              className={`whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] font-semibold tracking-tight transition-all ${
                 isActive
-                  ? 'border-indigo-500/40 bg-indigo-500/15 text-indigo-300'
-                  : 'border-hairline bg-glass-1 text-ink-3 hover:bg-glass-2'
+                  ? 'bg-accent text-white shadow-md shadow-accent/25'
+                  : 'text-ink-4 hover:text-ink-2'
               }`}
             >
               {r.name}

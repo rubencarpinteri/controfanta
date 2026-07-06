@@ -544,8 +544,8 @@ export function LiveBoard({
       <div
         className={`hidden lg:grid lg:gap-3 ${
           matchListCollapsed
-            ? 'lg:grid-cols-[34px_minmax(0,1fr)_190px] xl:grid-cols-[34px_minmax(0,1fr)_198px]'
-            : 'lg:grid-cols-[190px_minmax(0,1fr)_190px] xl:grid-cols-[198px_minmax(0,1fr)_198px]'
+            ? 'lg:grid-cols-[34px_minmax(0,1fr)_236px] xl:grid-cols-[34px_minmax(0,1fr)_248px]'
+            : 'lg:grid-cols-[190px_minmax(0,1fr)_236px] xl:grid-cols-[198px_minmax(0,1fr)_248px]'
         }`}
       >
         {/* Left column sticks while the center lineup scrolls — match info stays
@@ -3450,10 +3450,10 @@ function GiornataLivePanel({
   // A proportional bar (relative to the leader) makes the gaps glanceable.
   const maxTotal = Math.max(1, ...teams.map((t) => (standings ?? {})[t.fantasy_team_id]?.live_total ?? t.live_total))
   return (
-    <div className="rounded-xl border border-hairline bg-glass-1 overflow-hidden">
-      <div className="px-2.5 pt-2.5 pb-1">
-        <p className="text-[9.5px] font-bold uppercase tracking-wider text-emerald-400/80">Giornata live</p>
-        <p className="text-[9.5px] text-ink-5">{roundName} — punteggi e gol in tempo reale</p>
+    <div className="rounded-2xl border border-hairline bg-glass-1 overflow-hidden">
+      <div className="flex items-baseline justify-between px-3 pt-3 pb-1.5">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-500 dark:text-emerald-400">Giornata live</p>
+        <p className="text-[10px] text-ink-5">{roundName}</p>
       </div>
 
       {teams.map((team, i) => {
@@ -3472,10 +3472,11 @@ function GiornataLivePanel({
           <button
             key={team.fantasy_team_id}
             onClick={() => onSelect(team.fantasy_team_id)}
-            className={`w-full border-t border-hairline px-2.5 py-2 text-left transition-colors hover:bg-glass-2 ${
+            className={`w-full border-t border-hairline px-3 py-2.5 text-left transition-colors hover:bg-glass-2 ${
               isSelected ? 'bg-indigo-500/8' : ''
             }`}
           >
+            {/* Row 1 — rank · name · dots · total, one baseline */}
             <div className="flex items-center gap-2">
               <span
                 className={`w-4 shrink-0 text-center text-[12px] font-bold tabular-nums ${
@@ -3484,64 +3485,51 @@ function GiornataLivePanel({
               >
                 {i + 1}
               </span>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-baseline gap-1.5">
-                  <span className={`truncate text-[13px] font-bold ${isMine ? 'text-indigo-500 dark:text-indigo-300' : 'text-ink-1'}`}>
-                    {team.name}
-                  </span>
-                  {isMine && (
-                    <span className="shrink-0 text-[8px] font-bold uppercase tracking-wide text-indigo-400/70">tu</span>
-                  )}
-                  {notFielded && (
-                    <span className="shrink-0 text-[9px] font-semibold text-rose-500 dark:text-rose-400">non schierata</span>
-                  )}
-                  <span className="ml-auto shrink-0">
-                    <LiveDots field={liveCounts.field} bench={liveCounts.bench} />
-                  </span>
-                </div>
-
-                {/* proportional score bar */}
-                <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-ink-5/10">
-                  <div
-                    className={`h-full rounded-full ${isMine ? 'bg-indigo-400' : i === 0 ? 'bg-emerald-400' : 'bg-emerald-400/55'}`}
-                    style={{ width: `${barPct}%` }}
-                  />
-                </div>
-
-                <div className="mt-1 flex items-center gap-2 text-[9.5px] text-ink-5">
-                  <span className="flex items-center gap-0.5 tabular-nums">
-                    <span className={goals > 0 ? 'text-emerald-500 dark:text-emerald-400' : ''}>⚽ {goals}</span>
-                  </span>
-                  <span className="text-ink-5/40">·</span>
-                  <span className="tabular-nums">
-                    <span className={`font-bold ${gPts > 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-ink-4'}`}>{gPts}</span> pt giornata
-                  </span>
-                  {!notFielded && pending > 0 && (
-                    <>
-                      <span className="text-ink-5/40">·</span>
-                      <span
-                        title={`${pending} voti ancora mancanti`}
-                        className="tabular-nums text-amber-600 dark:text-amber-400"
-                      >
-                        {pending === 1 ? 'ne manca 1' : `ne mancano ${pending}`}
-                      </span>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              <span className="shrink-0 self-start text-[18px] font-black tabular-nums text-ink-1 leading-none">
+              <span className={`min-w-0 truncate text-[13px] font-bold ${isMine ? 'text-indigo-500 dark:text-indigo-300' : 'text-ink-1'}`}>
+                {team.name}
+              </span>
+              {isMine && (
+                <span className="shrink-0 text-[8px] font-bold uppercase tracking-wide text-indigo-400/70">tu</span>
+              )}
+              <span className="ml-auto shrink-0">
+                <LiveDots field={liveCounts.field} bench={liveCounts.bench} />
+              </span>
+              <span className="w-12 shrink-0 text-right text-[17px] font-black tabular-nums leading-none text-ink-1">
                 {fmtFloor(total)}
               </span>
+            </div>
+
+            {/* Row 2 — proportional score bar, aligned with the name */}
+            <div className="mt-1.5 pl-6">
+              <div className="h-1 w-full overflow-hidden rounded-full bg-ink-5/10">
+                <div
+                  className={`h-full rounded-full ${isMine ? 'bg-indigo-400' : i === 0 ? 'bg-emerald-400' : 'bg-emerald-400/55'}`}
+                  style={{ width: `${barPct}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Row 3 — meta: goals + points left, pending count right */}
+            <div className="mt-1 flex items-center justify-between pl-6 text-[10px] text-ink-5">
+              <span className="whitespace-nowrap tabular-nums">
+                <span className={goals > 0 ? 'text-emerald-500 dark:text-emerald-400' : ''}>⚽ {goals}</span>
+                <span className="text-ink-5/40"> · </span>
+                <span className={`font-bold ${gPts > 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-ink-4'}`}>{gPts}</span> pt
+              </span>
+              {notFielded ? (
+                <span className="whitespace-nowrap text-[9.5px] font-semibold text-rose-500 dark:text-rose-400">non schierata</span>
+              ) : pending > 0 ? (
+                <span
+                  title={`${pending} voti ancora mancanti`}
+                  className="whitespace-nowrap tabular-nums text-amber-600 dark:text-amber-400"
+                >
+                  {pending === 1 ? 'ne manca 1' : `ne mancano ${pending}`}
+                </span>
+              ) : null}
             </div>
           </button>
         )
       })}
-
-      <div className="border-t border-hairline px-2.5 py-2 text-[9.5px] text-ink-5 leading-relaxed">
-        Punti giornata calcolati in tempo reale sulle soglie gol.
-      </div>
     </div>
   )
 }
@@ -3570,10 +3558,10 @@ function ClassificaLivePanel({
   )
 
   return (
-    <div className="rounded-xl border border-hairline bg-glass-1 overflow-hidden">
-      <div className="px-2.5 pt-2.5 pb-1">
-        <p className="text-[9.5px] font-bold uppercase tracking-wider text-ink-4">Classifica live</p>
-        <p className="text-[9.5px] text-ink-5">Totale stagione, giornata corrente inclusa</p>
+    <div className="rounded-2xl border border-hairline bg-glass-1 overflow-hidden">
+      <div className="flex items-baseline justify-between px-3 pt-3 pb-1.5">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-ink-4">Classifica live</p>
+        <p className="text-[10px] text-ink-5" title="Totale stagione, giornata corrente inclusa">totale</p>
       </div>
 
       {ordered.map((team) => {
@@ -3589,7 +3577,7 @@ function ClassificaLivePanel({
           <button
             key={team.fantasy_team_id}
             onClick={() => onSelect(team.fantasy_team_id)}
-            className={`w-full border-t border-hairline px-2.5 py-2 text-left transition-colors hover:bg-glass-2 ${
+            className={`w-full border-t border-hairline px-3 py-2 text-left transition-colors hover:bg-glass-2 ${
               isSelected ? 'bg-indigo-500/8' : ''
             }`}
           >
@@ -3620,10 +3608,6 @@ function ClassificaLivePanel({
           </button>
         )
       })}
-
-      <div className="border-t border-hairline px-2.5 py-2 text-[9.5px] text-ink-5 leading-relaxed">
-        Punti totali = giornate concluse + proiezione live di questa giornata.
-      </div>
     </div>
   )
 }
