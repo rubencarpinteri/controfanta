@@ -3356,10 +3356,19 @@ function OwnerPills({
           : isStarter
             ? 'text-indigo-500/80 dark:text-indigo-200/80'
             : 'text-ink-5 dark:text-ink-2'
-        const glyph = isStarter ? (
-          <PitchGlyph className={`shrink-0 ${glyphCls}`} />
-        ) : (
-          <BenchGlyph className={`shrink-0 ${glyphCls}`} />
+        // Esclusiva + titolare is the format's trademark moment — the pink
+        // diamond that marks it everywhere else (ownership pool pills, the
+        // player detail sheet) was missing from this specific chip, which
+        // only ever drew the plain pitch/bench glyph regardless of exclusivity.
+        const glyph = (
+          <>
+            {isExclusive && isStarter && <DiamondGlyph className="shrink-0 text-[#FF0090]" />}
+            {isStarter ? (
+              <PitchGlyph className={`shrink-0 ${glyphCls}`} />
+            ) : (
+              <BenchGlyph className={`shrink-0 ${glyphCls}`} />
+            )}
+          </>
         )
         // A 3-letter code ("SAY" for Sayonara) instead of the full name — long
         // team names ("Squadradabbattere nazionale") used to wrap the whole
