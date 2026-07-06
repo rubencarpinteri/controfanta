@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import { TeamCrest } from '@/components/fm/TeamCrest'
 import { shortRoundName } from '@/lib/fantamondiale/roundName'
+import { buildTeamCodes } from '@/lib/fantamondiale/teamCodes'
 import { CoachTierBadge } from '@/components/fm/CoachTierBadge'
 import type {
   LiveRoundSnapshot,
@@ -35,6 +36,16 @@ type FlashDir = 'up' | 'down'
 // wobble.
 type Flash = { dir: FlashDir; delta: number }
 const RatingFlashContext = createContext<Map<string, Flash>>(new Map())
+
+// Unique 3-letter team codes (e.g. "Isamu incantatore" → ISA, "Isamundial" →
+// SAM), used instead of full names in ownership pills where space is tight.
+// Keyed off the whole snapshot's team list so codes stay stable as the poll
+// refreshes and however deep in the tree a pill needs one.
+const TeamCodeContext = createContext<Map<string, string>>(new Map())
+function useTeamCode(teamName: string): string {
+  const codes = useContext(TeamCodeContext)
+  return codes.get(teamName) ?? teamName.slice(0, 3).toUpperCase()
+}
 
 // Round to the 1 decimal the board displays. We compare these rounded values so
 // a sub-decimal change (e.g. 6.74 → 6.78, both shown as "6.7"/"6.8"… here both
@@ -530,9 +541,11 @@ export function LiveBoard({
   const selectedMatch = snapshot.matches.find((m) => m.match_id === selectedMatchId) ?? snapshot.matches[0] ?? null
   const selectedTeam = snapshot.teams.find((t) => t.fantasy_team_id === selectedTeamId) ?? null
   const liveField = buildLiveFieldMap(snapshot.matches)
+  const teamCodes = buildTeamCodes(snapshot.teams.map((t) => t.name))
 
   return (
     <RatingFlashContext.Provider value={flashes}>
+    <TeamCodeContext.Provider value={teamCodes}>
     <div className="flex flex-col gap-3">
       {/* status bar */}
       <div className="flex items-center gap-2 text-[11px] text-ink-4">
@@ -673,6 +686,7 @@ export function LiveBoard({
         )}
       </div>
     </div>
+    </TeamCodeContext.Provider>
     </RatingFlashContext.Provider>
   )
 }
@@ -3286,6 +3300,7 @@ function OwnerPills({
   onInk?: boolean
 }) {
   const [revealed, setRevealed] = useState(false)
+  const teamCodes = useContext(TeamCodeContext)
   if (!owners.length) return null
   // Exclusive ownership — rostered by exactly one team in the whole lega AND
   // fielded as a starter (titolare). The trademark moment of the format, so the
@@ -3346,17 +3361,21 @@ function OwnerPills({
         ) : (
           <BenchGlyph className={`shrink-0 ${glyphCls}`} />
         )
+        // A 3-letter code ("SAY" for Sayonara) instead of the full name — long
+        // team names ("Squadradabbattere nazionale") used to wrap the whole
+        // pill onto its own row and crowd the voto pill beside it.
+        const code = teamCodes.get(owner.team_name) ?? owner.team_name.slice(0, 3).toUpperCase()
         return (
           <span
             key={`${owner.team_name}-${owner.status}-${i}`}
-            className={`inline-flex shrink-0 items-center overflow-hidden rounded-full border font-semibold ${chipCls} ${
+            className={`inline-flex shrink-0 items-center gap-1 rounded-full border font-semibold tabular-nums ${chipCls} ${
               showNames
-                ? `min-w-0 gap-1 ${compact ? 'max-w-[130px] px-2 py-0.5 text-[10px]' : 'max-w-[190px] px-2.5 py-0.5 text-[11px]'}`
+                ? `${compact ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-0.5 text-[11px]'}`
                 : 'justify-center px-1.5 py-0.5'
             }`}
             title={`${owner.team_name} — ${isStarter ? 'titolare' : 'panchina'}`}
           >
-            {showNames && <span className="min-w-0 truncate">{owner.team_name}</span>}
+            {showNames && <span>{code}</span>}
             {glyph}
           </span>
         )
