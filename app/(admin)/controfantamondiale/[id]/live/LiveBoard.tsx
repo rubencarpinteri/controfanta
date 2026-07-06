@@ -1572,7 +1572,7 @@ function RealSubChip({ p, teamRef, matchStatus, totalTeams, selected, onSelect }
       <RealCrest teamRef={teamRef} live={realOnPitch(p, matchStatus)} size={18} />
       <span className="flex min-w-0 flex-1 flex-col leading-tight">
         <span className="flex min-w-0 items-center gap-1">
-          <span className={`text-[12px] sm:text-[13px] font-bold leading-tight break-words ${ownedTitolare ? 'text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.85)]' : 'text-ink-1'}`} title={p.name}>{shortPlayerName(p.name)}</span>
+          <span className={`min-w-0 truncate text-[12px] sm:text-[13px] font-bold leading-tight ${ownedTitolare ? 'text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.85)]' : 'text-ink-1'}`} title={p.name}>{shortPlayerName(p.name)}</span>
           {p.is_mvp && (
             <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-amber-400/25 px-1.5 py-0.5 text-[8.5px] font-black leading-none text-amber-700 ring-1 ring-amber-400/45 shadow-[0_0_10px_rgba(255,200,61,0.35)] dark:text-amber-200" title="Migliore in campo — MVP">
               <MvpGlyph className="h-3 w-3" />
@@ -1862,7 +1862,7 @@ function RealPlayerRow({
         {/* Name gets its own line so it stays readable even in a narrow column;
             sub markers, bonus/malus glyphs and MVP all wrap onto the meta line
             below, never crowding (and truncating) the name. */}
-        <span className={`block text-[13px] sm:text-[14px] font-semibold leading-tight break-words ${ownedTitolare ? 'text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.85)]' : 'text-ink-1'}`} title={p.name}>
+        <span className={`block truncate text-[13px] sm:text-[14px] font-semibold leading-tight ${ownedTitolare ? 'text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.85)]' : 'text-ink-1'}`} title={p.name}>
           {shortPlayerName(p.name)}
         </span>
 
@@ -3176,7 +3176,7 @@ function FantasyPlayerRow({
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[13px] sm:text-[14px] font-semibold text-ink-1 leading-tight break-words">{p.name}</span>
+          <span className="min-w-0 truncate text-[13px] sm:text-[14px] font-semibold text-ink-1 leading-tight" title={p.name}>{p.name}</span>
           {p.via === 'sub' && (
             <span
               className="shrink-0 rounded bg-emerald-500 px-1.5 py-0.5 text-[8px] font-black uppercase text-white shadow-sm"
