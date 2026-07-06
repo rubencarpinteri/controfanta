@@ -237,7 +237,8 @@ export default async function LivePage({
   return (
     <div className="space-y-4">
       {header}
-      {roundSelector}
+      {/* On mobile the selector lives inside LiveBoard's sticky header instead. */}
+      {roundSelector && <div className="hidden lg:block">{roundSelector}</div>}
       {isHistoric && (
         <div className="rounded-lg border border-indigo-500/30 bg-indigo-500/5 px-3 py-2 text-[11px] text-indigo-700 dark:text-indigo-300">
           Stai guardando lo storico di {selectedRound.name} — schieramenti, voti e MVP definitivi.
@@ -255,6 +256,7 @@ export default async function LivePage({
         initialSnapshot={snapshot}
         previewMode={previewMode}
         live={!isHistoric}
+        roundSelector={roundSelector}
       />
     </div>
   )

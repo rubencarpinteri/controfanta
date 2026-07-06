@@ -423,6 +423,7 @@ export function LiveBoard({
   initialSnapshot,
   previewMode = false,
   live = true,
+  roundSelector = null,
 }: {
   legaCompRef: string
   roundName: string
@@ -432,6 +433,9 @@ export function LiveBoard({
   // false when browsing a finished round's archive — the poll endpoint only
   // returns the ACTIVE round, so polling would clobber the historic snapshot.
   live?: boolean
+  // Round pills (server-rendered) — shown inside the mobile sticky header so
+  // they stay reachable while scrolling; desktop renders them in the page.
+  roundSelector?: React.ReactNode
 }) {
   const [snapshot, setSnapshot] = useState<LiveRoundSnapshot | null>(initialSnapshot)
   const [activeTab, setActiveTab] = useState<Tab>('partite')
@@ -443,6 +447,23 @@ export function LiveBoard({
   const [matchListCollapsed, setMatchListCollapsed] = useState(false)
   const timer = useRef<ReturnType<typeof setInterval> | null>(null)
   const flashes = useRatingFlash(snapshot)
+  const mobileHeadRef = useRef<HTMLDivElement>(null)
+
+  // Publish the mobile sticky header's height so team/match sticky headers
+  // park below it (below the top nav on desktop, below this block on mobile).
+  useEffect(() => {
+    const el = mobileHeadRef.current
+    if (!el) return
+    const publish = () =>
+      document.documentElement.style.setProperty('--cf-livehead-h', `${el.offsetHeight}px`)
+    publish()
+    const ro = new ResizeObserver(publish)
+    ro.observe(el)
+    return () => {
+      ro.disconnect()
+      document.documentElement.style.removeProperty('--cf-livehead-h')
+    }
+  }, [])
 
   useEffect(() => {
     // Historic/archive view: the round is finished and the poll endpoint only
@@ -569,13 +590,22 @@ export function LiveBoard({
             myTeamId={myTeamId}
             selectedTeamId={selectedTeamId}
             onSelect={handleSelectTeam}
+            liveField={liveField}
           />
         </div>
       </div>
 
       {/* ── Mobile: tab bar ── */}
       <div className="lg:hidden">
-        <div className="mb-3 flex gap-1 rounded-full border border-hairline bg-glass-1 p-1.5 shadow-sm">
+        {/* Sticky control block: round pills + view switcher stay reachable
+            while the board scrolls (the top tab strip no longer sticks). */}
+        <div
+          ref={mobileHeadRef}
+          className="sticky z-30 -mx-4 mb-3 bg-surface-0/85 px-4 pb-2 pt-1 backdrop-blur-2xl"
+          style={{ top: 'var(--cf-livenav-h, 0px)' }}
+        >
+          {roundSelector && <div className="mb-2">{roundSelector}</div>}
+        <div className="flex gap-1 rounded-full border border-hairline bg-glass-1 p-1.5 shadow-sm">
           {(['partite', 'squadre', 'classifica'] as Tab[]).map((tab) => (
             <button
               key={tab}
@@ -589,6 +619,7 @@ export function LiveBoard({
               {tab}
             </button>
           ))}
+        </div>
         </div>
 
         {activeTab === 'partite' && (
@@ -636,6 +667,7 @@ export function LiveBoard({
             myTeamId={myTeamId}
             selectedTeamId={selectedTeamId}
             onSelect={handleSelectTeam}
+            liveField={liveField}
           />
         )}
       </div>
@@ -1041,7 +1073,7 @@ function MatchDetailPanel({
           scroll underneath, matching the Squadre team header treatment. No outer
           card frame, so the rounded pill never sits on a clashing square edge. */}
       <div
-        style={{ top: 'calc(var(--cf-livenav-h, 70px) + 6px)' }}
+        style={{ top: 'calc(var(--cf-livenav-h, 0px) + var(--cf-livehead-h, 0px) + 6px)' }}
         className="sticky z-20 rounded-2xl border border-hairline-strong bg-surface-1/95 px-4 py-3 shadow-lg shadow-black/10 backdrop-blur-xl"
       >
         <div className="flex items-center justify-center gap-4">
@@ -2111,7 +2143,7 @@ function TeamDetailHeader({
 }) {
   return (
     <div
-      style={sticky ? { top: 'calc(var(--cf-livenav-h, 70px) + 6px)' } : undefined}
+      style={sticky ? { top: 'calc(var(--cf-livenav-h, 0px) + var(--cf-livehead-h, 0px) + 6px)' } : undefined}
       className={`flex items-center gap-2 bg-gradient-to-r px-4 py-3 ${
         sticky
           ? 'sticky z-20 mb-1 rounded-2xl border bg-surface-1/95 shadow-lg shadow-black/10 backdrop-blur-xl'
@@ -3363,6 +3395,7 @@ function StandingsPanel({
   myTeamId,
   selectedTeamId,
   onSelect,
+  liveField,
 }: {
   teams: LiveSnapshotTeam[]
   standings: LiveRoundSnapshot['standings']
@@ -3371,6 +3404,7 @@ function StandingsPanel({
   myTeamId: string | null
   selectedTeamId: string | null
   onSelect: (id: string) => void
+  liveField: Map<string, LiveFieldState>
 }) {
   return (
     <div className="space-y-3">
@@ -3381,6 +3415,7 @@ function StandingsPanel({
         myTeamId={myTeamId}
         selectedTeamId={selectedTeamId}
         onSelect={onSelect}
+        liveField={liveField}
       />
       <ClassificaLivePanel
         teams={teams}
@@ -3401,6 +3436,7 @@ function GiornataLivePanel({
   myTeamId,
   selectedTeamId,
   onSelect,
+  liveField,
 }: {
   teams: LiveSnapshotTeam[]
   standings: LiveRoundSnapshot['standings']
@@ -3408,6 +3444,7 @@ function GiornataLivePanel({
   myTeamId: string | null
   selectedTeamId: string | null
   onSelect: (id: string) => void
+  liveField: Map<string, LiveFieldState>
 }) {
   // Ordered by live total (teams already arrives sorted by live_total desc).
   // A proportional bar (relative to the leader) makes the gaps glanceable.
@@ -3428,6 +3465,8 @@ function GiornataLivePanel({
         const total = s?.live_total ?? team.live_total
         const notFielded = isNotFielded(team)
         const barPct = notFielded ? 0 : Math.max(2, (total / maxTotal) * 100)
+        const liveCounts = teamLiveCounts(team, liveField)
+        const { pending } = teamRatingProgress(team)
 
         return (
           <button
@@ -3457,6 +3496,9 @@ function GiornataLivePanel({
                   {notFielded && (
                     <span className="shrink-0 text-[9px] font-semibold text-rose-500 dark:text-rose-400">non schierata</span>
                   )}
+                  <span className="ml-auto shrink-0">
+                    <LiveDots field={liveCounts.field} bench={liveCounts.bench} />
+                  </span>
                 </div>
 
                 {/* proportional score bar */}
@@ -3475,6 +3517,17 @@ function GiornataLivePanel({
                   <span className="tabular-nums">
                     <span className={`font-bold ${gPts > 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-ink-4'}`}>{gPts}</span> pt giornata
                   </span>
+                  {!notFielded && pending > 0 && (
+                    <>
+                      <span className="text-ink-5/40">·</span>
+                      <span
+                        title={`${pending} voti ancora mancanti`}
+                        className="tabular-nums text-amber-600 dark:text-amber-400"
+                      >
+                        {pending === 1 ? 'ne manca 1' : `ne mancano ${pending}`}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -3662,7 +3715,7 @@ function MobileTeamCard({
     >
       <button
         onClick={onToggle}
-        style={expanded ? { top: 'calc(var(--cf-livenav-h, 70px) + 6px)' } : undefined}
+        style={expanded ? { top: 'calc(var(--cf-livenav-h, 0px) + var(--cf-livehead-h, 0px) + 6px)' } : undefined}
         className={`w-full flex items-center gap-2 px-3 py-2.5 ${
           expanded
             ? isMine

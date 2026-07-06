@@ -41,16 +41,25 @@ export function FMUserTabNav({
   // Publish the live nav's real rendered height as a CSS variable so in-board
   // sticky headers (team / match) can park exactly below it instead of guessing
   // a fixed offset — keeps them clear of the bar even when the tabs wrap to two
-  // rows on narrow screens.
+  // rows on narrow screens. Below md the nav does NOT stick (mobile gets its
+  // own sticky block inside the Live board), so publish 0 there.
   useEffect(() => {
     const el = navRef.current
     if (!el) return
+    const mq = window.matchMedia('(min-width: 768px)')
     const publish = () =>
-      document.documentElement.style.setProperty('--cf-livenav-h', `${el.offsetHeight}px`)
+      document.documentElement.style.setProperty(
+        '--cf-livenav-h',
+        mq.matches ? `${el.offsetHeight}px` : '0px',
+      )
     publish()
     const ro = new ResizeObserver(publish)
     ro.observe(el)
-    return () => ro.disconnect()
+    mq.addEventListener('change', publish)
+    return () => {
+      ro.disconnect()
+      mq.removeEventListener('change', publish)
+    }
   }, [])
 
   useEffect(() => {
@@ -74,7 +83,7 @@ export function FMUserTabNav({
   }, [id])
 
   return (
-    <div ref={navRef} className="sticky top-0 z-30 -mx-4 mb-5 bg-surface-0/75 px-4 py-2 backdrop-blur-2xl md:-mx-8 md:px-8">
+    <div ref={navRef} className="-mx-4 mb-5 bg-surface-0/75 px-4 py-2 backdrop-blur-2xl md:sticky md:top-0 md:z-30 md:-mx-8 md:px-8">
       <div className="flex flex-wrap gap-1 rounded-[18px] border border-hairline-strong bg-surface-1/85 p-1 shadow-lg shadow-black/10 backdrop-blur-xl">
         {TABS.map((tab) => {
           const href = `${base}${tab.suffix}`
