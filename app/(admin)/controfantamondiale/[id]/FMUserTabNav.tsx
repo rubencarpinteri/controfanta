@@ -11,6 +11,7 @@ const STATUS_POLL_MS = 45_000
 
 const TABS = [
   { label: 'Live',       suffix: '/live' },
+  { label: 'Classifica', suffix: '/classifica' },
   { label: 'Risultati',  suffix: '/risultati' },
   { label: 'La Mia Rosa', suffix: '/rosa' },
   { label: 'Formazione', suffix: '/formazione' },

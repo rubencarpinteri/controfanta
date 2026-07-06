@@ -8,7 +8,9 @@ import { logoutAction } from '@/app/(auth)/login/actions'
 import { toggleViewAsManagerAction } from '@/app/(admin)/preview-actions'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 
-type IconName = 'calendar' | 'trophy' | 'user' | 'gear' | 'logout' | 'ball' | 'globe' | 'book'
+type IconName =
+  | 'calendar' | 'trophy' | 'user' | 'gear' | 'logout' | 'ball' | 'globe' | 'book'
+  | 'live' | 'chart' | 'shirt' | 'pitch'
 
 interface NavItem {
   href: string
@@ -118,6 +120,37 @@ function NavIcon({ name, size = 16 }: { name: IconName; size?: number }) {
           <path d="M7 8h7M7 12h7" />
         </svg>
       )
+    case 'live':
+      return (
+        <svg {...props}>
+          <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" />
+          <path d="M7.7 16.3a6 6 0 0 1 0-8.6M16.3 7.7a6 6 0 0 1 0 8.6" />
+          <path d="M4.9 19.1a10 10 0 0 1 0-14.2M19.1 4.9a10 10 0 0 1 0 14.2" />
+        </svg>
+      )
+    case 'chart':
+      return (
+        <svg {...props}>
+          <path d="M4 20h16" />
+          <rect x="5.5" y="10" width="3.6" height="10" rx="0.8" />
+          <rect x="10.2" y="4" width="3.6" height="16" rx="0.8" />
+          <rect x="14.9" y="13" width="3.6" height="7" rx="0.8" />
+        </svg>
+      )
+    case 'shirt':
+      return (
+        <svg {...props}>
+          <path d="M8.5 4L4 7l2 4 2-1v10h8V10l2 1 2-4-4.5-3a3.5 3.5 0 0 1-7 0z" />
+        </svg>
+      )
+    case 'pitch':
+      return (
+        <svg {...props}>
+          <rect x="3.5" y="4.5" width="17" height="15" rx="1.5" />
+          <path d="M3.5 12h17M12 4.5v15" />
+          <circle cx="12" cy="12" r="2.2" />
+        </svg>
+      )
   }
 }
 
@@ -150,6 +183,23 @@ export function AdminSidebar({ isAdmin, canPreview, previewing, username, league
   }
 
   const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin)
+
+  // Inside a Mondiale competition the mobile bottom bar swaps to competition
+  // shortcuts so Live/Classifica/Rosa/Formazione sit in the thumb zone instead
+  // of the tiny top tab strip. "Lega" stays as the way back out.
+  const fmMatch = pathname.match(/^\/controfantamondiale\/([^/]+)/)
+  const fmItems = fmMatch
+    ? (() => {
+        const base = `/controfantamondiale/${fmMatch[1]}`
+        return [
+          { href: '/dashboard', label: 'Lega', icon: 'trophy' as IconName, exact: true },
+          { href: `${base}/live`, label: 'Live', icon: 'live' as IconName, exact: false },
+          { href: `${base}/classifica`, label: 'Classifica', icon: 'chart' as IconName, exact: false },
+          { href: `${base}/rosa`, label: 'Rosa', icon: 'shirt' as IconName, exact: false },
+          { href: `${base}/formazione`, label: 'Formazione', icon: 'pitch' as IconName, exact: false },
+        ]
+      })()
+    : null
 
   function isActive(item: NavItem) {
     // /dashboard owns a lot of nested surfaces (campionato, competitions,
@@ -304,6 +354,33 @@ export function AdminSidebar({ isAdmin, canPreview, previewing, username, league
       {/* ── Mobile bottom nav bar (hidden on desktop) ───────────────────── */}
       <nav className="fixed inset-x-0 bottom-0 z-50 px-3 pb-3 md:hidden" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom))' }}>
         <div className="flex items-stretch justify-around gap-1 rounded-[24px] border border-hairline bg-glass-2 p-1.5 shadow-3 backdrop-blur-2xl">
+          {fmItems ? (
+            fmItems.map((item) => {
+              const active = item.exact ? pathname === item.href : pathname.startsWith(item.href)
+              const liveTab = item.icon === 'live'
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href as Route}
+                  aria-current={active ? 'page' : undefined}
+                  className={[
+                    'flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-[18px] px-1 text-center transition-all',
+                    active
+                      ? liveTab
+                        ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 shadow-[0_1px_0_rgba(255,255,255,0.55)_inset] dark:shadow-[0_1px_0_rgba(255,255,255,0.10)_inset]'
+                        : 'bg-glass-3 text-ink-1 shadow-[0_1px_0_rgba(255,255,255,0.55)_inset,0_10px_28px_-22px_rgba(0,0,0,0.75)] dark:shadow-[0_1px_0_rgba(255,255,255,0.10)_inset,0_10px_28px_-18px_rgba(0,0,0,0.9)]'
+                      : liveTab
+                        ? 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10'
+                        : 'text-ink-4 hover:bg-glass-1 hover:text-ink-1',
+                  ].join(' ')}
+                >
+                  <NavIcon name={item.icon} size={18} />
+                  <span className="text-[10px] font-medium leading-none tracking-tight">{item.label}</span>
+                </Link>
+              )
+            })
+          ) : (
+            <>
           {visibleItems.map((item) => {
             const active = isActive(item)
             return (
@@ -332,6 +409,8 @@ export function AdminSidebar({ isAdmin, canPreview, previewing, username, league
               <span className="text-[10px] font-medium leading-none tracking-tight">Esci</span>
             </button>
           </form>
+            </>
+          )}
         </div>
       </nav>
     </>

@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { requireFMContext } from '@/lib/fantamondiale/server'
 import { FMTabNav } from './FMTabNav'
 import { FMUserTabNav } from './FMUserTabNav'
@@ -25,9 +26,9 @@ export default async function FMCompetitionLayout({
   return (
     <div className="space-y-0">
       <div className="mb-1 flex items-center gap-2">
-        <a href="/controfantamondiale" className="text-[11px] text-ink-5 hover:text-ink-3 transition-colors">
+        <Link href="/controfantamondiale" className="text-[11px] text-ink-5 hover:text-ink-3 transition-colors">
           ControFanta Mondiale
-        </a>
+        </Link>
         <span className="text-[11px] text-ink-5">/</span>
         <span className="text-[11px] font-medium text-ink-3">
           {ctx.competition.name} {ctx.competition.edition}
