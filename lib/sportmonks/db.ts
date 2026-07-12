@@ -602,7 +602,13 @@ export async function resyncRecentlyFinishedFMMatches(
 ): Promise<{ checked: number; resynced: number; fixture_ids: number[]; scoring_errors: Array<{ fixture_id: number; error: string }> }> {
   if (!fmCompetitionIds.length) return { checked: 0, resynced: 0, fixture_ids: [], scoring_errors: [] }
 
-  const windowStart = new Date(Date.now() - 20 * 60 * 1000).toISOString()
+  // Anything that finished ≥10 minutes ago and was never resynced is eligible,
+  // bounded to the last 24h. The previous fixed 10-20min band proved fragile:
+  // if ticks were starved for those ten minutes (deploy, outage, or the
+  // pre-fix early-exit ordering bug), the match missed its band permanently
+  // and late stat corrections were lost (Lautaro Martínez's ET goal, ARG-SUI).
+  // post_finish_resynced_at is the dedup, so the resync stays one-shot.
+  const windowStart = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
   const windowEnd = new Date(Date.now() - 10 * 60 * 1000).toISOString()
   const { data: candidates } = await db
     .from('fm_real_match')
