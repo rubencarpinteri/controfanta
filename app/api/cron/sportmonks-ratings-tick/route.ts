@@ -66,6 +66,25 @@ export async function GET(req: NextRequest) {
 
   const inWindow = await hasFixturesInLiveWindow(db)
   if (!inWindow) {
+    // The post-finish resync must run even when nothing is live: when the LAST
+    // match of the day finishes, the live window closes immediately, and a
+    // resync that only ran after the early exit would be starved forever (this
+    // is how Lautaro Martínez's extra-time goal in ARG-SUI was lost — the stat
+    // correction landed after the fixture left /livescores/inplay and the
+    // 10-20min resync window fell entirely on skip ticks).
+    let postFinishResync: Awaited<ReturnType<typeof resyncRecentlyFinishedFMMatches>> = {
+      checked: 0,
+      resynced: 0,
+      fixture_ids: [],
+      scoring_errors: [],
+    }
+    try {
+      const refs = await listActiveLeagueRefs(db)
+      const fmCompetitionIds = refs.filter((r) => r.product === 'fm').map((r) => r.owner_id)
+      postFinishResync = await resyncRecentlyFinishedFMMatches(db, fmCompetitionIds)
+    } catch (e) {
+      console.error('[ratings-tick] post-finish resync failed:', e)
+    }
     // Even on skip ticks, run writeLiveSnapshots so recently-finished matches
     // get one final snapshot refresh. The snapshot writer has its own grace
     // window (recently finished = last 60 min) and exits early if nothing is
@@ -81,12 +100,13 @@ export async function GET(req: NextRequest) {
         errors: [e instanceof Error ? e.message : String(e)],
       }
     }
-    const body = { message: 'No fixtures in live window', live: 0, sched, elim, liveSnapshots }
-    if (shouldLogSkip(started_at)) {
+    const body = { message: 'No fixtures in live window', live: 0, sched, elim, liveSnapshots, postFinishResync }
+    // A tick that actually resynced a match is not a routine skip — always log it.
+    if (postFinishResync.resynced > 0 || shouldLogSkip(started_at)) {
       await logCronRun(db, {
         endpoint: ENDPOINT,
         started_at,
-        status: 'skipped',
+        status: postFinishResync.resynced > 0 ? 'ok' : 'skipped',
         http_status: 200,
         summary: body,
       })
