@@ -217,7 +217,7 @@ export function parseFixture(fixture: SMFixture): ParsedFixture {
     const goals = readStatN(l.details, 'GOALS')
     const assists = readStatN(l.details, 'ASSISTS')
     const yellow = readStatN(l.details, 'YELLOWCARDS')
-    const red = readStatN(l.details, 'REDCARDS') + readStatN(l.details, 'YELLOWREDCARDS')
+    const red = readStatN(l.details, 'REDCARDS') + readStatN(l.details, 'YELLOWRED_CARDS')
     const conceded = readStatN(l.details, 'GOALS_CONCEDED')
     const ownGoals = readStatN(l.details, 'OWN_GOALS')
     const captain = readBool(l.details, 'CAPTAIN')
