@@ -233,10 +233,14 @@ export function parseFixture(fixture: SMFixture): ParsedFixture {
     // during live matches, which resets to a small number each tick. Use
     // CUMULATIVE_MINUTES_PLAYED (the running total) when available; fall back
     // to MINUTES_PLAYED for older payloads that only have the non-cumulative key.
-    const minutes = Math.max(
+    // Clamp to the DB check constraint bound (0..150): ET + shootout stoppage
+    // can push cumulative minutes past 130, and an out-of-range value must
+    // degrade to a capped number, never to a failed stats upsert.
+    const minutes = Math.min(150, Math.max(
+      0,
       readStatN(l.details, 'CUMULATIVE_MINUTES_PLAYED'),
       readStatN(l.details, 'MINUTES_PLAYED'),
-    )
+    ))
     const rating = readStat(l.details, 'RATING')
     const goals = readStatN(l.details, 'GOALS')
     const assists = readStatN(l.details, 'ASSISTS')
