@@ -86,6 +86,30 @@ function readStatN(details: SMStatDetail[] | undefined, name: string): number {
   return readStat(details, name) ?? 0
 }
 
+// SportMonks is inconsistent about underscores in card stat/event names
+// (YELLOWCARDS vs YELLOW_CARDS, YELLOWRED_CARDS vs YELLOWREDCARDS, and
+// event types drop the trailing S: YELLOWCARD / YELLOWRED_CARD / REDCARD).
+// A key-spelling mismatch here once silently dropped a second-yellow red
+// (Embolo, ARG-SUI 2026-07-12), so cards are matched underscore- and
+// plural-insensitively instead of by exact key.
+function normalizeCardName(name: string | undefined | null): string {
+  if (!name) return ''
+  return name.toUpperCase().replace(/_/g, '').replace(/S$/, '')
+}
+
+function readCardStatN(details: SMStatDetail[] | undefined, canonical: string): number {
+  if (!details) return 0
+  const want = normalizeCardName(canonical)
+  let total = 0
+  for (const d of details) {
+    if (normalizeCardName(d.type?.developer_name) !== want) continue
+    const v = d.data?.value
+    const n = typeof v === 'number' ? v : Number(v)
+    if (Number.isFinite(n)) total += n
+  }
+  return total
+}
+
 function dumpAllStats(details: SMStatDetail[] | undefined): Record<string, number | string | boolean> {
   if (!details) return {}
   const out: Record<string, number | string | boolean> = {}
@@ -216,8 +240,8 @@ export function parseFixture(fixture: SMFixture): ParsedFixture {
     const rating = readStat(l.details, 'RATING')
     const goals = readStatN(l.details, 'GOALS')
     const assists = readStatN(l.details, 'ASSISTS')
-    const yellow = readStatN(l.details, 'YELLOWCARDS')
-    const red = readStatN(l.details, 'REDCARDS') + readStatN(l.details, 'YELLOWRED_CARDS')
+    const yellow = readCardStatN(l.details, 'YELLOWCARDS')
+    const red = readCardStatN(l.details, 'REDCARDS') + readCardStatN(l.details, 'YELLOWREDCARDS')
     const conceded = readStatN(l.details, 'GOALS_CONCEDED')
     const ownGoals = readStatN(l.details, 'OWN_GOALS')
     const captain = readBool(l.details, 'CAPTAIN')
@@ -270,6 +294,13 @@ export function parseFixture(fixture: SMFixture): ParsedFixture {
   // Event-derived own-goal counts, reconciled against the lineup stat below.
   const eventOwnGoals = new Map<number, number>()
 
+  // Event-derived card counts, reconciled against the lineup stats below.
+  // Cards come from two independent SportMonks sources (per-player lineup
+  // stats and match events); counting both and taking the max means a
+  // renamed/lagging stat key can never silently drop a card again.
+  const eventYellows = new Map<number, number>()
+  const eventReds = new Map<number, number>()
+
   // Apply event-derived counters
   for (const ev of events) {
     const dev = ev.type?.developer_name
@@ -298,6 +329,16 @@ export function parseFixture(fixture: SMFixture): ParsedFixture {
       continue
     }
 
+    const card = normalizeCardName(dev)
+    if ((card === 'YELLOWCARD' || card === 'REDCARD' || card === 'YELLOWREDCARD') && ev.player_id != null) {
+      if (card === 'YELLOWCARD') {
+        eventYellows.set(ev.player_id, (eventYellows.get(ev.player_id) ?? 0) + 1)
+      } else {
+        eventReds.set(ev.player_id, (eventReds.get(ev.player_id) ?? 0) + 1)
+      }
+      continue
+    }
+
     if (dev === 'OWN_GOAL' && ev.player_id != null) {
       const p = byPlayer.get(ev.player_id)
       // The per-player OWN_GOALS lineup stat is the primary source and is read
@@ -320,6 +361,17 @@ export function parseFixture(fixture: SMFixture): ParsedFixture {
   for (const [smId, count] of eventOwnGoals) {
     const p = byPlayer.get(smId)
     if (p) p.own_goals = Math.max(p.own_goals, count)
+  }
+
+  // Reconcile cards: lineup stats are primary; events fill in whenever the
+  // stat feed reports fewer (lagging tick, renamed stat key, missing detail).
+  for (const [smId, count] of eventYellows) {
+    const p = byPlayer.get(smId)
+    if (p) p.yellow_cards = Math.max(p.yellow_cards, count)
+  }
+  for (const [smId, count] of eventReds) {
+    const p = byPlayer.get(smId)
+    if (p) p.red_cards = Math.max(p.red_cards, count)
   }
 
   // Scoreline: prefer SportMonks' authoritative CURRENT score (include=scores),
