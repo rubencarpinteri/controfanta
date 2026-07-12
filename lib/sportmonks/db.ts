@@ -599,8 +599,16 @@ export async function finalizeStrandedFMMatches(
 export async function resyncRecentlyFinishedFMMatches(
   db: DB,
   fmCompetitionIds: string[],
-): Promise<{ checked: number; resynced: number; fixture_ids: number[]; scoring_errors: Array<{ fixture_id: number; error: string }> }> {
-  if (!fmCompetitionIds.length) return { checked: 0, resynced: 0, fixture_ids: [], scoring_errors: [] }
+): Promise<{
+  checked: number
+  resynced: number
+  fixture_ids: number[]
+  scoring_errors: Array<{ fixture_id: number; error: string }>
+  resync_errors: Array<{ fixture_id: number; error: string }>
+}> {
+  if (!fmCompetitionIds.length) {
+    return { checked: 0, resynced: 0, fixture_ids: [], scoring_errors: [], resync_errors: [] }
+  }
 
   // Anything that finished ≥10 minutes ago and was never resynced is eligible,
   // bounded to the last 24h. The previous fixed 10-20min band proved fragile:
@@ -626,6 +634,7 @@ export async function resyncRecentlyFinishedFMMatches(
 
   const fixture_ids: number[] = []
   const scoring_errors: Array<{ fixture_id: number; error: string }> = []
+  const resync_errors: Array<{ fixture_id: number; error: string }> = []
   const roundsNeedingRescore = new Set<string>()
 
   for (const m of rows) {
@@ -635,21 +644,31 @@ export async function resyncRecentlyFinishedFMMatches(
     } catch {
       continue // transient — leave unmarked, next tick's window may still catch it
     }
-    const parsed = parseFixture(fx)
+    // One poisoned match (parse throw, upsert error) must not abort the whole
+    // pass and silently starve every other candidate — record and move on.
+    try {
+      const parsed = parseFixture(fx)
 
-    // Before upsert, fetch the old stats to detect changes
-    const oldStats = await fetchMatchPlayerStatsForComparison(db, m.id, fmCompetitionIds)
+      // Before upsert, fetch the old stats to detect changes
+      const oldStats = await fetchMatchPlayerStatsForComparison(db, m.id, fmCompetitionIds)
 
-    // Resolve players against whichever competition owns this match; the others
-    // simply find no players and skip rows.
-    for (const compId of fmCompetitionIds) {
-      await upsertFMPlayerStats(db, compId, parsed)
-    }
+      // Resolve players against whichever competition owns this match; the others
+      // simply find no players and skip rows.
+      for (const compId of fmCompetitionIds) {
+        await upsertFMPlayerStats(db, compId, parsed)
+      }
 
-    // After upsert, check if any stats changed
-    const statsChanged = detectStatChanges(oldStats, parsed)
-    if (statsChanged) {
-      roundsNeedingRescore.add(m.scoring_round_id)
+      // After upsert, check if any stats changed
+      const statsChanged = detectStatChanges(oldStats, parsed)
+      if (statsChanged) {
+        roundsNeedingRescore.add(m.scoring_round_id)
+      }
+    } catch (e) {
+      resync_errors.push({
+        fixture_id: m.sportmonks_fixture_id,
+        error: e instanceof Error ? e.message : String(e),
+      })
+      continue // leave unmarked so a later tick retries this match
     }
 
     await db.from('fm_real_match').update({ post_finish_resynced_at: new Date().toISOString() }).eq('id', m.id)
@@ -673,7 +692,7 @@ export async function resyncRecentlyFinishedFMMatches(
     }
   }
 
-  return { checked: rows.length, resynced: fixture_ids.length, fixture_ids, scoring_errors }
+  return { checked: rows.length, resynced: fixture_ids.length, fixture_ids, scoring_errors, resync_errors }
 }
 
 /**

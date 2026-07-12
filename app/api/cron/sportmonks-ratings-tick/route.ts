@@ -72,17 +72,21 @@ export async function GET(req: NextRequest) {
     // is how Lautaro Martínez's extra-time goal in ARG-SUI was lost — the stat
     // correction landed after the fixture left /livescores/inplay and the
     // 10-20min resync window fell entirely on skip ticks).
-    let postFinishResync: Awaited<ReturnType<typeof resyncRecentlyFinishedFMMatches>> = {
+    let postFinishResync: Awaited<ReturnType<typeof resyncRecentlyFinishedFMMatches>> & { error?: string } = {
       checked: 0,
       resynced: 0,
       fixture_ids: [],
       scoring_errors: [],
+      resync_errors: [],
     }
     try {
       const refs = await listActiveLeagueRefs(db)
       const fmCompetitionIds = refs.filter((r) => r.product === 'fm').map((r) => r.owner_id)
       postFinishResync = await resyncRecentlyFinishedFMMatches(db, fmCompetitionIds)
     } catch (e) {
+      // Surface the failure into the logged summary — console.error alone made
+      // a crashing resync indistinguishable from "no candidates" in cron_runs.
+      postFinishResync.error = e instanceof Error ? e.message : String(e)
       console.error('[ratings-tick] post-finish resync failed:', e)
     }
     // Even on skip ticks, run writeLiveSnapshots so recently-finished matches
@@ -101,12 +105,15 @@ export async function GET(req: NextRequest) {
       }
     }
     const body = { message: 'No fixtures in live window', live: 0, sched, elim, liveSnapshots, postFinishResync }
-    // A tick that actually resynced a match is not a routine skip — always log it.
-    if (postFinishResync.resynced > 0 || shouldLogSkip(started_at)) {
+    // A tick that resynced something, hit resync errors, or crashed outright is
+    // not a routine skip — always log it so failures are visible in cron_runs.
+    const resyncNoteworthy =
+      postFinishResync.resynced > 0 || postFinishResync.resync_errors.length > 0 || postFinishResync.error != null
+    if (resyncNoteworthy || shouldLogSkip(started_at)) {
       await logCronRun(db, {
         endpoint: ENDPOINT,
         started_at,
-        status: postFinishResync.resynced > 0 ? 'ok' : 'skipped',
+        status: postFinishResync.resynced > 0 ? 'ok' : resyncNoteworthy ? 'error' : 'skipped',
         http_status: 200,
         summary: body,
       })
@@ -249,15 +256,17 @@ export async function GET(req: NextRequest) {
   // haven't already been resynced. Never throws.
   // If stat changes are detected, the round's fantasy scoring is automatically
   // recomputed. Scoring errors don't block the resync mark but are surfaced.
-  let postFinishResync: Awaited<ReturnType<typeof resyncRecentlyFinishedFMMatches>> = {
+  let postFinishResync: Awaited<ReturnType<typeof resyncRecentlyFinishedFMMatches>> & { error?: string } = {
     checked: 0,
     resynced: 0,
     fixture_ids: [],
     scoring_errors: [],
+    resync_errors: [],
   }
   try {
     postFinishResync = await resyncRecentlyFinishedFMMatches(db, fmCompetitionIds)
   } catch (e) {
+    postFinishResync.error = e instanceof Error ? e.message : String(e)
     console.error('[ratings-tick] post-finish resync failed:', e)
   }
 
