@@ -89,6 +89,15 @@ function parsePoints(
   }
 }
 
+function parseRoundMultipliers(raw: Json | null | undefined): Record<string, number> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
+  const out: Record<string, number> = {}
+  for (const [roundId, mult] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof mult === 'number' && mult > 0) out[roundId] = mult
+  }
+  return out
+}
+
 function parseSubstitution(raw: unknown): FMCompetitionConfig['substitution'] {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return DEFAULT_FM_CONFIG.substitution
   const r = raw as Record<string, unknown>
@@ -316,6 +325,7 @@ export function composeFMConfig(
       win_points:  points.win,
       draw_points: points.draw,
       loss_points: points.loss,
+      round_points_multipliers: parseRoundMultipliers(engineRow.round_points_multipliers),
     },
 
     immunita_enabled: engineRow.immunita_enabled ?? base.immunita_enabled,

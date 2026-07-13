@@ -7,7 +7,10 @@ export function computeBattleRoyale(
   legaCompetitionId: string,
   config: FMCompetitionConfig,
 ): FMBattleRoyaleMatchupResult[] {
-  const { win_points, draw_points, loss_points } = config.battle_royale
+  const { win_points, draw_points, loss_points, round_points_multipliers } = config.battle_royale
+  // Per-round stake multiplier (e.g. Finale ×2). Applied to the points of
+  // every pairwise matchup in the round; W/D/L records are unaffected.
+  const mult = round_points_multipliers?.[scoringRoundId] ?? 1
   const matchups: FMBattleRoyaleMatchupResult[] = []
 
   for (let i = 0; i < teamScores.length; i++) {
@@ -31,16 +34,16 @@ export function computeBattleRoyale(
 
       if (a_goals > b_goals) {
         result = 'home_win'
-        a_points = win_points
-        b_points = loss_points
+        a_points = win_points * mult
+        b_points = loss_points * mult
       } else if (a_goals < b_goals) {
         result = 'away_win'
-        a_points = loss_points
-        b_points = win_points
+        a_points = loss_points * mult
+        b_points = win_points * mult
       } else {
         result = 'draw'
-        a_points = draw_points
-        b_points = draw_points
+        a_points = draw_points * mult
+        b_points = draw_points * mult
       }
 
       matchups.push({

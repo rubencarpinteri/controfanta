@@ -261,6 +261,13 @@ export const fmBattleRoyaleSchema = z.object({
   win_points: z.number().int().min(0).max(10).default(3),
   draw_points: z.number().int().min(0).max(10).default(1),
   loss_points: z.number().int().min(0).max(10).default(0),
+  /**
+   * Per-round BR points multiplier keyed by fm_scoring_round.id
+   * (e.g. { "<finale-round-id>": 2 } makes the Finale round worth
+   * double). Rounds not listed score at ×1. Must be honored
+   * identically by runRoundEngine and the live snapshot.
+   */
+  round_points_multipliers: z.record(z.string(), z.number().positive()).default({}),
 })
 export type FMBattleRoyaleConfig = z.infer<typeof fmBattleRoyaleSchema>
 

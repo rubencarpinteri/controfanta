@@ -2432,6 +2432,7 @@ export type Database = {
           popularity_brackets: Json
           red_card: number
           result_points: Json
+          round_points_multipliers: Json
           smoothing: Json
           updated_at: string
           yellow_card: number
@@ -2466,6 +2467,7 @@ export type Database = {
           popularity_brackets?: Json
           red_card?: number
           result_points?: Json
+          round_points_multipliers?: Json
           smoothing?: Json
           updated_at?: string
           yellow_card?: number
@@ -2500,6 +2502,7 @@ export type Database = {
           popularity_brackets?: Json
           red_card?: number
           result_points?: Json
+          round_points_multipliers?: Json
           smoothing?: Json
           updated_at?: string
           yellow_card?: number

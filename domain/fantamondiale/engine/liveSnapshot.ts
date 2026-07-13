@@ -1269,6 +1269,9 @@ export async function computeLiveRoundSnapshot(
   // Battle Royale standings — goals scored + giornata points.
   // ============================================================
   const br = config.battle_royale
+  // Per-round stake multiplier (e.g. Finale ×2) — MUST match computeBattleRoyale
+  // in the official engine or live and finalized classifica diverge.
+  const brMult = br.round_points_multipliers?.[roundId] ?? 1
   const thresholds = br.goal_thresholds.slice().sort((a, b) => a - b)
 
   function goalsFromTotal(total: number): number {
@@ -1289,9 +1292,9 @@ export async function computeLiveRoundSnapshot(
     for (const other of teamsOut) {
       if (other.fantasy_team_id === t.fantasy_team_id) continue
       const theirGoals = goalsByTeam.get(other.fantasy_team_id) ?? 0
-      if (myGoals > theirGoals) pts += br.win_points
-      else if (myGoals === theirGoals) pts += br.draw_points
-      else pts += br.loss_points
+      if (myGoals > theirGoals) pts += br.win_points * brMult
+      else if (myGoals === theirGoals) pts += br.draw_points * brMult
+      else pts += br.loss_points * brMult
     }
     standings[t.fantasy_team_id] = {
       live_total: t.live_total,

@@ -139,6 +139,7 @@ export const DEFAULT_FM_CONFIG: FMCompetitionConfig = {
     win_points: 3,
     draw_points: 1,
     loss_points: 0,
+    round_points_multipliers: {},
   },
 
   immunita_enabled: true,
