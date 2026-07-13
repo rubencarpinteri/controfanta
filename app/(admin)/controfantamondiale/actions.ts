@@ -52,8 +52,11 @@ export async function bootstrapWC2026Action() {
     { kind: 'round_of_32',  name: 'Sedicesimi',        display_order: 2, squad_open_at: '2026-06-27T08:00:00Z', sportmonks_stage_id: null },
     { kind: 'round_of_16',  name: 'Ottavi di Finale',  display_order: 3, squad_open_at: '2026-07-03T08:00:00Z', sportmonks_stage_id: null },
     { kind: 'quarter_final',name: 'Quarti di Finale',  display_order: 4, squad_open_at: '2026-07-08T08:00:00Z', sportmonks_stage_id: null },
-    { kind: 'semi_final',   name: 'Semifinali',        display_order: 5, squad_open_at: '2026-07-13T08:00:00Z', sportmonks_stage_id: null },
-    { kind: 'final',        name: 'Finale',            display_order: 6, squad_open_at: '2026-07-17T08:00:00Z', sportmonks_stage_id: null },
+    // Semifinali + Finali share ONE squad (league poll, 2026-07-13): a single
+    // "Fase Finale" phase with two scoring rounds — Semifinali (both semis)
+    // and Finali (3rd-place match + final). The 4 surviving nations each play
+    // exactly two matches, so a per-stage redraft would be redundant.
+    { kind: 'semi_final',   name: 'Fase Finale',       display_order: 5, squad_open_at: '2026-07-13T08:00:00Z', sportmonks_stage_id: null },
   ] as const
 
   const { error: phaseErr } = await supabase
